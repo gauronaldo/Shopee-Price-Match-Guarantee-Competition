@@ -1,0 +1,8 @@
+posting_id,image,image_phash,title,label_group
+synthetic_0001,red_front.ppm,1111111111111111,Áo thể thao đỏ size M,group_red_shirt
+synthetic_0002,red_crop.ppm,1111111111111113,AO THE THAO DO - M,group_red_shirt
+synthetic_0003,blue_front.ppm,2222222222222222,Áo thể thao xanh size M,group_blue_shirt
+synthetic_0004,blue_crop.ppm,2222222222222226,Sports shirt blue M,group_blue_shirt
+synthetic_0005,coffee_front.ppm,3333333333333333,Cà phê rang xay 500g,group_coffee_500g
+synthetic_0006,coffee_alt.ppm,3333333333333337,CA PHE 0.5 KG,group_coffee_500g
+

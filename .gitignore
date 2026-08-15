@@ -209,6 +209,55 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Local secrets (keep the documented template)
+.env.*
+!.env.example
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Shopee competition data and derived datasets
+data/raw/**
+data/interim/**
+data/processed/**
+data/downloads/**
+data/splits/*.csv
+data/splits/*.json
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# Training, experiment, and generated report outputs
+checkpoints/
+outputs/
+runs/
+artifacts/
+logs/
+wandb/
+mlruns/
+lightning_logs/
+reports/figures/generated/
+reports/tables/generated/
+*.ckpt
+*.pth
+*.pt
+*.onnx
+
+# Retrieval indexes and temporary files
+*.faiss
+*.index
+cache/
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*~
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

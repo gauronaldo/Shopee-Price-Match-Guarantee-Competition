@@ -1,0 +1,20 @@
+config_version: phase0.smoke.v1
+project:
+  name: shopee_multimodal_product_matching
+  seed: 2026
+data:
+  metadata_csv: tests/fixtures/smoke/train.csv
+  image_dir: tests/fixtures/smoke/train_images
+  required_columns:
+    - posting_id
+    - image
+    - image_phash
+    - title
+    - label_group
+output:
+  online_top_k: 3
+  match_threshold: 0.80
+  review_threshold: 0.55
+logging:
+  level: INFO
+
