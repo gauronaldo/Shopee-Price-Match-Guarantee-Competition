@@ -219,6 +219,17 @@ tempCodeRunnerFile.py
 .DS_Store
 Thumbs.db
 
+# Local coding-agent instructions and state
+AGENTS.md
+.agents/
+.codex/
+
+# Local planning/status notes (never project deliverables)
+phase_*_status.md
+phase-*-status.md
+*_status.local.md
+*.local.md
+
 # Shopee competition data and derived datasets
 data/raw/**
 data/interim/**
@@ -226,6 +237,12 @@ data/processed/**
 data/downloads/**
 data/splits/*.csv
 data/splits/*.json
+data/splits/*.jsonl
+!data/downloads/
+!data/downloads/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!data/splits/.gitkeep
 *.zip
 *.7z
 *.tar
@@ -253,8 +270,12 @@ reports/tables/generated/
 cache/
 tmp/
 temp/
+.scratch/
 *.tmp
 *.temp
+*.bak
+*.orig
+*.rej
 *.swp
 *~
 

@@ -1,0 +1,34 @@
+config_version: phase1.data.v1
+dataset:
+  name: shopee_price_match_guarantee
+  competition_slug: shopee-product-matching
+  metadata_csv: data/raw/train.csv
+  metadata_sha256: 82b8ec57e81b603e00c63779b7eeea69a2bd7d9cbb48377657cf547b422f9175
+  image_dir: data/raw/train_images
+  required_columns:
+    - posting_id
+    - image
+    - image_phash
+    - title
+    - label_group
+split:
+  strategy_version: leakage_super_component.v1
+  manifest_path: data/splits/shopee_group_split_v1.jsonl
+  summary_path: data/splits/shopee_group_split_v1.summary.json
+  seed: 2026
+  train_fraction: 0.80
+  validation_fraction: 0.10
+  test_fraction: 0.10
+  group_key: label_group
+  link_exact_image_reference: true
+  link_exact_sha256: true
+  link_exact_phash: true
+audit:
+  report_json: reports/tables/generated/data_audit_v1/audit.json
+  report_markdown: reports/data_audit_v1.md
+  figure_dir: reports/figures/data_audit_v1
+  inspection_dir: reports/figures/generated/data_audit_v1
+  random_sample_seed: 2026
+  same_group_samples: 24
+  different_group_samples: 24
+  near_phash_hamming_distance: 4

@@ -1,33 +1,27 @@
 # Shopee Multimodal Product Matching
 
-A portfolio-grade research project for duplicate-product retrieval and catalog entity resolution
-using product images and noisy multilingual titles. The dataset is Kaggle's **Shopee — Price
-Match Guarantee** competition data.
+A reproducible research project for duplicate-product retrieval and catalog entity resolution
+from product images and noisy multilingual titles. The dataset is Kaggle's **Shopee — Price
+Match Guarantee** competition release.
 
-This is not generic image similarity: visually similar variants may be different purchasable
-products, while listings with different photos and wording may refer to the same product.
-
-## Scope and outputs
-
-The system will support:
-
-- **Online:** accept one image and title; return Top-K candidate `posting_id` values, calibrated
-  match confidence, image/title similarity evidence, a predicted group or “no confident match,”
-  and a manual-review flag.
-- **Batch:** accept a catalog; return candidate pairs, pair probabilities, conservative entity
-  clusters, cluster confidence, and review flags.
-
-The exact identity policy and variant assumptions are defined in
+This is not generic visual similarity: visually similar variants may be different purchasable
+products, while listings with different photos and wording may refer to the same product. The
+identity policy and evaluation assumptions are defined in
 [`docs/problem_definition.md`](docs/problem_definition.md).
 
-## Current phase
+## Current status
 
-Only **Phase 0 — problem contract and repository foundation** is implemented. It provides typed
-contracts, versioned configuration, logging, seed control, a rights-safe synthetic fixture,
-tests, and CI. No Kaggle data has been downloaded or inspected, and no modeling claim or metric
-is reported. Phase 1 must audit the real release before baselines or neural work begins.
+Phase 0 and the executable portion of Phase 1 are implemented. Phase 1 now validates the real
+release, decodes and hashes every referenced image, audits metadata and label ambiguity, creates
+a deterministic leakage-safe train/validation/test manifest, and generates an aggregate report
+plus a local inspection gallery. The audit passes all critical gates but retains warnings about
+cross-label duplicates and perceptually similar variants; those warnings are data properties,
+not silently rewritten labels.
 
-## Setup and checks
+No baseline or neural model has been trained yet. Phase 2 must begin with deterministic pHash,
+ORB, and title-retrieval baselines after the Phase 1 inspection findings are accepted.
+
+## Setup, checks, and data preparation
 
 ```powershell
 python -m venv .venv
@@ -37,27 +31,68 @@ python -m venv .venv
 .venv\Scripts\mypy src
 .venv\Scripts\python -m pytest
 .venv\Scripts\shopee-smoke --config configs\smoke.yaml
+.venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml
 ```
 
 On Linux/macOS, replace `.venv\Scripts\` with `.venv/bin/`.
 
-## Data access
+The authorized Kaggle release is expected in this local-only layout:
 
-The user must accept the Kaggle competition rules and download the dataset through their own
-account. Treat it as immutable local input under `data/raw/`; never commit or redistribute it.
-Kaggle credentials, raw images, derived datasets, indexes, checkpoints, and experiment outputs
-are ignored by Git.
+```text
+data/raw/
+  train.csv
+  train_images/
+  test.csv
+  test_images/
+  sample_submission.csv
+```
 
-Expected training columns are `posting_id`, `image`, `image_phash`, `title`, and `label_group`.
-The Phase 0 fixture mirrors these columns but contains only synthetic metadata and tiny synthetic
-PPM images; it is not representative of real performance.
+Raw images/CSVs, generated split manifests, full audit JSON, inspection galleries, caches,
+checkpoints, and run artifacts are ignored by Git. The aggregate audit and non-sensitive SVG
+figures are kept under `reports/`. Phase 1 refuses an unexpected CSV checksum or schema, missing
+or corrupt images, duplicate posting IDs, and conflicting immutable outputs.
 
-## Planned evidence
+## Repository layout
 
-Later gated phases will compare pHash/ORB and TF-IDF baselines, custom image/text/multimodal
-PyTorch models trained from random initialization, hard-negative mining, exact/FAISS retrieval,
-pair scoring, clustering, and finally pretrained representations under the same split and
-evaluation protocol. Deployment comes last.
+```text
+configs/                         versioned data, model, and experiment inputs
+data/                            ignored raw/derived data and frozen local split manifests
+docs/                            product contract, data/model cards, error analysis
+notebooks/exploration/           bounded diagnostics only
+reports/                         reviewed aggregate reports and lightweight figures
+scripts/                         thin command adapters only
+src/shopee_match/
+  data/                          Phase 1 ingestion, audit, split, reporting
+  features/ models/ losses/      later modeling components
+  training/ retrieval/           training and candidate retrieval
+  clustering/ evaluation/        entity resolution and controlled evaluation
+  serving/                       inactive until the deployment phase
+tests/                           synthetic fixtures, unit and integration tests
+app/                             inactive until the final application phase
+```
 
-This repository does not claim production readiness, marketplace policy compliance, or that the
-competition labels are free of ambiguity.
+This root file is the single repository README; individual folders intentionally do not contain
+separate README files.
+
+## Phase 1 outputs
+
+- Aggregate report: [`reports/data_audit_v1.md`](reports/data_audit_v1.md)
+- Data card: [`docs/data_card.md`](docs/data_card.md)
+- Local manifest: `data/splits/shopee_group_split_v1.jsonl` (ignored)
+- Local manifest summary: `data/splits/shopee_group_split_v1.summary.json` (ignored)
+- Local pair gallery: `reports/figures/generated/data_audit_v1/gallery.html` (ignored)
+
+The split unit is a leakage super-component: label groups connected by an exact image reference,
+image SHA-256, or exact pHash are kept together. Near-pHash matches are audited but not merged
+automatically because low Hamming distance can represent a legitimate size, volume, color, or
+packaging variant.
+
+## Scope
+
+The eventual online interface returns Top-K candidate posting IDs, calibrated match confidence,
+image/title evidence, a predicted group or “no confident match,” and a review flag. Batch mode
+returns candidate pairs, pair probabilities, conservative clusters, and review flags.
+
+The project does not claim production readiness, marketplace-policy compliance, or that the
+competition labels are perfect commercial identity ground truth. Raw competition content is not
+redistributed.

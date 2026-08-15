@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "numpy==2.2.6",
+  "opencv-python-headless==4.12.0.88",
   "PyYAML==6.0.2",
 ]
 
@@ -23,6 +24,7 @@ dev = [
 ]
 
 [project.scripts]
+shopee-data = "shopee_match.data.cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 
 [tool.hatch.build.targets.wheel]
