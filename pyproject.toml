@@ -25,6 +25,7 @@ dev = [
 eda = [
   "ipykernel==7.3.0",
   "jupyterlab==4.6.2",
+  "matplotlib==3.11.1",
 ]
 
 [project.scripts]

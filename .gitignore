@@ -286,3 +286,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+reports/competition_solution_review.md
