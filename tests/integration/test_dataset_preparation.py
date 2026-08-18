@@ -7,14 +7,14 @@ import pytest
 from shopee_match.data.pipeline import prepare_dataset
 from shopee_match.errors import DataValidationError, OutputConflictError
 
-from ..phase1_helpers import make_phase1_workspace
+from ..dataset_helpers import make_dataset_workspace
 
 
-def test_phase1_pipeline_is_deterministic_and_idempotent(
+def test_dataset_preparation_is_deterministic_and_idempotent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source_root = Path.cwd()
-    make_phase1_workspace(tmp_path, source_root)
+    make_dataset_workspace(tmp_path, source_root)
     monkeypatch.chdir(tmp_path)
 
     first = prepare_dataset(Path("phase1.yaml"))
@@ -34,11 +34,11 @@ def test_phase1_pipeline_is_deterministic_and_idempotent(
     assert Path("outputs/inspection/gallery.html").exists()
 
 
-def test_phase1_pipeline_blocks_corrupt_images(
+def test_dataset_preparation_blocks_corrupt_images(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source_root = Path.cwd()
-    make_phase1_workspace(tmp_path, source_root)
+    make_dataset_workspace(tmp_path, source_root)
     (tmp_path / "raw" / "images" / "red_front.ppm").write_bytes(b"not-an-image")
     monkeypatch.chdir(tmp_path)
 
@@ -46,11 +46,11 @@ def test_phase1_pipeline_blocks_corrupt_images(
         prepare_dataset(Path("phase1.yaml"))
 
 
-def test_phase1_pipeline_refuses_changed_versioned_output(
+def test_dataset_preparation_refuses_changed_versioned_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source_root = Path.cwd()
-    make_phase1_workspace(tmp_path, source_root)
+    make_dataset_workspace(tmp_path, source_root)
     monkeypatch.chdir(tmp_path)
     prepare_dataset(Path("phase1.yaml"))
     Path("outputs/split.jsonl").write_text("changed\n", encoding="utf-8")

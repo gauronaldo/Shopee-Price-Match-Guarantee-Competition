@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 
-def make_phase1_workspace(destination: Path, source_root: Path) -> Path:
+def make_dataset_workspace(destination: Path, source_root: Path) -> Path:
     raw = destination / "raw"
     images = raw / "images"
     images.mkdir(parents=True)

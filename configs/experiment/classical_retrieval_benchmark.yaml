@@ -1,0 +1,33 @@
+config_version: classical_retrieval.benchmark.v1
+seed: 2026
+data:
+  metadata_csv: data/raw/train.csv
+  split_manifest: data/splits/shopee_group_split_v1.jsonl
+  image_dir: data/raw/train_images
+evaluation:
+  tune_split: validation
+  final_split: test
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+baselines:
+  phash:
+    candidate_k: 100
+  tfidf:
+    analyzer: char_wb
+    ngram_range: [2, 5]
+    max_features: 100000
+    candidate_k: 100
+  orb:
+    features: 500
+    candidate_source: union_phash_tfidf
+    candidate_k_per_source: 20
+    top_k: 20
+  fusion:
+    weight_grid: [0.0, 0.25, 0.5, 0.75, 1.0]
+    top_k: 20
+artifacts:
+  root: artifacts/classical_retrieval
+  report: reports/classical_retrieval_benchmark.md
+  threshold_figure: reports/figures/classical_retrieval_threshold_sweeps.svg

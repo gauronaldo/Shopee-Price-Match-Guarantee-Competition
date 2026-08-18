@@ -1,1 +1,1 @@
-"""Classical image/text features and reusable preprocessing boundary (Phase 2+)."""
+"""Classical image/text features and reusable preprocessing boundaries."""

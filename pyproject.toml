@@ -22,9 +22,14 @@ dev = [
   "ruff==0.12.8",
   "types-PyYAML==6.0.12.20250516",
 ]
+eda = [
+  "ipykernel==7.3.0",
+  "jupyterlab==4.6.2",
+]
 
 [project.scripts]
 shopee-data = "shopee_match.data.cli:main"
+shopee-benchmark = "shopee_match.evaluation.cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 
 [tool.hatch.build.targets.wheel]

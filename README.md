@@ -11,15 +11,18 @@ identity policy and evaluation assumptions are defined in
 
 ## Current status
 
-Phase 0 and the executable portion of Phase 1 are implemented. Phase 1 now validates the real
+Phases 0–2 are implemented. Phase 1 validates the real
 release, decodes and hashes every referenced image, audits metadata and label ambiguity, creates
 a deterministic leakage-safe train/validation/test manifest, and generates an aggregate report
 plus a local inspection gallery. The audit passes all critical gates but retains warnings about
 cross-label duplicates and perceptually similar variants; those warnings are data properties,
 not silently rewritten labels.
 
-No baseline or neural model has been trained yet. Phase 2 must begin with deterministic pHash,
-ORB, and title-retrieval baselines after the Phase 1 inspection findings are accepted.
+Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, and validation-tuned late
+fusion under one retrieval/pair protocol. Results and failure analysis are recorded in
+[`reports/classical_retrieval_benchmark.md`](reports/classical_retrieval_benchmark.md). No neural
+model has been trained;
+Phase 3 is the next phase and must begin with the scratch image-encoder smoke gates.
 
 ## Setup, checks, and data preparation
 
@@ -32,7 +35,12 @@ python -m venv .venv
 .venv\Scripts\python -m pytest
 .venv\Scripts\shopee-smoke --config configs\smoke.yaml
 .venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml
+.venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml
 ```
+
+For the optional EDA environment, install `-e ".[dev,eda]"` and open
+`notebooks/exploration/catalog_data_exploration.ipynb`. Clear notebook outputs before every
+commit.
 
 On Linux/macOS, replace `.venv\Scripts\` with `.venv/bin/`.
 
