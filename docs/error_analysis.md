@@ -28,7 +28,7 @@ Manual inspection of five top-ranked failures per baseline found:
 - **Candidate ceiling:** the label-blind pHash/TF-IDF union reaches 0.9512 macro positive recall on
   test. The pair matcher retains 0.9467 in its final Top 20, leaving limited ranking headroom before
   candidate generation itself must improve.
-- **Efficiency trade-off:** pair matching reaches about 83 ms/query versus 17 ms/query for weighted
+- **Efficiency trade-off:** pair matching reaches about 73 ms/query versus 13 ms/query for weighted
   fusion in the development run because ORB remains CPU-heavy. The quality gain is measurable but
   does not justify treating ORB as the future production representation.
 
