@@ -18,8 +18,10 @@ plus a local inspection gallery. The audit passes all critical gates but retains
 cross-label duplicates and perceptually similar variants; those warnings are data properties,
 not silently rewritten labels.
 
-Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, and validation-tuned late
-fusion under one retrieval/pair protocol. Results and failure analysis are recorded in
+Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, validation-tuned late fusion,
+and an interpretable Logistic Regression pair matcher under one retrieval/pair protocol. The pair
+model combines text, image, token, digit, model-number, and normalized quantity/unit evidence.
+Results, candidate-ceiling analysis, coefficients, and failure analysis are recorded in
 [`reports/classical_retrieval_benchmark.md`](reports/classical_retrieval_benchmark.md). No neural
 model has been trained;
 Phase 3 is the next phase and must begin with the scratch image-encoder smoke gates.

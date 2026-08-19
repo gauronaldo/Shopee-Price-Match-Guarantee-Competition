@@ -15,14 +15,25 @@ def make_benchmark_workspace(destination: Path, source_root: Path) -> Path:
     shutil.copyfile(fixture / "train.csv", raw / "train.csv")
     for path in (fixture / "train_images").iterdir():
         shutil.copyfile(path, images / path.name)
+    (images / "tea_front.ppm").write_bytes(b"P6\n8 8\n255\n" + bytes([20, 180, 40]) * 64)
+    (images / "tea_alt.ppm").write_bytes(b"P6\n8 8\n255\n" + bytes([25, 175, 45]) * 64)
+    with (raw / "train.csv").open("a", encoding="utf-8", newline="") as handle:
+        handle.write(
+            "synthetic_0007,tea_front.ppm,4444444444444444,Green tea bottle 250ml,"
+            "group_green_tea\n"
+            "synthetic_0008,tea_alt.ppm,4444444444444446,Green tea 0.25 liter,"
+            "group_green_tea\n"
+        )
 
     split_by_id = {
         "synthetic_0001": "train",
         "synthetic_0002": "train",
-        "synthetic_0003": "validation",
-        "synthetic_0004": "validation",
-        "synthetic_0005": "test",
-        "synthetic_0006": "test",
+        "synthetic_0003": "train",
+        "synthetic_0004": "train",
+        "synthetic_0005": "validation",
+        "synthetic_0006": "validation",
+        "synthetic_0007": "test",
+        "synthetic_0008": "test",
     }
     manifest = destination / "split.jsonl"
     manifest.write_text(
@@ -63,6 +74,12 @@ def make_benchmark_workspace(destination: Path, source_root: Path) -> Path:
                 "top_k": 1,
             },
             "fusion": {"weight_grid": [0.0, 0.5, 1.0], "top_k": 1},
+            "pair_matcher": {
+                "training_queries": 4,
+                "candidate_k_per_source": 1,
+                "top_k": 1,
+                "regularization_c": 1.0,
+            },
         },
         "artifacts": {
             "root": "artifacts/classical_retrieval",

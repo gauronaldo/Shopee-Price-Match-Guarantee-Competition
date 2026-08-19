@@ -21,8 +21,28 @@ def test_classical_retrieval_benchmark_runs_from_fixture_to_report(
     metrics = json.loads(Path(result["metrics"]).read_text(encoding="utf-8"))
 
     assert result["status"] == "complete"
-    assert set(metrics["baselines"]) == {"phash", "tfidf", "orb", "fusion"}
-    assert metrics["data"] == {"test": 2, "train": 2, "validation": 2}
+    assert set(metrics["baselines"]) == {
+        "phash",
+        "tfidf",
+        "orb",
+        "fusion",
+        "pair_matcher",
+    }
+    assert metrics["data"] == {"test": 2, "train": 4, "validation": 2}
+    assert set(metrics["model"]["pair_matcher"]["standardized_coefficients"]) == {
+        "tfidf_similarity",
+        "phash_similarity",
+        "orb_similarity",
+        "token_jaccard",
+        "exact_normalized_title",
+        "digit_jaccard",
+        "digit_conflict",
+        "quantity_overlap",
+        "quantity_conflict",
+        "model_token_jaccard",
+        "title_length_ratio",
+    }
+    assert metrics["analysis"]["candidate_ceiling"]["test"]["macro_recall"] == 1.0
     assert metrics["efficiency"]["process_peak_working_set_bytes"] > 0
     assert (
         metrics["baselines"]["fusion"]["runtime_seconds"]
@@ -31,3 +51,4 @@ def test_classical_retrieval_benchmark_runs_from_fixture_to_report(
     assert Path(result["report"]).exists()
     assert Path(result["threshold_figure"]).read_text(encoding="utf-8").startswith("<svg")
     assert Path("artifacts/classical_retrieval/review_examples.json").exists()
+    assert Path("artifacts/classical_retrieval/pair_matcher_failure_examples.json").exists()

@@ -14,7 +14,7 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
     """Render an aggregate Markdown report without exposing raw listing content."""
     metric_k = int(results["evaluation"]["average_precision_at"])
     rows = []
-    for name in ("phash", "tfidf", "orb", "fusion"):
+    for name in ("phash", "tfidf", "orb", "fusion", "pair_matcher"):
         baseline = results["baselines"][name]
         rows.append(
             "| {name} | {val_map:.4f} | {val_recall:.4f} | {threshold:.4f} | "
@@ -33,6 +33,9 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
     fusion_delta = _metric(results["baselines"]["fusion"], "test", f"map@{metric_k}") - _metric(
         results["baselines"]["tfidf"], "test", f"map@{metric_k}"
     )
+    pair_delta = float(results["baselines"]["pair_matcher"]["test"]["pair"]["f1"]) - float(
+        results["baselines"]["fusion"]["test"]["pair"]["f1"]
+    )
     efficiency = results["efficiency"]
     peak_working_set = efficiency["process_peak_working_set_bytes"]
     peak_memory_text = (
@@ -41,6 +44,22 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
         else "unavailable"
     )
     provenance = results["provenance"]
+    pair_model = results["model"]["pair_matcher"]
+    candidate_ceiling = results["analysis"]["candidate_ceiling"]
+    coefficients = results["model"]["pair_matcher"]["standardized_coefficients"]
+    coefficient_rows = [
+        f"| `{name}` | {float(value):+.4f} |"
+        for name, value in sorted(
+            coefficients.items(), key=lambda item: (-abs(float(item[1])), item[0])
+        )
+    ]
+    failure_rows = [
+        f"| `{name}` | {int(value):,} |"
+        for name, value in sorted(
+            results["analysis"]["pair_matcher_failure_counts"].items(),
+            key=lambda item: (-int(item[1]), item[0]),
+        )
+    ]
     relative_figure = figure_path.as_posix()
     if relative_figure.startswith("reports/"):
         relative_figure = relative_figure.removeprefix("reports/")
@@ -60,12 +79,13 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
             f"- Git commit / dirty: `{provenance['git_commit']}` / `{provenance['git_dirty']}`",
             f"- Seed: `{provenance['seed']}`",
             f"- Environment: Python `{provenance['python']}`, OpenCV `{provenance['opencv']}`, "
-            f"NumPy `{provenance['numpy']}`",
+            f"NumPy `{provenance['numpy']}`, scikit-learn `{provenance['scikit_learn']}`",
             "",
             "## Results",
             "",
-            f"Metrics are macro-averaged per query. Pair F1 counts unretrieved positives as false "
-            f"negatives. Retrieval columns use K={metric_k}.",
+            f"Retrieval metrics are macro-averaged per query. Pair F1 is micro-averaged over "
+            f"directed pairs and counts unretrieved positives as false negatives. Retrieval "
+            f"columns use K={metric_k}.",
             "",
             "| Baseline | Val mAP | Val recall | Val threshold | Test mAP | Test recall | "
             "Test pair F1 | End-to-end runtime (s) |",
@@ -74,7 +94,18 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
             "",
             f"Selected fusion text weight: **{fusion_weight:.2f}**.",
             f"Fusion improves test mAP@{metric_k} over TF-IDF by **{fusion_delta:.4f}**.",
-            "Runtime covers validation plus test; ORB and fusion include their candidate stages.",
+            "The pair matcher changes test pair F1 versus weighted fusion by "
+            f"**{pair_delta:+.4f}**.",
+            "Runtime covers validation plus test; ORB and pair matcher include their candidate",
+            "stages. Pair-model training time is reported separately and excluded from latency.",
+            "Pair-model fit data: {queries:,} sampled train queries, {pairs:,} directed pairs "
+            "({positives:,} positive / {negatives:,} negative), {seconds:.2f} seconds.".format(
+                queries=int(pair_model["training_queries"]),
+                pairs=int(pair_model["training_pairs"]),
+                positives=int(pair_model["training_positives"]),
+                negatives=int(pair_model["training_negatives"]),
+                seconds=float(pair_model["fit_seconds"]),
+            ),
             "Mean end-to-end milliseconds/query: "
             + ", ".join(
                 f"{name}={float(value):.2f}"
@@ -84,6 +115,37 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
             f"Peak process working set: **{peak_memory_text}**.",
             "",
             f"![Validation threshold sweeps]({relative_figure})",
+            "",
+            "## Candidate ceiling",
+            "",
+            "The label-blind union contains the top candidates from pHash and TF-IDF before ORB",
+            "or pair scoring. Its full-set recall is the maximum any downstream scorer can retain.",
+            "",
+            "| Split | Macro positive recall | Hit rate | Mean candidates/query | Max candidates |",
+            "|---|---:|---:|---:|---:|",
+            "| Validation | {macro_recall:.4f} | {hit_rate:.4f} | {mean_candidates:.2f} | "
+            "{max_candidates:.0f} |".format(**candidate_ceiling["validation"]),
+            "| Test | {macro_recall:.4f} | {hit_rate:.4f} | {mean_candidates:.2f} | "
+            "{max_candidates:.0f} |".format(**candidate_ceiling["test"]),
+            "",
+            "## Pair matcher coefficients",
+            "",
+            "Coefficients operate on standardized features. Positive values support a match;",
+            "negative values oppose one. Magnitude indicates influence within this fitted model,",
+            "not causality.",
+            "",
+            "| Feature | Standardized coefficient |",
+            "|---|---:|",
+            *coefficient_rows,
+            "",
+            "## Structured pair-matcher failures",
+            "",
+            "Counts use directed test pairs at the validation-selected threshold. Bounded examples",
+            "with local titles and IDs remain in the ignored artifact directory.",
+            "",
+            "| Failure category | Count |",
+            "|---|---:|",
+            *failure_rows,
             "",
             "## Sampled failure analysis",
             "",
@@ -98,6 +160,8 @@ def render_report(results: dict[str, Any], figure_path: Path) -> str:
             "- The supplied pHash is an image-appearance signal, not proof of product identity.",
             "- ORB reranks the label-blind union of pHash and TF-IDF candidates; its",
             "  retrieval ceiling is therefore limited by that candidate union.",
+            "- Pair features are label-blind. Logistic Regression is fitted on train pairs only;",
+            "  the decision threshold is selected on validation and frozen for test.",
             "- Test labels were used only after validation selected the fusion weight and",
             "  thresholds.",
             "- Local success/failure examples are saved under the ignored artifact directory for",
