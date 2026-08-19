@@ -1,4 +1,4 @@
-config_version: classical_retrieval.benchmark.v2
+config_version: classical_retrieval.benchmark.v1
 seed: 2026
 data:
   metadata_csv: data/raw/train.csv
@@ -27,11 +27,6 @@ baselines:
   fusion:
     weight_grid: [0.0, 0.25, 0.5, 0.75, 1.0]
     top_k: 20
-  pair_matcher:
-    training_queries: 1500
-    candidate_k_per_source: 20
-    top_k: 20
-    regularization_c: 1.0
 artifacts:
   root: artifacts/classical_retrieval
   report: reports/classical_retrieval_benchmark.md

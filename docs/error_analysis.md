@@ -21,16 +21,6 @@ Manual inspection of five top-ranked failures per baseline found:
   the Phase 1 warning that measured precision may understate commercial matching quality.
 - **Modality disagreement:** the selected fusion assigns 75% weight to text. Image evidence helps
   aggregate retrieval, but weak pHash evidence can still perturb otherwise strong title rankings.
-- **Classical pair matcher:** train-only Logistic Regression improves test mAP@20 from 0.8810 to
-  0.9004 and pair F1 from 0.7220 to 0.7416. Its quantity-conflict coefficient is negative as
-  intended, while correlated features such as exact title and pHash require conditional rather
-  than causal interpretation.
-- **Candidate ceiling:** the label-blind pHash/TF-IDF union reaches 0.9512 macro positive recall on
-  test. The pair matcher retains 0.9467 in its final Top 20, leaving limited ranking headroom before
-  candidate generation itself must improve.
-- **Efficiency trade-off:** pair matching reaches about 73 ms/query versus 13 ms/query for weighted
-  fusion in the development run because ORB remains CPU-heavy. The quality gain is measurable but
-  does not justify treating ORB as the future production representation.
 
 These findings motivate a scratch image encoder that learns product-level evidence rather than
 depending on pHash or local keypoints. Later phases will retain the taxonomy for retrieval misses,

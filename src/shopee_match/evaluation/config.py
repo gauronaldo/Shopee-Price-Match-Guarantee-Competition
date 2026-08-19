@@ -47,14 +47,6 @@ class FusionConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class PairMatcherConfig:
-    training_queries: int
-    candidate_k_per_source: int
-    top_k: int
-    regularization_c: float
-
-
-@dataclass(frozen=True, slots=True)
 class ArtifactConfig:
     root: Path
     report: Path
@@ -73,7 +65,6 @@ class ClassicalRetrievalConfig:
     tfidf: TfidfConfig
     orb: OrbConfig
     fusion: FusionConfig
-    pair_matcher: PairMatcherConfig
     artifacts: ArtifactConfig
     config_path: Path
 
@@ -119,15 +110,6 @@ def _weight(value: Any, location: str) -> float:
     result = float(value)
     if not 0 <= result <= 1:
         raise ConfigurationError(f"{location} must be in [0, 1]")
-    return result
-
-
-def _positive_float(value: Any, location: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise ConfigurationError(f"{location} must be numeric")
-    result = float(value)
-    if result <= 0:
-        raise ConfigurationError(f"{location} must be positive")
     return result
 
 
@@ -190,11 +172,7 @@ def load_classical_retrieval_config(path: Path) -> ClassicalRetrievalConfig:
     )
 
     baselines = _mapping(root["baselines"], "baselines")
-    _only_keys(
-        baselines,
-        {"phash", "tfidf", "orb", "fusion", "pair_matcher"},
-        "baselines",
-    )
+    _only_keys(baselines, {"phash", "tfidf", "orb", "fusion"}, "baselines")
     phash = _mapping(baselines["phash"], "baselines.phash")
     _only_keys(phash, {"candidate_k"}, "baselines.phash")
     tfidf = _mapping(baselines["tfidf"], "baselines.tfidf")
@@ -236,13 +214,6 @@ def load_classical_retrieval_config(path: Path) -> ClassicalRetrievalConfig:
             "baselines.fusion.weight_grid must be non-empty, sorted, and unique"
         )
 
-    pair_matcher = _mapping(baselines["pair_matcher"], "baselines.pair_matcher")
-    _only_keys(
-        pair_matcher,
-        {"training_queries", "candidate_k_per_source", "top_k", "regularization_c"},
-        "baselines.pair_matcher",
-    )
-
     artifacts = _mapping(root["artifacts"], "artifacts")
     _only_keys(artifacts, {"root", "report", "threshold_figure"}, "artifacts")
 
@@ -253,20 +224,8 @@ def load_classical_retrieval_config(path: Path) -> ClassicalRetrievalConfig:
     )
     orb_top_k = _positive_int(orb["top_k"], "baselines.orb.top_k")
     fusion_top_k = _positive_int(fusion["top_k"], "baselines.fusion.top_k")
-    pair_top_k = _positive_int(pair_matcher["top_k"], "baselines.pair_matcher.top_k")
-    pair_candidate_k = _positive_int(
-        pair_matcher["candidate_k_per_source"],
-        "baselines.pair_matcher.candidate_k_per_source",
-    )
-    if min(*candidate_ks, orb_top_k, fusion_top_k, pair_top_k) < largest_metric_k:
+    if min(*candidate_ks, orb_top_k, fusion_top_k) < largest_metric_k:
         raise ConfigurationError("Every emitted ranking must cover the largest configured metric K")
-    if pair_candidate_k > min(candidate_ks):
-        raise ConfigurationError("Pair matcher candidate K cannot exceed a source candidate K")
-    orb_candidate_k = _positive_int(
-        orb["candidate_k_per_source"], "baselines.orb.candidate_k_per_source"
-    )
-    if pair_candidate_k != orb_candidate_k:
-        raise ConfigurationError("ORB and pair matcher must share the same candidate union")
 
     return ClassicalRetrievalConfig(
         config_version=_typed(root["config_version"], str, "config_version"),
@@ -288,20 +247,10 @@ def load_classical_retrieval_config(path: Path) -> ClassicalRetrievalConfig:
         ),
         orb=OrbConfig(
             _positive_int(orb["features"], "baselines.orb.features"),
-            orb_candidate_k,
+            _positive_int(orb["candidate_k_per_source"], "baselines.orb.candidate_k_per_source"),
             orb_top_k,
         ),
         fusion=FusionConfig(weights, fusion_top_k),
-        pair_matcher=PairMatcherConfig(
-            _positive_int(
-                pair_matcher["training_queries"], "baselines.pair_matcher.training_queries"
-            ),
-            pair_candidate_k,
-            pair_top_k,
-            _positive_float(
-                pair_matcher["regularization_c"], "baselines.pair_matcher.regularization_c"
-            ),
-        ),
         artifacts=ArtifactConfig(
             _relative_path(artifacts["root"], "artifacts.root"),
             _relative_path(artifacts["report"], "artifacts.report"),

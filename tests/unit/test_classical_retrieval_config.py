@@ -20,8 +20,6 @@ def test_classical_retrieval_config_loads_strict_protocol(tmp_path: Path) -> Non
     assert config.evaluation.final_split == "test"
     assert config.tfidf.ngram_range == (2, 3)
     assert config.fusion.weight_grid == (0.0, 0.5, 1.0)
-    assert config.pair_matcher.training_queries == 4
-    assert config.pair_matcher.candidate_k_per_source == 1
 
 
 def test_classical_retrieval_config_rejects_test_tuning(tmp_path: Path) -> None:

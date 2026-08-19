@@ -66,25 +66,8 @@ class CharTfidfModel:
         norm = math.sqrt(sum(value * value for value in weighted.values()))
         return {index: value / norm for index, value in weighted.items()} if norm else {}
 
-    def similarity(self, left: str, right: str) -> float:
-        """Compute cosine similarity in the train-fitted sparse feature space."""
-        left_vector = self.transform_one(left)
-        right_vector = self.transform_one(right)
-        if len(left_vector) > len(right_vector):
-            left_vector, right_vector = right_vector, left_vector
-        return sum(value * right_vector.get(index, 0.0) for index, value in left_vector.items())
-
     def rank(self, items: tuple[CorpusItem, ...], top_k: int) -> Ranking:
         """Retrieve against the full supplied split with a sparse inverted index."""
-        return self.rank_queries(items, items, top_k)
-
-    def rank_queries(
-        self,
-        items: tuple[CorpusItem, ...],
-        queries: tuple[CorpusItem, ...],
-        top_k: int,
-    ) -> Ranking:
-        """Retrieve a bounded query subset against a full label-blind corpus."""
         vectors = {item.posting_id: self.transform_one(item.title) for item in items}
         postings: dict[int, list[tuple[str, float]]] = defaultdict(list)
         for posting_id, vector in vectors.items():
@@ -92,11 +75,9 @@ class CharTfidfModel:
                 postings[feature].append((posting_id, weight))
         all_ids = sorted(vectors)
         ranking: Ranking = {}
-        for query in sorted(queries, key=lambda item: item.posting_id):
-            query_id = query.posting_id
-            query_vector = self.transform_one(query.title)
+        for query_id in all_ids:
             scores: dict[str, float] = defaultdict(float)
-            for feature, query_weight in query_vector.items():
+            for feature, query_weight in vectors[query_id].items():
                 for candidate_id, candidate_weight in postings[feature]:
                     if candidate_id != query_id:
                         scores[candidate_id] += query_weight * candidate_weight
