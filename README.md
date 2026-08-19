@@ -11,7 +11,7 @@ identity policy and evaluation assumptions are defined in
 
 ## Current status
 
-Phases 0–2 are implemented. Phase 1 validates the real
+Phases 0–2 are complete. Phase 1 validates the real
 release, decodes and hashes every referenced image, audits metadata and label ambiguity, creates
 a deterministic leakage-safe train/validation/test manifest, and generates an aggregate report
 plus a local inspection gallery. The audit passes all critical gates but retains warnings about
@@ -20,9 +20,14 @@ not silently rewritten labels.
 
 Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, and validation-tuned late
 fusion under one retrieval/pair protocol. Results and failure analysis are recorded in
-[`reports/classical_retrieval_benchmark.md`](reports/classical_retrieval_benchmark.md). No neural
-model has been trained;
-Phase 3 is the next phase and must begin with the scratch image-encoder smoke gates.
+[`reports/classical_retrieval_benchmark.md`](reports/classical_retrieval_benchmark.md).
+
+Phase 3 now has a repository-owned residual image encoder, conservative OpenCV preprocessing,
+deterministic product-aware batches, supervised contrastive loss, exact cosine evaluation,
+atomic checkpoints, structured diagnostics, and synthetic/real-data smoke coverage. The bounded
+pilot and full training have not been approved by validation evidence yet, so Phase 3 is not
+closed and test evaluation remains disabled. See
+[`reports/scratch_image_encoder_implementation.md`](reports/scratch_image_encoder_implementation.md).
 
 ## Setup, checks, and data preparation
 
@@ -36,6 +41,7 @@ python -m venv .venv
 .venv\Scripts\shopee-smoke --config configs\smoke.yaml
 .venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml
 .venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml
+.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_smoke.yaml
 ```
 
 For the optional EDA environment, install `-e ".[dev,eda]"` and open
@@ -43,6 +49,10 @@ For the optional EDA environment, install `-e ".[dev,eda]"` and open
 commit.
 
 On Linux/macOS, replace `.venv\Scripts\` with `.venv/bin/`.
+
+The default pinned PyTorch wheel may be CPU-only. For GPU experiments, install the matching wheel
+from the official PyTorch compute-platform index and verify both `torch.cuda.is_available()` and
+the recorded device before starting the bounded pilot.
 
 The authorized Kaggle release is expected in this local-only layout:
 

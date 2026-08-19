@@ -1,0 +1,39 @@
+config_version: phase3.image_embedding_experiment.v1
+seed: 2026
+data:
+  metadata_csv: data/raw/train.csv
+  split_manifest: data/splits/shopee_group_split_v1.jsonl
+  image_dir: data/raw/train_images
+model_config: configs/model/scratch_residual_image_encoder.yaml
+preprocessing:
+  image_size: 64
+  normalization: fixed_half_range
+training:
+  device: auto
+  epochs: 2
+  products_per_batch: 4
+  samples_per_product: 2
+  batches_per_epoch: 2
+  num_workers: 0
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  temperature: 0.07
+  gradient_clip_norm: 5.0
+  minimum_learning_rate: 0.00001
+  early_stopping_patience: 2
+  deterministic: true
+  mixed_precision: false
+  resume_from: null
+evaluation:
+  tune_split: validation
+  final_split: test
+  evaluate_test: false
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+  candidate_k: 20
+  checkpoint_metric: map@20
+artifacts:
+  root: artifacts/scratch_image_encoder/smoke
+  report: artifacts/scratch_image_encoder/smoke/report.md

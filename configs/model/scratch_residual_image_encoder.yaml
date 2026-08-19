@@ -1,0 +1,12 @@
+config_version: phase3.scratch_image_model.v1
+model:
+  name: scratch_residual_image_encoder
+  source: repository
+  initialization: random
+  pretrained_checkpoint: null
+  input_channels: 3
+  stem_width: 32
+  stage_widths: [32, 64, 128, 256]
+  blocks_per_stage: [2, 2, 2, 2]
+  embedding_dim: 256
+  projection_hidden_dim: 512
