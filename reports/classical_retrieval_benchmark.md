@@ -7,9 +7,9 @@ thresholds are selected on validation, then frozen for the final test evaluation
 
 ## Provenance
 
-- Config: `classical_retrieval.benchmark.v1` (`44a8013af994aa8b16b7bb408457bf514468552f9e7bce8f9eb9d37a7a22ac3e`)
+- Config: `classical_retrieval.benchmark.v2` (`62a68d12638cc0589edac492f9d7f80bbf8bf41b8fae9bb068bf1862a6dee332`)
 - Split manifest SHA-256: `c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09`
-- Git commit / dirty: `b98f4ab4721cbcb505cbeaeacd8f1c69ef4bf731` / `True`
+- Git commit / dirty: `be4ccc3b551b87cab8bd7c97c1c78012f4be7ba9` / `False`
 - Seed: `2026`
 - Environment: Python `3.12.13`, OpenCV `4.12.0`, NumPy `2.2.6`, scikit-learn `1.9.0`
 
@@ -19,18 +19,20 @@ Retrieval metrics are macro-averaged per query. Pair F1 is micro-averaged over d
 
 | Baseline | Val mAP | Val recall | Val threshold | Test mAP | Test recall | Test pair F1 | End-to-end runtime (s) |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| phash | 0.2895 | 0.3174 | 0.8125 | 0.3073 | 0.3345 | 0.3607 | 9.42 |
-| tfidf | 0.8635 | 0.9385 | 0.4269 | 0.8564 | 0.9291 | 0.7048 | 76.48 |
-| orb | 0.6638 | 0.8284 | 0.0280 | 0.6577 | 0.8151 | 0.5766 | 425.44 |
-| fusion | 0.8790 | 0.9411 | 0.3687 | 0.8810 | 0.9349 | 0.7220 | 89.71 |
-| pair_matcher | 0.9132 | 0.9535 | 0.5674 | 0.9004 | 0.9467 | 0.7416 | 497.85 |
+| phash | 0.2895 | 0.3174 | 0.8125 | 0.3073 | 0.3345 | 0.3607 | 11.84 |
+| tfidf | 0.8635 | 0.9385 | 0.4269 | 0.8564 | 0.9291 | 0.7048 | 103.54 |
+| orb | 0.6638 | 0.8284 | 0.0280 | 0.6577 | 0.8151 | 0.5766 | 554.62 |
+| fusion | 0.8790 | 0.9411 | 0.3687 | 0.8810 | 0.9349 | 0.7220 | 119.79 |
+| pair_matcher | 0.9132 | 0.9535 | 0.5674 | 0.9004 | 0.9467 | 0.7416 | 572.16 |
 
 Selected fusion text weight: **0.75**.
 Fusion improves test mAP@20 over TF-IDF by **0.0246**.
 The pair matcher changes test pair F1 versus weighted fusion by **+0.0196**.
-Runtime covers validation plus test; ORB and fusion include their candidate stages.
-Mean end-to-end milliseconds/query: phash=1.37, tfidf=11.15, orb=62.03, fusion=13.08, pair_matcher=72.58.
-Peak process working set: **1118.7 MiB**.
+Runtime covers validation plus test; ORB and pair matcher include their candidate
+stages. Pair-model training time is reported separately and excluded from latency.
+Pair-model fit data: 1,500 sampled train queries, 60,129 directed pairs (7,225 positive / 52,904 negative), 619.89 seconds.
+Mean end-to-end milliseconds/query: phash=1.73, tfidf=15.10, orb=80.86, fusion=17.46, pair_matcher=83.42.
+Peak process working set: **1118.4 MiB**.
 
 ![Validation threshold sweeps](figures/classical_retrieval_threshold_sweeps.svg)
 
@@ -71,12 +73,13 @@ with local titles and IDs remain in the ignored artifact directory.
 
 | Failure category | Count |
 |---|---:|
-| `retrieval_miss` | 3,773 |
+| `candidate_generation_miss` | 3,509 |
 | `false_positive:other_pair_error` | 1,580 |
 | `false_negative:other_pair_error` | 1,272 |
 | `false_negative:digit_or_model_conflict` | 521 |
 | `false_positive:digit_or_model_conflict` | 385 |
 | `false_positive:text_dominant_modality_disagreement` | 364 |
+| `scorer_top_k_miss` | 264 |
 | `false_negative:quantity_or_unit_conflict` | 89 |
 | `false_positive:exact_phash_cross_label` | 46 |
 | `false_negative:image_dominant_modality_disagreement` | 18 |
