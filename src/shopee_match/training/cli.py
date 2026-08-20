@@ -15,10 +15,23 @@ from shopee_match.training.image_trainer import run_scratch_image_experiment
 LOGGER = logging.getLogger(__name__)
 
 
+def _nonnegative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return parsed
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="shopee-image")
     parser.add_argument("command", choices=("train",))
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument(
+        "--progress-updates-per-epoch",
+        type=_nonnegative_int,
+        default=5,
+        help="training progress messages per epoch; use 0 to disable (default: 5)",
+    )
     return parser
 
 
@@ -26,7 +39,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_logging()
     args = build_parser().parse_args(argv)
     try:
-        result = run_scratch_image_experiment(args.config)
+        result = run_scratch_image_experiment(
+            args.config,
+            progress_updates_per_epoch=args.progress_updates_per_epoch,
+        )
     except (ShopeeMatchError, OSError, ValueError, RuntimeError) as exc:
         LOGGER.error("%s", exc)
         return 2

@@ -53,6 +53,32 @@ LOGGER = logging.getLogger(__name__)
 FloatArray = NDArray[np.floating[Any]]
 
 
+def _format_duration(seconds: float) -> str:
+    """Format a progress duration compactly without terminal-control sequences."""
+    rounded = max(0, round(seconds))
+    hours, remainder = divmod(rounded, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m"
+    if minutes:
+        return f"{minutes}m {secs:02d}s"
+    return f"{secs}s"
+
+
+def _progress_milestones(total_batches: int, updates: int) -> frozenset[int]:
+    """Return bounded batch milestones, including the final batch when enabled."""
+    if total_batches <= 0:
+        raise ValueError("total_batches must be positive")
+    if updates < 0:
+        raise ValueError("updates must be non-negative")
+    if updates == 0:
+        return frozenset()
+    return frozenset(
+        min(total_batches, max(1, round(total_batches * step / updates)))
+        for step in range(1, updates + 1)
+    )
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -160,7 +186,9 @@ def _validation_result(
     config: ImageExperimentConfig,
     device: torch.device,
 ) -> tuple[dict[str, float], dict[str, float], float, FloatArray, Ranking, dict[str, float]]:
+    LOGGER.info("validation: extracting embeddings")
     posting_ids, embeddings, extraction_seconds = extract_embeddings(model, loader, device)
+    LOGGER.info("validation: ranking %d listings and computing retrieval metrics", len(posting_ids))
     ranking, search_latency = rank_cosine_embeddings_profiled(
         posting_ids, embeddings, config.evaluation.candidate_k
     )
@@ -307,8 +335,12 @@ baselines.
 """
 
 
-def run_scratch_image_experiment(config_path: Path) -> dict[str, Any]:
+def run_scratch_image_experiment(
+    config_path: Path, *, progress_updates_per_epoch: int = 5
+) -> dict[str, Any]:
     """Train from random initialization and select a checkpoint on validation retrieval."""
+    if progress_updates_per_epoch < 0:
+        raise ValueError("progress_updates_per_epoch must be non-negative")
     config = load_image_experiment_config(config_path)
     seed_everything(config.seed, deterministic=config.training.deterministic)
     device = _resolve_device(config.training.device)
@@ -346,6 +378,19 @@ def run_scratch_image_experiment(config_path: Path) -> dict[str, Any]:
         num_workers=config.training.num_workers,
         pin_memory=device.type == "cuda",
     )
+    LOGGER.info(
+        "run started: device=%s epochs=%d batches/epoch=%d batch_size=%d image_size=%d",
+        device,
+        config.training.epochs,
+        len(train_loader),
+        sampler.batch_size,
+        config.image_size,
+    )
+    LOGGER.info(
+        "data ready: train=%d validation=%d; test evaluation disabled",
+        len(train_dataset),
+        len(validation_dataset),
+    )
 
     model = ScratchResidualImageEncoder(config.model_spec).to(device)
     loss_function = SupervisedContrastiveLoss(config.training.temperature)
@@ -367,12 +412,16 @@ def run_scratch_image_experiment(config_path: Path) -> dict[str, Any]:
         start_epoch, best_metric, best_epoch, history = _load_resume(
             config.training.resume_from, config, model, optimizer, scheduler
         )
+        LOGGER.info("resumed training at epoch %d", start_epoch + 1)
 
     provenance = _provenance(config, device)
     run_started = time.perf_counter()
     epochs_without_improvement = 0
+    progress_milestones = _progress_milestones(len(train_loader), progress_updates_per_epoch)
     for epoch in range(start_epoch, config.training.epochs):
         epoch_started = time.perf_counter()
+        train_started = epoch_started
+        LOGGER.info("epoch %d/%d: training", epoch + 1, config.training.epochs)
         sampler.set_epoch(epoch)
         train_dataset.set_epoch(epoch)
         model.train()
@@ -396,8 +445,26 @@ def run_scratch_image_experiment(config_path: Path) -> dict[str, Any]:
             total_loss += float(loss.detach().cpu())
             listings_seen.update(_posting_ids(batch))
             groups_seen.update(int(value) for value in labels.detach().cpu().tolist())
+            completed_batches = batch_index + 1
+            if completed_batches in progress_milestones:
+                train_elapsed = time.perf_counter() - train_started
+                eta_seconds = (
+                    train_elapsed / completed_batches * (len(train_loader) - completed_batches)
+                )
+                LOGGER.info(
+                    "epoch %d/%d: train %d/%d (%d%%) loss=%.5f elapsed=%s eta=%s",
+                    epoch + 1,
+                    config.training.epochs,
+                    completed_batches,
+                    len(train_loader),
+                    round(100 * completed_batches / len(train_loader)),
+                    total_loss / completed_batches,
+                    _format_duration(train_elapsed),
+                    _format_duration(eta_seconds),
+                )
         scheduler.step()
 
+        LOGGER.info("epoch %d/%d: validating", epoch + 1, config.training.epochs)
         validation_metrics, threshold, extraction_seconds, _, _, search_latency = (
             _validation_result(model, validation_loader, validation_split, config, device)
         )
@@ -439,15 +506,24 @@ def run_scratch_image_experiment(config_path: Path) -> dict[str, Any]:
             json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         )
         LOGGER.info(
-            "epoch=%d loss=%.5f %s=%.5f",
-            epoch,
+            "epoch %d/%d complete: loss=%.5f %s=%.5f best=%.5f checkpoint=%s elapsed=%s",
+            epoch + 1,
+            config.training.epochs,
             epoch_record["train_loss"],
             config.evaluation.checkpoint_metric,
             current_metric,
+            best_metric,
+            "best" if improved else "latest",
+            _format_duration(epoch_record["epoch_seconds"]),
         )
         if epochs_without_improvement >= config.training.early_stopping_patience:
+            LOGGER.info(
+                "early stopping after %d epochs without validation improvement",
+                epochs_without_improvement,
+            )
             break
 
+    LOGGER.info("loading best checkpoint from epoch %d for final validation", best_epoch + 1)
     selected = torch.load(checkpoint_path, map_location=device, weights_only=False)
     model.load_state_dict(selected["model_state"])
     (
@@ -521,6 +597,14 @@ def run_scratch_image_experiment(config_path: Path) -> dict[str, Any]:
         + "\n",
     )
     _write_text_atomic(config.artifacts.report, _render_report(run))
+    LOGGER.info(
+        "run complete: best_epoch=%d %s=%.5f wall_time=%s metrics=%s",
+        run["selection"]["best_epoch"] + 1,
+        config.evaluation.checkpoint_metric,
+        run["selection"]["best_metric"],
+        _format_duration(run["efficiency"]["wall_time_seconds"]),
+        metrics_path,
+    )
     return {
         "status": "complete",
         "checkpoint": str(checkpoint_path),

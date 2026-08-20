@@ -24,10 +24,10 @@ fusion under one retrieval/pair protocol. Results and failure analysis are recor
 
 Phase 3 now has a repository-owned residual image encoder, conservative OpenCV preprocessing,
 deterministic product-aware batches, supervised contrastive loss, exact cosine evaluation,
-atomic checkpoints, structured diagnostics, and synthetic/real-data smoke coverage. The bounded
-pilot and full training have not been approved by validation evidence yet, so Phase 3 is not
-closed and test evaluation remains disabled. See
-[`reports/scratch_image_encoder_implementation.md`](reports/scratch_image_encoder_implementation.md).
+atomic checkpoints, structured diagnostics, and concise terminal progress reporting. Controlled
+pilots selected `P=16, K=2` for full training; the full run is still pending, Phase 3 is not
+closed, and test evaluation remains disabled. See
+[`reports/scratch_image_encoder_pilot.md`](reports/scratch_image_encoder_pilot.md).
 
 ## Setup, checks, and data preparation
 
@@ -43,6 +43,16 @@ python -m venv .venv
 .venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml
 .venv\Scripts\shopee-image train --config configs\experiment\image_embedding_smoke.yaml
 ```
+
+The full image run reports training progress five times per epoch plus validation, checkpoint,
+and completion stages without continuously redrawing the terminal:
+
+```powershell
+.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_training.yaml
+```
+
+Use `--progress-updates-per-epoch N` to change the frequency, or set it to `0` to disable batch
+progress messages. This display option does not change model training or saved experiment config.
 
 For the optional EDA environment, install `-e ".[dev,eda]"` and open
 `notebooks/exploration/catalog_data_exploration.ipynb`. Clear notebook outputs before every
