@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 from torch import Tensor, nn
 from torch.nn import functional as F
@@ -60,7 +61,7 @@ class ResidualBlock(nn.Module):
         residual = self.shortcut(inputs)
         features = self.activation(self.norm1(self.conv1(inputs)))
         features = self.norm2(self.conv2(features))
-        return self.activation(features + residual)
+        return cast(Tensor, self.activation(features + residual))
 
 
 class ScratchResidualImageEncoder(nn.Module):
@@ -118,7 +119,7 @@ class ScratchResidualImageEncoder(nn.Module):
     def forward_features(self, inputs: Tensor) -> Tensor:
         features = self.stem(inputs)
         features = self.stages(features)
-        return self.pool(features).flatten(1)
+        return cast(Tensor, self.pool(features).flatten(1))
 
     def forward(self, inputs: Tensor) -> Tensor:
         projected = self.projection(self.forward_features(inputs))

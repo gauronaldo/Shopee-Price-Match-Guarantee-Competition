@@ -10,14 +10,17 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+from numpy.typing import NDArray
 from torch import Tensor
 from torch.utils.data import Dataset, Sampler
 
 from shopee_match.errors import DataValidationError
 from shopee_match.evaluation.protocol import CorpusItem, EvaluationSplit
 
+UInt8Image = NDArray[np.uint8]
 
-def resize_and_pad_rgb(image: np.ndarray, output_size: int, pad_value: int = 127) -> np.ndarray:
+
+def resize_and_pad_rgb(image: UInt8Image, output_size: int, pad_value: int = 127) -> UInt8Image:
     """Aspect-preserving resize onto a deterministic square canvas."""
     if image.ndim != 3 or image.shape[2] != 3:
         raise ValueError("image must be an RGB array with shape [height, width, 3]")
@@ -56,7 +59,7 @@ class ImagePreprocessor:
             raise ValueError("epoch must be non-negative")
         self.epoch = epoch
 
-    def _augment(self, image: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    def _augment(self, image: UInt8Image, rng: np.random.Generator) -> UInt8Image:
         height, width = image.shape[:2]
         if float(rng.random()) < 0.5:
             image = np.ascontiguousarray(image[:, ::-1])
@@ -79,10 +82,10 @@ class ImagePreprocessor:
         image = np.clip(image.astype(np.float32) * contrast + brightness, 0, 255)
         noise_sigma = float(rng.uniform(0.0, 2.5))
         if noise_sigma > 0:
-            image += rng.normal(0.0, noise_sigma, size=image.shape).astype(np.float32)
+            image = image + rng.normal(0.0, noise_sigma, size=image.shape).astype(np.float32)
         return np.clip(image, 0, 255).astype(np.uint8)
 
-    def __call__(self, image: np.ndarray, sample_index: int) -> Tensor:
+    def __call__(self, image: UInt8Image, sample_index: int) -> Tensor:
         if self.training:
             sequence = np.random.SeedSequence([self.seed, self.epoch, sample_index])
             image = self._augment(image, np.random.default_rng(sequence))
@@ -131,7 +134,7 @@ class ProductImageDataset(Dataset[dict[str, Tensor | str]]):
     def __len__(self) -> int:
         return len(self.items)
 
-    def _decode_rgb(self, item: CorpusItem) -> np.ndarray:
+    def _decode_rgb(self, item: CorpusItem) -> UInt8Image:
         path = self.image_dir / item.image
         image = cv2.imread(str(path), cv2.IMREAD_COLOR)
         if image is None:

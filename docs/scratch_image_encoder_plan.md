@@ -105,14 +105,14 @@ No pilot or full training may start until every smoke gate passes.
 
 ## 7. Bounded pilot experiment
 
-- [ ] Train on a bounded, deterministic subset large enough to contain varied group sizes.
-- [ ] Inspect learning curves for divergence, collapse, overfitting, and ineffective augmentation.
-- [ ] Measure embedding-norm distribution and pairwise similarity distributions for positives and
+- [x] Train on a bounded, deterministic subset large enough to contain varied group sizes.
+- [x] Inspect learning curves for divergence, collapse, overfitting, and ineffective augmentation.
+- [x] Measure embedding-norm distribution and pairwise similarity distributions for positives and
   negatives.
-- [ ] Evaluate exact validation retrieval at K = 1, 5, 10, and 20.
-- [ ] Manually inspect nearest neighbors for at least the established error-analysis categories.
-- [ ] Change only one major factor at a time and record the result as an ablation.
-- [ ] Approve one frozen full-training configuration based only on pilot/train/validation evidence.
+- [x] Evaluate exact validation retrieval at K = 1, 5, 10, and 20.
+- [x] Manually inspect nearest neighbors for at least the established error-analysis categories.
+- [x] Change only one major factor at a time and record the result as an ablation.
+- [x] Approve one frozen full-training configuration based only on pilot/train/validation evidence.
 
 ## 8. Full training and checkpoint selection
 
@@ -128,7 +128,7 @@ No pilot or full training may start until every smoke gate passes.
 - [x] Extract one normalized embedding per validation listing; test remains intentionally locked.
 - [x] Use exact cosine search first; FAISS remains a later-phase optimization.
 - [x] Report mAP@20, Recall@1/5/10/20, Precision@K, hit rate, and mean per-query F1 where compatible.
-- [ ] Compare against pHash and ORB in the same table and split protocol.
+- [x] Compare against pHash and ORB in the same table and split protocol.
 - [x] Measure embedding extraction throughput, p50/p95 query latency, peak CUDA memory, checkpoint size,
   and embedding storage size.
 - [x] Report metrics by group size and exact-positive-pHash status.
@@ -137,13 +137,13 @@ No pilot or full training may start until every smoke gate passes.
 ## 10. Structured error analysis
 
 - [x] Generate a bounded local-only nearest-neighbor review manifest with no images committed.
-- [ ] Tag failures using the repository taxonomy: crop/overlay, different-image same-product,
+- [x] Tag failures using the repository taxonomy: crop/overlay, different-image same-product,
   same-brand variant, quantity/size/color/model conflict, poor image quality, packaging redesign,
   questionable label, and retrieval miss.
 - [ ] Quantify each observed category instead of presenting only selected examples.
 - [ ] Compare which pHash/ORB failures the scratch encoder fixes and which new failures it creates.
 - [x] Keep review evidence image-only without using title features to rescue failures.
-- [ ] Record the next experiment only when it targets a measured failure category.
+- [x] Record the next experiment only when it targets a measured failure category.
 
 ## Phase 3 exit criteria
 

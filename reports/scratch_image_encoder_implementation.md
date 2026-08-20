@@ -27,7 +27,7 @@ artifacts without reading title features or evaluating the test split.
 
 ## Verification
 
-All 44 unit and integration tests passed after implementation. New coverage includes tensor
+All 45 unit and integration tests pass after implementation and the deterministic CUDA update. New coverage includes tensor
 shapes, unit embedding norms, finite gradients, seeded random initialization, serialization
 parity, supervised contrastive toy cases, deterministic batch composition, decode/preprocessing,
 tiny-batch overfit, exact retrieval, diagnostics, config rejection rules, and an end-to-end
@@ -66,27 +66,26 @@ were also the weakest group-size band at mAP@20 `0.21598`. These are useful sani
 than conclusions about the final architecture: the pilot must demonstrate improvement on the
 no-exact-positive stratum instead of merely relearning near-duplicate image matching.
 
-## Compute gate
+## Pilot and compute gate
 
-The machine exposes an NVIDIA RTX 4060 with 8 GB VRAM, but the verified environment currently has
-PyTorch `2.7.0+cpu`. Two attempts to download the official CUDA 12.6 wheel timed out because the
-wheel is approximately 2.77 GB. The CPU environment remained intact and all checks still pass.
+The CUDA environment is now verified on the NVIDIA RTX 4060 using PyTorch `2.7.0+cu126`.
+Deterministic CUDA operation sets `CUBLAS_WORKSPACE_CONFIG=:4096:8` before CUDA initialization.
 
-The bounded pilot configuration is ready at
-`configs/experiment/image_embedding_pilot.yaml`, but it was intentionally not run on CPU. The
-smoke profile shows that validation extraction alone costs roughly 20–25 seconds at 64 pixels;
-the 128-pixel, 12-epoch pilot would repeatedly pay a substantially larger extraction cost. The
-full 224-pixel, 40-epoch run must not begin until the pilot demonstrates stable non-collapsed
-embeddings and the CUDA environment is verified.
+Two controlled 128-pixel pilots completed successfully. The original `P=8, K=2` run reached
+validation mAP@20 `0.30032`; changing only product diversity to `P=16, K=2` raised it to `0.34738`
+and raised Recall@20 from `0.37848` to `0.43891`. Both selected their final epoch, so the bounded
+runs had not plateaued. The detailed comparison and error analysis are in
+[`scratch_image_encoder_pilot.md`](scratch_image_encoder_pilot.md).
+
+A 224-pixel runtime probe used about 1.01 GiB peak CUDA memory and estimates 8.62 minutes per full
+epoch, or 5.74 hours for 40 epochs. The full configuration is feasible, but it must begin from a
+clean Git commit. Version control remains with the repository owner, so this gate is not bypassed.
 
 ## Remaining Phase 3 gates
 
-1. Install and verify a CUDA-enabled PyTorch wheel.
-2. Run the bounded pilot and inspect loss, positive/negative cosine distributions, stratified
-   retrieval metrics, and nearest-neighbor failures.
-3. Change only one major factor if the pilot fails; do not jump directly to a larger backbone.
-4. Freeze one full-training configuration from validation evidence.
-5. Run full training from a clean Git commit and reproduce the selected checkpoint metric.
-6. Manually categorize the generated review manifest using the repository error taxonomy.
-7. Only then unlock the one-time test evaluation and decide whether Phase 3 beats ORB or documents
+1. Have the repository owner review and commit the intended Phase 3 implementation and pilot
+   configuration so the run provenance starts clean.
+2. Run full training from that clean Git commit and reproduce the selected checkpoint metric.
+3. Expand and quantify the generated review manifest using the repository error taxonomy.
+4. Only then unlock the one-time test evaluation and decide whether Phase 3 beats ORB or documents
    a measured quality/latency trade-off.

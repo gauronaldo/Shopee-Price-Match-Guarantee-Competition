@@ -4,24 +4,27 @@ from __future__ import annotations
 
 import time
 from collections import Counter, defaultdict
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from shopee_match.evaluation.protocol import EvaluationSplit, Ranking, ScoredCandidate
 
+FloatArray = NDArray[np.floating[Any]]
 
-def _normalized(embeddings: np.ndarray) -> np.ndarray:
+
+def _normalized(embeddings: FloatArray) -> FloatArray:
     if not np.isfinite(embeddings).all():
         raise ValueError("embeddings contain non-finite values")
     norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
     if np.any(norms <= 0):
         raise ValueError("embeddings must have non-zero norm")
-    return embeddings / norms
+    return cast(FloatArray, embeddings / norms)
 
 
 def rank_cosine_embeddings(
-    posting_ids: tuple[str, ...], embeddings: np.ndarray, candidate_k: int
+    posting_ids: tuple[str, ...], embeddings: FloatArray, candidate_k: int
 ) -> Ranking:
     """Rank every query against its full split with deterministic ID tie-breaking."""
     ranking, _latency = rank_cosine_embeddings_profiled(posting_ids, embeddings, candidate_k)
@@ -29,7 +32,7 @@ def rank_cosine_embeddings(
 
 
 def rank_cosine_embeddings_profiled(
-    posting_ids: tuple[str, ...], embeddings: np.ndarray, candidate_k: int
+    posting_ids: tuple[str, ...], embeddings: FloatArray, candidate_k: int
 ) -> tuple[Ranking, dict[str, float]]:
     """Exact ranking plus per-query CPU/GPU-independent sorting latency percentiles."""
     if embeddings.ndim != 2 or embeddings.shape[0] != len(posting_ids):
@@ -67,7 +70,7 @@ def rank_cosine_embeddings_profiled(
 
 def similarity_diagnostics(
     posting_ids: tuple[str, ...],
-    embeddings: np.ndarray,
+    embeddings: FloatArray,
     label_by_id: dict[str, str],
     *,
     seed: int,

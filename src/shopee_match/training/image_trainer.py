@@ -16,6 +16,7 @@ from typing import Any, cast
 import cv2
 import numpy as np
 import torch
+from numpy.typing import NDArray
 from torch import Tensor, nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -49,6 +50,7 @@ from shopee_match.training.image_data import (
 )
 
 LOGGER = logging.getLogger(__name__)
+FloatArray = NDArray[np.floating[Any]]
 
 
 def _sha256(path: Path) -> str:
@@ -133,11 +135,11 @@ def extract_embeddings(
     model: ScratchResidualImageEncoder,
     loader: DataLoader[dict[str, Tensor | str]],
     device: torch.device,
-) -> tuple[tuple[str, ...], np.ndarray, float]:
+) -> tuple[tuple[str, ...], FloatArray, float]:
     """Extract embeddings in deterministic dataset order and report wall time."""
     model.eval()
     posting_ids: list[str] = []
-    parts: list[np.ndarray] = []
+    parts: list[FloatArray] = []
     started = time.perf_counter()
     with torch.inference_mode():
         for raw_batch in loader:
@@ -157,7 +159,7 @@ def _validation_result(
     split: EvaluationSplit,
     config: ImageExperimentConfig,
     device: torch.device,
-) -> tuple[dict[str, float], dict[str, float], float, np.ndarray, Ranking, dict[str, float]]:
+) -> tuple[dict[str, float], dict[str, float], float, FloatArray, Ranking, dict[str, float]]:
     posting_ids, embeddings, extraction_seconds = extract_embeddings(model, loader, device)
     ranking, search_latency = rank_cosine_embeddings_profiled(
         posting_ids, embeddings, config.evaluation.candidate_k
@@ -225,7 +227,7 @@ def _checkpoint_payload(
         "split_manifest_sha256": _sha256(config.data.split_manifest),
         "model_state": model.state_dict(),
         "optimizer_state": optimizer.state_dict(),
-        "scheduler_state": scheduler.state_dict(),
+        "scheduler_state": scheduler.state_dict(),  # type: ignore[no-untyped-call]
         "history": history,
     }
 

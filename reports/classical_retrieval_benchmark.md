@@ -47,5 +47,4 @@ warning. These cases remain evaluation errors; labels are not silently rewritten
   retrieval ceiling is therefore limited by that candidate union.
 - Test labels were used only after validation selected the fusion weight and
   thresholds.
-- Local success/failure examples are saved under the ignored artifact directory for
-  manual review and are not redistributed.
+- Local success/failure examples are saved under the ignored artifact directory for manual review and are not redistributed.

@@ -2,7 +2,7 @@
 
 ## Candidate: scratch residual image encoder
 
-Status: **implemented and smoke-tested; not yet a frozen benchmark model**.
+Status: **implemented and pilot-evaluated; full benchmark training pending**.
 
 - Intended phase: image-only exact-product retrieval in Phase 3.
 - Architecture: repository-owned residual CNN, global average pooling, two-layer projection head,
@@ -15,6 +15,12 @@ Status: **implemented and smoke-tested; not yet a frozen benchmark model**.
 - Selection: validation mAP@20 on the frozen group-disjoint split.
 - Test policy: disabled until the pilot, checkpoint, and retrieval protocol are frozen.
 
-The real-data smoke run is an engineering gate, not a quality claim. It used four optimization
-steps at 64 pixels and reached validation mAP@20 `0.26269`; it must not be compared as if it were
-the full Phase 3 model. The bounded pilot and categorized image-only failure review remain open.
+The real-data smoke run was an engineering gate, not a quality claim. Two controlled 128-pixel
+pilots then compared product diversity per batch. `P=16, K=2` reached validation mAP@20 `0.34738`
+and Recall@20 `0.43891`, outperforming `P=8, K=2` at `0.30032 / 0.37848`. It also raised mAP@20
+for queries without an exact-pHash positive from `0.16871` to `0.21866`. This configuration is
+selected for full training, but it is not yet the frozen benchmark checkpoint.
+
+The pilot exceeds the supplied pHash baseline (`0.2895` mAP@20) but remains well below ORB
+(`0.6638`). Full 224-pixel training and the final categorized review remain open. Test evaluation
+is disabled until the full checkpoint and retrieval protocol are frozen.
