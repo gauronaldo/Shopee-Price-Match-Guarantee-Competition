@@ -54,6 +54,16 @@ and completion stages without continuously redrawing the terminal:
 Use `--progress-updates-per-epoch N` to change the frequency, or set it to `0` to disable batch
 progress messages. This display option does not change model training or saved experiment config.
 
+After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
+the held-out image test evaluation is run without retraining or test-time selection:
+
+```powershell
+.venv\Scripts\shopee-image evaluate --config configs\experiment\image_embedding_final_evaluation.yaml
+```
+
+Phase 3 final results and caveats are in
+[`reports/image_retrieval_final_comparison.md`](reports/image_retrieval_final_comparison.md).
+
 For the optional EDA environment, install `-e ".[dev,eda]"` and open
 `notebooks/exploration/catalog_data_exploration.ipynb`. Clear notebook outputs before every
 commit.

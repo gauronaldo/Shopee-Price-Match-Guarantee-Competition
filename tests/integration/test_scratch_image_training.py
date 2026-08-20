@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from pathlib import Path
 
@@ -9,6 +10,9 @@ import numpy as np
 import pytest
 import yaml
 
+from shopee_match.errors import ConfigurationError
+from shopee_match.training.image_evaluation_config import load_frozen_image_test_config
+from shopee_match.training.image_evaluator import run_frozen_image_test
 from shopee_match.training.image_trainer import run_scratch_image_experiment
 
 
@@ -125,9 +129,74 @@ def test_scratch_image_pipeline_runs_to_validation_report(
     assert result["test_status"].startswith("disabled")
     assert Path(result["checkpoint"]).exists()
     assert Path(result["report"]).exists()
+
     assert metrics["model"]["parameter_count"] > 0
     assert metrics["validation"]["retrieval"]["queries"] == 4
     assert "group_size" in metrics["validation"]["stratified_retrieval"]
     assert "positive" in metrics["validation"]["similarity_diagnostics"]
     assert Path("artifacts/run/nearest_neighbor_review.json").exists()
     assert metrics["test"]["status"].startswith("disabled")
+
+
+def test_frozen_checkpoint_evaluation_uses_test_without_reselection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = _make_image_workspace(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    relative_training_config = config_path.relative_to(tmp_path)
+    training_result = run_scratch_image_experiment(relative_training_config)
+    checkpoint_path = Path(training_result["checkpoint"])
+    training_metrics_path = Path(training_result["metrics"])
+    training_metrics = json.loads(training_metrics_path.read_text(encoding="utf-8"))
+
+    def digest(path: Path) -> str:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    frozen_config = {
+        "config_version": "phase3.frozen_image_test.v1",
+        "seed": 2026,
+        "runtime": {"device": "cpu", "num_workers": 0, "batch_size": 4},
+        "frozen": {
+            "checkpoint": str(checkpoint_path).replace("\\", "/"),
+            "checkpoint_sha256": digest(checkpoint_path),
+            "training_config": str(relative_training_config).replace("\\", "/"),
+            "training_config_sha256": digest(relative_training_config),
+            "training_metrics": str(training_metrics_path).replace("\\", "/"),
+            "training_metrics_sha256": digest(training_metrics_path),
+            "validation_metric": "map@3",
+            "validation_metric_value": training_metrics["selection"]["best_metric"],
+            "validation_pair_threshold": training_metrics["validation"]["selected_pair_threshold"][
+                "threshold"
+            ],
+        },
+        "evaluation": {
+            "split": "test",
+            "candidate_pool": "full_split",
+            "exclude_query_itself": True,
+            "recall_at": [1, 2, 3],
+            "average_precision_at": 3,
+            "candidate_k": 3,
+        },
+        "artifacts": {
+            "root": "artifacts/final",
+            "report": "artifacts/final/report.md",
+        },
+    }
+    evaluation_path = Path("frozen_evaluation.yaml")
+    evaluation_path.write_text(yaml.safe_dump(frozen_config, sort_keys=False), encoding="utf-8")
+
+    result = run_frozen_image_test(evaluation_path)
+    metrics = json.loads(Path(result["metrics"]).read_text(encoding="utf-8"))
+
+    assert result["status"] == "complete"
+    assert metrics["test"]["retrieval"]["queries"] == 4
+    assert (
+        metrics["test"]["pair_at_frozen_validation_threshold"]["threshold"]
+        == (frozen_config["frozen"]["validation_pair_threshold"])
+    )
+    assert Path(result["report"]).exists()
+
+    frozen_config["frozen"]["checkpoint_sha256"] = "0" * 64
+    evaluation_path.write_text(yaml.safe_dump(frozen_config, sort_keys=False), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="checkpoint SHA-256 mismatch"):
+        load_frozen_image_test_config(evaluation_path)

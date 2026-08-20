@@ -1,0 +1,26 @@
+config_version: phase3.frozen_image_test.v1
+seed: 2026
+runtime:
+  device: auto
+  num_workers: 4
+  batch_size: 32
+frozen:
+  checkpoint: artifacts/scratch_image_encoder/training/best.pt
+  checkpoint_sha256: 6ea26b493d643b148cbcc48006231637b266491a0a026d7fdbd22284f7100e07
+  training_config: configs/experiment/image_embedding_training.yaml
+  training_config_sha256: 7d9551060b2b47a023eaf00d39f92fbb2174102914101a613cfa2f8a1cb8c06a
+  training_metrics: artifacts/scratch_image_encoder/training/metrics.json
+  training_metrics_sha256: 3b389c5dd6cb58548249931fa77b1aa6b5821d540f07f9d99294e8725cee2a6a
+  validation_metric: map@20
+  validation_metric_value: 0.539067208316348
+  validation_pair_threshold: 0.8056642413139343
+evaluation:
+  split: test
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+  candidate_k: 20
+artifacts:
+  root: artifacts/scratch_image_encoder/final_evaluation
+  report: reports/scratch_image_encoder_final_evaluation.md

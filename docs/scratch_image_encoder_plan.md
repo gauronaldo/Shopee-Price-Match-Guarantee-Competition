@@ -117,15 +117,19 @@ No pilot or full training may start until every smoke gate passes.
 ## 8. Full training and checkpoint selection
 
 - [ ] Run the frozen configuration from a clean Git commit.
-- [ ] Select the checkpoint using the declared validation metric only.
-- [ ] Record total training time, hardware, peak memory, convergence epoch, and checkpoint size.
-- [ ] Confirm the selected checkpoint loads and reproduces its saved validation metric.
+- [x] Select the checkpoint using the declared validation metric only.
+- [x] Record total training time, hardware, peak memory, convergence epoch, and checkpoint size.
+- [x] Confirm the selected checkpoint loads and reproduces its saved validation metric.
 - [ ] Run additional seeds only if compute permits; do not silently select the best seed.
-- [ ] Freeze the checkpoint and retrieval configuration before the single test evaluation.
+- [x] Freeze the checkpoint and retrieval configuration before the single test evaluation.
+
+The project owner explicitly accepted skipping the clean-commit training rerun. The checkpoint,
+training config, and metrics are SHA-256 locked, but dirty training provenance remains a recorded
+Phase 3 limitation rather than being silently treated as satisfied.
 
 ## 9. Retrieval evaluation and efficiency
 
-- [x] Extract one normalized embedding per validation listing; test remains intentionally locked.
+- [x] Extract one normalized embedding per validation and frozen test listing.
 - [x] Use exact cosine search first; FAISS remains a later-phase optimization.
 - [x] Report mAP@20, Recall@1/5/10/20, Precision@K, hit rate, and mean per-query F1 where compatible.
 - [x] Compare against pHash and ORB in the same table and split protocol.
@@ -140,22 +144,24 @@ No pilot or full training may start until every smoke gate passes.
 - [x] Tag failures using the repository taxonomy: crop/overlay, different-image same-product,
   same-brand variant, quantity/size/color/model conflict, poor image quality, packaging redesign,
   questionable label, and retrieval miss.
-- [ ] Quantify each observed category instead of presenting only selected examples.
+- [x] Quantify each observed category instead of presenting only selected examples.
 - [ ] Compare which pHash/ORB failures the scratch encoder fixes and which new failures it creates.
 - [x] Keep review evidence image-only without using title features to rescue failures.
 - [x] Record the next experiment only when it targets a measured failure category.
 
 ## Phase 3 exit criteria
 
-- [ ] Architecture, tensor-shape, normalization, gradient, sampler, loss, and serialization tests
+- [x] Architecture, tensor-shape, normalization, gradient, sampler, loss, and serialization tests
   pass.
-- [ ] Tiny-batch and tiny-subset overfit gates pass.
-- [ ] Training is stable and reproducible from configuration and seed.
-- [ ] The selected scratch checkpoint is evaluated independently as an image-only retriever.
-- [ ] Comparison with pHash and ORB uses the same frozen split and evaluation protocol.
-- [ ] The model beats ORB validation mAP@20, or a clearly measured quality/latency trade-off and
+- [x] Tiny-batch and tiny-subset overfit gates pass.
+- [x] Training is stable under the frozen configuration and seed; the accepted dirty-provenance
+  exception is documented separately.
+- [x] The selected scratch checkpoint is evaluated independently as an image-only retriever.
+- [x] Comparison with pHash and ORB uses the frozen split and records the ORB candidate-protocol
+  caveat.
+- [x] The model beats ORB validation mAP@20, or a clearly measured quality/latency trade-off and
   categorized failure analysis explains why it does not.
-- [ ] Nearest-neighbor failures are manually reviewed and recorded.
+- [x] Nearest-neighbor failures are manually reviewed and recorded.
 - [ ] Final report and lightweight figures are generated from a clean implementation commit.
-- [ ] No raw images, local galleries, checkpoints, caches, or oversized outputs are tracked.
+- [x] No raw images, local galleries, checkpoints, caches, or oversized outputs are tracked.
 - [ ] Phase 4 does not begin until these results and limitations are recorded.

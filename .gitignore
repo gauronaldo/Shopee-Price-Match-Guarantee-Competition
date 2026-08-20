@@ -230,6 +230,17 @@ phase-*-status.md
 *_status.local.md
 *.local.md
 
+# One-off local diagnostics and manual-review exports
+diagnostics/local/
+reports/figures/local/
+reports/tables/local/
+*.local.json
+*.local.csv
+*.local.png
+*.local.jpg
+.pytest_tmp/
+.pytest-tmp/
+
 # Shopee competition data and derived datasets
 data/raw/**
 data/interim/**

@@ -2,7 +2,7 @@
 
 ## Candidate: scratch residual image encoder
 
-Status: **implemented and pilot-evaluated; full benchmark training pending**.
+Status: **validation- and test-evaluated; accepted training-provenance exception documented**.
 
 - Intended phase: image-only exact-product retrieval in Phase 3.
 - Architecture: repository-owned residual CNN, global average pooling, two-layer projection head,
@@ -21,6 +21,11 @@ and Recall@20 `0.43891`, outperforming `P=8, K=2` at `0.30032 / 0.37848`. It als
 for queries without an exact-pHash positive from `0.16871` to `0.21866`. This configuration is
 selected for full training, but it is not yet the frozen benchmark checkpoint.
 
-The pilot exceeds the supplied pHash baseline (`0.2895` mAP@20) but remains well below ORB
-(`0.6638`). Full 224-pixel training and the final categorized review remain open. Test evaluation
-is disabled until the full checkpoint and retrieval protocol are frozen.
+The full 224-pixel checkpoint reached validation/test mAP@20 `0.53907 / 0.55674` and Recall@20
+`0.64667 / 0.65941`. It exceeds pHash clearly and remains below the ORB pipeline, whose candidate
+union includes title TF-IDF. The validation threshold `0.805664` produced test pair precision,
+recall, and F1 of `0.83231 / 0.34693 / 0.48973`.
+
+The checkpoint, training config, and training metrics are SHA-256 locked. The project owner
+explicitly accepted skipping a clean-commit training rerun, so training provenance remains dirty
+and must be disclosed. Test evaluation was performed once without test-time threshold selection.

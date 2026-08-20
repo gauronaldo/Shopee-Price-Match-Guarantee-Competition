@@ -47,3 +47,14 @@ preserve packaging text, logos, and fine product details that are suppressed at 
 is a targeted response to the measured layout-shortcut failure; no larger backbone or additional
 loss is introduced before that hypothesis is evaluated. Quantitative details are recorded in
 [`../reports/scratch_image_encoder_pilot.md`](../reports/scratch_image_encoder_pilot.md).
+
+## Final scratch image review
+
+The full 224-pixel checkpoint reached validation/test mAP@20 `0.53907 / 0.55674`. A deterministic
+manual review categorized 20 top-1 false matches and 20 Top-20 retrieval misses. Shared layout,
+background, color blocks, and coarse silhouette account for 70% of reviewed false matches and 75%
+of reviewed retrieval misses. Coarse-category or brand-family negatives account for most remaining
+cases; two false matches are probable label fragmentation.
+
+Full counts, examples, sampling limitations, and the resulting Phase 4 motivation are recorded in
+[`../reports/scratch_image_encoder_failure_analysis.md`](../reports/scratch_image_encoder_failure_analysis.md).

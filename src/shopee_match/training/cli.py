@@ -10,6 +10,7 @@ from pathlib import Path
 
 from shopee_match.errors import ShopeeMatchError
 from shopee_match.logging import configure_logging
+from shopee_match.training.image_evaluator import run_frozen_image_test
 from shopee_match.training.image_trainer import run_scratch_image_experiment
 
 LOGGER = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ def _nonnegative_int(value: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="shopee-image")
-    parser.add_argument("command", choices=("train",))
+    parser.add_argument("command", choices=("train", "evaluate"))
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
         "--progress-updates-per-epoch",
@@ -39,10 +40,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_logging()
     args = build_parser().parse_args(argv)
     try:
-        result = run_scratch_image_experiment(
-            args.config,
-            progress_updates_per_epoch=args.progress_updates_per_epoch,
-        )
+        if args.command == "train":
+            result = run_scratch_image_experiment(
+                args.config,
+                progress_updates_per_epoch=args.progress_updates_per_epoch,
+            )
+        else:
+            result = run_frozen_image_test(args.config)
     except (ShopeeMatchError, OSError, ValueError, RuntimeError) as exc:
         LOGGER.error("%s", exc)
         return 2
