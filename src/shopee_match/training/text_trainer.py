@@ -1,4 +1,4 @@
-"""Configuration-driven Phase 3 training, checkpointing, and validation retrieval."""
+"""Configuration-driven Phase 4 scratch TextCNN training and validation retrieval."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
 
-import cv2
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -23,11 +22,9 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 
 from shopee_match.errors import ConfigurationError, DataValidationError
-from shopee_match.evaluation.image_retrieval import (
-    nearest_neighbor_review,
+from shopee_match.evaluation.embedding_retrieval import (
     rank_cosine_embeddings_profiled,
     similarity_diagnostics,
-    stratified_retrieval_metrics,
 )
 from shopee_match.evaluation.protocol import (
     EvaluationSplit,
@@ -36,25 +33,23 @@ from shopee_match.evaluation.protocol import (
     retrieval_metrics,
     select_threshold,
 )
+from shopee_match.evaluation.text_retrieval import (
+    stratified_text_retrieval_metrics,
+    title_length_summary,
+)
+from shopee_match.features.text import normalize_title
 from shopee_match.losses import SupervisedContrastiveLoss
-from shopee_match.models import ScratchResidualImageEncoder
+from shopee_match.models import ScratchTextCNN
 from shopee_match.reproducibility import seed_everything
-from shopee_match.training.image_config import (
-    ImageExperimentConfig,
-    load_image_experiment_config,
-)
-from shopee_match.training.image_data import (
-    ImagePreprocessor,
-    ProductImageDataset,
-)
 from shopee_match.training.sampling import ProductBatchSampler
+from shopee_match.training.text_config import TextExperimentConfig, load_text_experiment_config
+from shopee_match.training.text_data import CharacterVocabulary, ProductTextDataset
 
 LOGGER = logging.getLogger(__name__)
 FloatArray = NDArray[np.floating[Any]]
 
 
 def _format_duration(seconds: float) -> str:
-    """Format a progress duration compactly without terminal-control sequences."""
     rounded = max(0, round(seconds))
     hours, remainder = divmod(rounded, 3600)
     minutes, secs = divmod(remainder, 60)
@@ -66,11 +61,8 @@ def _format_duration(seconds: float) -> str:
 
 
 def _progress_milestones(total_batches: int, updates: int) -> frozenset[int]:
-    """Return bounded batch milestones, including the final batch when enabled."""
-    if total_batches <= 0:
-        raise ValueError("total_batches must be positive")
-    if updates < 0:
-        raise ValueError("updates must be non-negative")
+    if total_batches <= 0 or updates < 0:
+        raise ValueError("total_batches must be positive and updates non-negative")
     if updates == 0:
         return frozenset()
     return frozenset(
@@ -142,27 +134,28 @@ def _posting_ids(batch: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def _verify_finite_gradients(model: nn.Module) -> None:
-    missing = []
-    non_finite = []
-    for name, parameter in model.named_parameters():
-        if not parameter.requires_grad:
-            continue
-        if parameter.grad is None:
-            missing.append(name)
-        elif not torch.isfinite(parameter.grad).all():
-            non_finite.append(name)
+    missing = [
+        name
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad and parameter.grad is None
+    ]
+    non_finite = [
+        name
+        for name, parameter in model.named_parameters()
+        if parameter.grad is not None and not torch.isfinite(parameter.grad).all()
+    ]
     if missing or non_finite:
         raise RuntimeError(
             f"Gradient gate failed; missing={missing[:5]}, non_finite={non_finite[:5]}"
         )
 
 
-def extract_embeddings(
-    model: ScratchResidualImageEncoder,
+def extract_text_embeddings(
+    model: ScratchTextCNN,
     loader: DataLoader[dict[str, Tensor | str]],
     device: torch.device,
 ) -> tuple[tuple[str, ...], FloatArray, float]:
-    """Extract embeddings in deterministic dataset order and report wall time."""
+    """Extract normalized title embeddings in deterministic split order."""
     model.eval()
     posting_ids: list[str] = []
     parts: list[FloatArray] = []
@@ -170,26 +163,27 @@ def extract_embeddings(
     with torch.inference_mode():
         for raw_batch in loader:
             batch = cast(Mapping[str, Any], raw_batch)
-            images = _tensor_batch(batch, "image", device)
-            parts.append(model(images).cpu().numpy())
+            token_ids = _tensor_batch(batch, "token_ids", device)
+            lengths = _tensor_batch(batch, "length", device)
+            parts.append(model(token_ids, lengths).cpu().numpy())
             posting_ids.extend(_posting_ids(batch))
     elapsed = time.perf_counter() - started
     if not parts:
-        raise DataValidationError("Cannot extract embeddings from an empty split")
+        raise DataValidationError("Cannot extract text embeddings from an empty split")
     return tuple(posting_ids), np.concatenate(parts, axis=0), elapsed
 
 
 def _validation_result(
-    model: ScratchResidualImageEncoder,
+    model: ScratchTextCNN,
     loader: DataLoader[dict[str, Tensor | str]],
     split: EvaluationSplit,
-    config: ImageExperimentConfig,
+    config: TextExperimentConfig,
     device: torch.device,
 ) -> tuple[dict[str, float], dict[str, float], float, FloatArray, Ranking, dict[str, float]]:
-    LOGGER.info("validation: extracting embeddings")
-    posting_ids, embeddings, extraction_seconds = extract_embeddings(model, loader, device)
+    LOGGER.info("validation: extracting text embeddings")
+    posting_ids, embeddings, extraction_seconds = extract_text_embeddings(model, loader, device)
     LOGGER.info("validation: ranking %d listings and computing retrieval metrics", len(posting_ids))
-    ranking, search_latency = rank_cosine_embeddings_profiled(
+    ranking, latency = rank_cosine_embeddings_profiled(
         posting_ids, embeddings, config.evaluation.candidate_k
     )
     metrics = retrieval_metrics(
@@ -198,36 +192,30 @@ def _validation_result(
         config.evaluation.recall_at,
         config.evaluation.average_precision_at,
     )
-    threshold = select_threshold(ranking, split.label_by_id)
-    return metrics, threshold, extraction_seconds, embeddings, ranking, search_latency
+    return (
+        metrics,
+        select_threshold(ranking, split.label_by_id),
+        extraction_seconds,
+        embeddings,
+        ranking,
+        latency,
+    )
 
 
-def _provenance(config: ImageExperimentConfig, device: torch.device) -> dict[str, Any]:
-    commit, dirty = _git_state()
-    cuda_name = torch.cuda.get_device_name(device) if device.type == "cuda" else None
-    return {
-        "config_version": config.config_version,
-        "config_sha256": _sha256(config.config_path),
-        "model_config_sha256": _sha256(config.model_config_path),
-        "manifest_sha256": _sha256(config.data.split_manifest),
-        "metadata_sha256": _sha256(config.data.metadata_csv),
-        "git_commit": commit,
-        "git_dirty": dirty,
-        "seed": config.seed,
-        "python": platform.python_version(),
-        "torch": torch.__version__,
-        "opencv": cv2.__version__,
-        "numpy": np.__version__,
-        "platform": platform.platform(),
-        "device": str(device),
-        "cuda_device_name": cuda_name,
-    }
+def _unknown_character_rate(split: EvaluationSplit, vocabulary: CharacterVocabulary) -> float:
+    known = set(vocabulary.tokens[2:])
+    characters = [character for item in split.items for character in normalize_title(item.title)]
+    return (
+        sum(character not in known for character in characters) / len(characters)
+        if characters
+        else 0.0
+    )
 
 
 def _checkpoint_payload(
-    *,
-    config: ImageExperimentConfig,
-    model: ScratchResidualImageEncoder,
+    config: TextExperimentConfig,
+    model: ScratchTextCNN,
+    vocabulary: CharacterVocabulary,
     optimizer: AdamW,
     scheduler: CosineAnnealingLR,
     epoch: int,
@@ -236,21 +224,21 @@ def _checkpoint_payload(
     history: list[dict[str, Any]],
 ) -> dict[str, Any]:
     return {
-        "checkpoint_version": "phase3.scratch_image_checkpoint.v1",
+        "checkpoint_version": "phase4.scratch_text_checkpoint.v1",
         "epoch": epoch,
         "best_metric": best_metric,
         "best_epoch": best_epoch,
         "checkpoint_metric": config.evaluation.checkpoint_metric,
         "model_spec": {
-            "input_channels": config.model_spec.input_channels,
-            "stem_width": config.model_spec.stem_width,
-            "stage_widths": config.model_spec.stage_widths,
-            "blocks_per_stage": config.model_spec.blocks_per_stage,
-            "embedding_dim": config.model_spec.embedding_dim,
+            "character_embedding_dim": config.model_spec.character_embedding_dim,
+            "convolution_channels": config.model_spec.convolution_channels,
+            "kernel_sizes": config.model_spec.kernel_sizes,
             "projection_hidden_dim": config.model_spec.projection_hidden_dim,
+            "embedding_dim": config.model_spec.embedding_dim,
+            "dropout": config.model_spec.dropout,
         },
-        "initialization_policy": model.initialization_policy,
-        "normalization_policy": ImagePreprocessor.normalization_policy,
+        "vocabulary": vocabulary.to_dict(),
+        "maximum_length": config.tokenization.maximum_length,
         "seed": config.seed,
         "split_manifest_sha256": _sha256(config.data.split_manifest),
         "model_state": model.state_dict(),
@@ -260,102 +248,63 @@ def _checkpoint_payload(
     }
 
 
-def _load_resume(
-    path: Path,
-    config: ImageExperimentConfig,
-    model: ScratchResidualImageEncoder,
-    optimizer: AdamW,
-    scheduler: CosineAnnealingLR,
-) -> tuple[int, float, int, list[dict[str, Any]]]:
-    payload = torch.load(path, map_location="cpu", weights_only=False)
-    if payload.get("checkpoint_version") != "phase3.scratch_image_checkpoint.v1":
-        raise ConfigurationError("Unsupported resume checkpoint")
-    if payload.get("split_manifest_sha256") != _sha256(config.data.split_manifest):
-        raise ConfigurationError("Resume checkpoint was trained on another split manifest")
-    model.load_state_dict(payload["model_state"])
-    optimizer.load_state_dict(payload["optimizer_state"])
-    scheduler.load_state_dict(payload["scheduler_state"])
-    history = cast(list[dict[str, Any]], payload.get("history", []))
-    return (
-        int(payload["epoch"]) + 1,
-        float(payload["best_metric"]),
-        int(payload["best_epoch"]),
-        history,
-    )
-
-
 def _render_report(run: dict[str, Any]) -> str:
-    final = run["validation"]
-    history_rows = "\n".join(
+    metrics = run["validation"]["retrieval"]
+    rows = "\n".join(
         f"| {row['epoch']} | {row['train_loss']:.5f} | "
         f"{row['validation'][run['selection']['metric']]:.5f} | {row['epoch_seconds']:.2f} |"
         for row in run["history"]
     )
-    metrics = final["retrieval"]
-    return f"""# Scratch image encoder benchmark
+    return f"""# Scratch text encoder benchmark
 
 ## Experiment status
 
-This is an image-only Phase 3 run. The residual CNN and projection head were initialized randomly;
-no pretrained weights, title features, pHash, or ORB scores entered the model. Checkpoint selection
-used validation `{run["selection"]["metric"]}` only. This training command never accesses the test
-split; held-out test metrics are produced separately by the frozen-checkpoint evaluator.
+This Phase 4 character TextCNN was initialized randomly. Its vocabulary was fitted from training
+titles only; no pretrained tokenizer, word embedding, language model, image feature, or test label
+entered training or checkpoint selection.
 
 ## Validation result
 
-- Selected epoch: `{run["selection"]["best_epoch"]}`
+- Selected epoch: `{run["selection"]["best_epoch"] + 1}` of `{len(run["history"])}`
 - mAP@20: `{metrics.get("map@20", float("nan")):.5f}`
 - Recall@1: `{metrics.get("recall@1", float("nan")):.5f}`
 - Recall@5: `{metrics.get("recall@5", float("nan")):.5f}`
 - Recall@10: `{metrics.get("recall@10", float("nan")):.5f}`
 - Recall@20: `{metrics.get("recall@20", float("nan")):.5f}`
-- Embedding throughput: `{final["embedding_throughput_per_second"]:.2f}` listings/second
+- Vocabulary size: `{run["vocabulary"]["size"]}`
+- Validation unknown-character rate: `{run["vocabulary"]["validation_unknown_character_rate"]:.6f}`
 - Parameters: `{run["model"]["parameter_count"]:,}`
-- Serialized checkpoint: `{run["model"]["checkpoint_bytes"]:,}` bytes
 
-Phase 2 reference points on the same real validation split are pHash mAP@20 `0.2895` and ORB
-mAP@20 `0.6638`. A smoke or bounded pilot run is not a fair claim against those full-data
-baselines.
+The Phase 2 character TF-IDF validation reference is mAP@20 `0.8635`. Smoke and bounded pilot
+runs are engineering evidence, not final claims against that full baseline.
 
 ## Training curve
 
 | Epoch | Train loss | Validation {run["selection"]["metric"]} | Seconds |
 |---:|---:|---:|---:|
-{history_rows}
-
-## Reproducibility
-
-- Seed: `{run["provenance"]["seed"]}`
-- Git commit: `{run["provenance"]["git_commit"]}`
-- Split manifest SHA-256: `{run["provenance"]["manifest_sha256"]}`
-- Device: `{run["provenance"]["device"]}`
-- Initialization: `{run["model"]["initialization_policy"]}`
-- Normalization: `{run["model"]["normalization_policy"]}`
+{rows}
 """
 
 
-def run_scratch_image_experiment(
+def run_scratch_text_experiment(
     config_path: Path, *, progress_updates_per_epoch: int = 5
 ) -> dict[str, Any]:
-    """Train from random initialization and select a checkpoint on validation retrieval."""
+    """Train a random-init TextCNN and select its checkpoint on validation retrieval."""
     if progress_updates_per_epoch < 0:
         raise ValueError("progress_updates_per_epoch must be non-negative")
-    config = load_image_experiment_config(config_path)
+    config = load_text_experiment_config(config_path)
     seed_everything(config.seed, deterministic=config.training.deterministic)
     device = _resolve_device(config.training.device)
-    if device.type == "cuda":
-        torch.cuda.reset_peak_memory_stats(device)
     splits = load_splits(config.data.metadata_csv, config.data.split_manifest)
-    train_split = splits["train"]
-    validation_split = splits[config.evaluation.tune_split]
-
-    train_preprocessor = ImagePreprocessor(config.image_size, training=True, seed=config.seed)
-    validation_preprocessor = ImagePreprocessor(config.image_size, training=False, seed=config.seed)
-    train_dataset = ProductImageDataset.for_split(
-        train_split, config.data.image_dir, train_preprocessor
+    train_split, validation_split = splits["train"], splits["validation"]
+    vocabulary = CharacterVocabulary.fit(
+        tuple(item.title for item in train_split.items),
+        minimum_frequency=config.tokenization.minimum_frequency,
+        maximum_size=config.tokenization.maximum_vocabulary_size,
     )
-    validation_dataset = ProductImageDataset.for_split(
-        validation_split, config.data.image_dir, validation_preprocessor
+    train_dataset = ProductTextDataset(train_split, vocabulary, config.tokenization.maximum_length)
+    validation_dataset = ProductTextDataset(
+        validation_split, vocabulary, config.tokenization.maximum_length
     )
     sampler = ProductBatchSampler(
         train_dataset.labels,
@@ -377,21 +326,9 @@ def run_scratch_image_experiment(
         num_workers=config.training.num_workers,
         pin_memory=device.type == "cuda",
     )
-    LOGGER.info(
-        "run started: device=%s epochs=%d batches/epoch=%d batch_size=%d image_size=%d",
-        device,
-        config.training.epochs,
-        len(train_loader),
-        sampler.batch_size,
-        config.image_size,
-    )
-    LOGGER.info(
-        "data ready: train=%d validation=%d; test evaluation disabled",
-        len(train_dataset),
-        len(validation_dataset),
-    )
-
-    model = ScratchResidualImageEncoder(config.model_spec).to(device)
+    model = ScratchTextCNN(
+        len(vocabulary.tokens), config.model_spec, padding_index=vocabulary.padding_index
+    ).to(device)
     loss_function = SupervisedContrastiveLoss(config.training.temperature)
     optimizer = AdamW(
         model.parameters(),
@@ -403,149 +340,149 @@ def run_scratch_image_experiment(
         T_max=config.training.epochs,
         eta_min=config.training.minimum_learning_rate,
     )
+    LOGGER.info(
+        "run started: device=%s epochs=%d batches/epoch=%d batch_size=%d vocab=%d max_length=%d",
+        device,
+        config.training.epochs,
+        len(train_loader),
+        sampler.batch_size,
+        len(vocabulary.tokens),
+        config.tokenization.maximum_length,
+    )
+    LOGGER.info(
+        "data ready: train=%d validation=%d; vocabulary fitted on train only; test disabled",
+        len(train_dataset),
+        len(validation_dataset),
+    )
+
     checkpoint_path = config.artifacts.root / "best.pt"
     latest_path = config.artifacts.root / "latest.pt"
     history: list[dict[str, Any]] = []
-    start_epoch, best_metric, best_epoch = 0, float("-inf"), -1
-    if config.training.resume_from is not None:
-        start_epoch, best_metric, best_epoch, history = _load_resume(
-            config.training.resume_from, config, model, optimizer, scheduler
-        )
-        LOGGER.info("resumed training at epoch %d", start_epoch + 1)
-
-    provenance = _provenance(config, device)
-    run_started = time.perf_counter()
+    best_metric, best_epoch = float("-inf"), -1
     epochs_without_improvement = 0
-    progress_milestones = _progress_milestones(len(train_loader), progress_updates_per_epoch)
-    for epoch in range(start_epoch, config.training.epochs):
+    run_started = time.perf_counter()
+    milestones = _progress_milestones(len(train_loader), progress_updates_per_epoch)
+    for epoch in range(config.training.epochs):
         epoch_started = time.perf_counter()
         train_started = epoch_started
-        LOGGER.info("epoch %d/%d: training", epoch + 1, config.training.epochs)
         sampler.set_epoch(epoch)
-        train_dataset.set_epoch(epoch)
         model.train()
         total_loss = 0.0
-        listings_seen: set[str] = set()
-        groups_seen: set[int] = set()
+        LOGGER.info("epoch %d/%d: training", epoch + 1, config.training.epochs)
         for batch_index, raw_batch in enumerate(train_loader):
             batch = cast(Mapping[str, Any], raw_batch)
-            images = _tensor_batch(batch, "image", device)
+            token_ids = _tensor_batch(batch, "token_ids", device)
+            lengths = _tensor_batch(batch, "length", device)
             labels = _tensor_batch(batch, "label", device)
             optimizer.zero_grad(set_to_none=True)
-            embeddings = model(images)
-            loss = loss_function(embeddings, labels)
+            loss = loss_function(model(token_ids, lengths), labels)
             if not torch.isfinite(loss):
                 raise RuntimeError(f"Non-finite training loss at epoch {epoch}")
             loss.backward()
-            if epoch == start_epoch and batch_index == 0:
+            if epoch == 0 and batch_index == 0:
                 _verify_finite_gradients(model)
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.training.gradient_clip_norm)
             optimizer.step()
             total_loss += float(loss.detach().cpu())
-            listings_seen.update(_posting_ids(batch))
-            groups_seen.update(int(value) for value in labels.detach().cpu().tolist())
-            completed_batches = batch_index + 1
-            if completed_batches in progress_milestones:
-                train_elapsed = time.perf_counter() - train_started
-                eta_seconds = (
-                    train_elapsed / completed_batches * (len(train_loader) - completed_batches)
-                )
+            completed = batch_index + 1
+            if completed in milestones:
+                elapsed = time.perf_counter() - train_started
+                eta = elapsed / completed * (len(train_loader) - completed)
                 LOGGER.info(
                     "epoch %d/%d: train %d/%d (%d%%) loss=%.5f elapsed=%s eta=%s",
                     epoch + 1,
                     config.training.epochs,
-                    completed_batches,
+                    completed,
                     len(train_loader),
-                    round(100 * completed_batches / len(train_loader)),
-                    total_loss / completed_batches,
-                    _format_duration(train_elapsed),
-                    _format_duration(eta_seconds),
+                    round(100 * completed / len(train_loader)),
+                    total_loss / completed,
+                    _format_duration(elapsed),
+                    _format_duration(eta),
                 )
         scheduler.step()
-
         LOGGER.info("epoch %d/%d: validating", epoch + 1, config.training.epochs)
-        validation_metrics, threshold, extraction_seconds, _, _, search_latency = (
-            _validation_result(model, validation_loader, validation_split, config, device)
+        validation_metrics, threshold, extraction_seconds, _, _, latency = _validation_result(
+            model, validation_loader, validation_split, config, device
         )
         current_metric = validation_metrics[config.evaluation.checkpoint_metric]
-        epoch_record: dict[str, Any] = {
+        record = {
             "epoch": epoch,
             "train_loss": total_loss / len(train_loader),
             "learning_rate": optimizer.param_groups[0]["lr"],
             "epoch_seconds": time.perf_counter() - epoch_started,
-            "unique_train_listings": len(listings_seen),
-            "unique_train_groups": len(groups_seen),
             "validation": validation_metrics,
             "validation_threshold": threshold,
             "embedding_extraction_seconds": extraction_seconds,
-            "search_latency": search_latency,
+            "search_latency": latency,
         }
-        history.append(epoch_record)
+        history.append(record)
         improved = current_metric > best_metric
         if improved:
-            best_metric, best_epoch = current_metric, epoch
-            epochs_without_improvement = 0
+            best_metric, best_epoch, epochs_without_improvement = current_metric, epoch, 0
         else:
             epochs_without_improvement += 1
         payload = _checkpoint_payload(
-            config=config,
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            epoch=epoch,
-            best_metric=best_metric,
-            best_epoch=best_epoch,
-            history=history,
+            config, model, vocabulary, optimizer, scheduler, epoch, best_metric, best_epoch, history
         )
         _save_checkpoint_atomic(latest_path, payload)
         if improved:
             _save_checkpoint_atomic(checkpoint_path, payload)
-        _write_text_atomic(
-            config.artifacts.root / "history.json",
-            json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        )
         LOGGER.info(
             "epoch %d/%d complete: loss=%.5f %s=%.5f best=%.5f checkpoint=%s elapsed=%s",
             epoch + 1,
             config.training.epochs,
-            epoch_record["train_loss"],
+            record["train_loss"],
             config.evaluation.checkpoint_metric,
             current_metric,
             best_metric,
             "best" if improved else "latest",
-            _format_duration(epoch_record["epoch_seconds"]),
+            _format_duration(record["epoch_seconds"]),
         )
         if epochs_without_improvement >= config.training.early_stopping_patience:
-            LOGGER.info(
-                "early stopping after %d epochs without validation improvement",
-                epochs_without_improvement,
-            )
+            LOGGER.info("early stopping after %d unimproved epochs", epochs_without_improvement)
             break
 
-    LOGGER.info("loading best checkpoint from epoch %d for final validation", best_epoch + 1)
     selected = torch.load(checkpoint_path, map_location=device, weights_only=False)
     model.load_state_dict(selected["model_state"])
-    (
-        validation_metrics,
-        threshold,
-        extraction_seconds,
-        validation_embeddings,
-        validation_ranking,
-        search_latency,
-    ) = _validation_result(model, validation_loader, validation_split, config, device)
-    checkpoint_bytes = checkpoint_path.stat().st_size
+    metrics, threshold, extraction_seconds, embeddings, ranking, latency = _validation_result(
+        model, validation_loader, validation_split, config, device
+    )
+    commit, dirty = _git_state()
     run: dict[str, Any] = {
-        "pipeline_version": "phase3.scratch_image_training.v1",
-        "provenance": provenance,
+        "pipeline_version": "phase4.scratch_text_training.v1",
+        "provenance": {
+            "config_sha256": _sha256(config.config_path),
+            "model_config_sha256": _sha256(config.model_config_path),
+            "manifest_sha256": _sha256(config.data.split_manifest),
+            "metadata_sha256": _sha256(config.data.metadata_csv),
+            "git_commit": commit,
+            "git_dirty": dirty,
+            "seed": config.seed,
+            "python": platform.python_version(),
+            "torch": torch.__version__,
+            "numpy": np.__version__,
+            "device": str(device),
+        },
         "data": {name: len(split.items) for name, split in splits.items()},
+        "vocabulary": {
+            "size": len(vocabulary.tokens),
+            "source_split": "train",
+            "validation_unknown_character_rate": _unknown_character_rate(
+                validation_split, vocabulary
+            ),
+            "train_title_lengths": title_length_summary(
+                train_split, config.tokenization.maximum_length
+            ),
+            "validation_title_lengths": title_length_summary(
+                validation_split, config.tokenization.maximum_length
+            ),
+        },
         "model": {
             "parameter_count": model.parameter_count,
             "embedding_dim": config.model_spec.embedding_dim,
-            "tensor_shapes": model.tensor_shapes(config.image_size),
-            "checkpoint_bytes": checkpoint_bytes,
-            "embedding_storage_bytes": validation_embeddings.nbytes,
+            "checkpoint_bytes": checkpoint_path.stat().st_size,
+            "embedding_storage_bytes": embeddings.nbytes,
             "initialization_policy": model.initialization_policy,
-            "normalization_policy": ImagePreprocessor.normalization_policy,
         },
         "selection": {
             "split": "validation",
@@ -553,47 +490,36 @@ def run_scratch_image_experiment(
             "best_epoch": int(selected["best_epoch"]),
             "best_metric": float(selected["best_metric"]),
         },
-        "history": cast(list[dict[str, Any]], selected["history"]),
+        "history": history,
         "validation": {
-            "retrieval": validation_metrics,
-            "stratified_retrieval": stratified_retrieval_metrics(
-                validation_ranking,
+            "retrieval": metrics,
+            "stratified_retrieval": stratified_text_retrieval_metrics(
+                ranking,
                 validation_split,
                 config.evaluation.recall_at,
                 config.evaluation.average_precision_at,
             ),
             "similarity_diagnostics": similarity_diagnostics(
                 tuple(item.posting_id for item in validation_split.items),
-                validation_embeddings,
+                embeddings,
                 validation_split.label_by_id,
                 seed=config.seed,
             ),
             "selected_pair_threshold": threshold,
             "embedding_extraction_seconds": extraction_seconds,
             "embedding_throughput_per_second": len(validation_dataset) / extraction_seconds,
-            "search_latency": search_latency,
+            "search_latency": latency,
         },
         "test": {"status": "disabled_until_checkpoint_and_protocol_are_frozen"},
-        "efficiency": {
-            "wall_time_seconds": time.perf_counter() - run_started,
-            "cuda_peak_allocated_bytes": (
-                torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None
-            ),
-        },
+        "efficiency": {"wall_time_seconds": time.perf_counter() - run_started},
     }
     metrics_path = config.artifacts.root / "metrics.json"
     _write_text_atomic(
-        metrics_path, json.dumps(run, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        config.artifacts.root / "vocabulary.json",
+        json.dumps(vocabulary.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
     )
     _write_text_atomic(
-        config.artifacts.root / "nearest_neighbor_review.json",
-        json.dumps(
-            nearest_neighbor_review(validation_ranking, validation_split),
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
+        metrics_path, json.dumps(run, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     )
     _write_text_atomic(config.artifacts.report, _render_report(run))
     LOGGER.info(
@@ -609,7 +535,62 @@ def run_scratch_image_experiment(
         "checkpoint": str(checkpoint_path),
         "metrics": str(metrics_path),
         "report": str(config.artifacts.report),
+        "vocabulary": str(config.artifacts.root / "vocabulary.json"),
         "best_epoch": run["selection"]["best_epoch"],
         "validation_metric": run["selection"]["best_metric"],
         "test_status": run["test"]["status"],
+    }
+
+
+def refresh_text_training_report(config_path: Path) -> dict[str, Any]:
+    """Restore complete history from latest.pt without training or evaluation."""
+    config = load_text_experiment_config(config_path)
+    checkpoint_path = config.artifacts.root / "best.pt"
+    latest_path = config.artifacts.root / "latest.pt"
+    metrics_path = config.artifacts.root / "metrics.json"
+    best = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    latest = torch.load(latest_path, map_location="cpu", weights_only=False)
+    run = cast(dict[str, Any], json.loads(metrics_path.read_text(encoding="utf-8")))
+    if (
+        best.get("checkpoint_version") != "phase4.scratch_text_checkpoint.v1"
+        or latest.get("checkpoint_version") != "phase4.scratch_text_checkpoint.v1"
+    ):
+        raise ConfigurationError("Unsupported text checkpoint version")
+    if best.get("best_epoch") != latest.get("best_epoch") or not np.isclose(
+        float(best.get("best_metric", float("nan"))),
+        float(latest.get("best_metric", float("nan"))),
+        rtol=0.0,
+        atol=1e-12,
+    ):
+        raise ConfigurationError("Best and latest checkpoint selection metadata differ")
+    full_history = cast(list[dict[str, Any]], latest.get("history", []))
+    if not full_history or int(full_history[-1]["epoch"]) != int(latest["epoch"]):
+        raise ConfigurationError("Latest checkpoint does not contain a complete training history")
+    selection = run.get("selection", {})
+    if int(selection.get("best_epoch", -1)) != int(best["best_epoch"]) or not np.isclose(
+        float(selection.get("best_metric", float("nan"))),
+        float(best["best_metric"]),
+        rtol=0.0,
+        atol=1e-12,
+    ):
+        raise ConfigurationError("Training metrics selection differs from the best checkpoint")
+    run["history"] = full_history
+    run["training_summary"] = {
+        "configured_epochs": config.training.epochs,
+        "completed_epochs": len(full_history),
+        "last_epoch": int(latest["epoch"]),
+        "best_epoch": int(best["best_epoch"]),
+        "stopped_early": len(full_history) < config.training.epochs,
+    }
+    _write_text_atomic(
+        metrics_path, json.dumps(run, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    )
+    _write_text_atomic(config.artifacts.report, _render_report(run))
+    return {
+        "status": "complete",
+        "action": "report_refreshed_without_training_or_evaluation",
+        "metrics": str(metrics_path),
+        "report": str(config.artifacts.report),
+        "completed_epochs": len(full_history),
+        "best_epoch": int(best["best_epoch"]),
     }

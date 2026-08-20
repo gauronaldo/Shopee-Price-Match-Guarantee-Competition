@@ -1,0 +1,27 @@
+config_version: phase4.frozen_text_test.v1
+seed: 2026
+runtime:
+  device: cuda
+  num_workers: 0
+  batch_size: 64
+frozen:
+  checkpoint: artifacts/scratch_text_encoder/training/best.pt
+  checkpoint_sha256: cbb77e4d76c1909c24b0e30654eacde2a0f752bb5d2ba795d45b01ec1189f7c1
+  training_config: configs/experiment/text_embedding_training.yaml
+  training_config_sha256: dbd9ac71a42f0dec92412c8aabbc3e987e71356ad6d8d0a01230eebcc93caf77
+  training_metrics: artifacts/scratch_text_encoder/training/metrics.json
+  training_metrics_sha256: e92bd3704d09e6e3ae36e89c2d219c69e7b3d7daa6ad70e856ae0e0e73095030
+  validation_metric: map@20
+  validation_metric_value: 0.7569790659340108
+  validation_pair_threshold: 0.6544222831726074
+evaluation:
+  split: test
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+  candidate_k: 20
+artifacts:
+  root: artifacts/scratch_text_encoder/final_evaluation
+  report: reports/scratch_text_encoder_final_evaluation.md
+

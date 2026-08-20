@@ -33,6 +33,7 @@ eda = [
 shopee-data = "shopee_match.data.cli:main"
 shopee-benchmark = "shopee_match.evaluation.cli:main"
 shopee-image = "shopee_match.training.cli:main"
+shopee-text = "shopee_match.training.text_cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 
 [tool.hatch.build.targets.wheel]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from shopee_match.training.image_data import ProductBatchSampler
+from shopee_match.training.sampling import ProductBatchSampler
 
 
 def test_product_batch_sampler_is_reproducible_and_has_positive_pairs() -> None:

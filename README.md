@@ -30,6 +30,12 @@ Recall@20 `0.65941`, clearly improving on supplied pHash while remaining below t
 candidate-assisted ORB pipeline. See
 [`reports/image_retrieval_final_comparison.md`](reports/image_retrieval_final_comparison.md).
 
+Phase 4 is complete. The train-only, randomly initialized character TextCNN reached
+validation/test mAP@20 `0.75698 / 0.74841` and Recall@20 `0.87414 / 0.86978`. It generalizes
+consistently but remains below character TF-IDF test mAP@20 `0.8564`; this honest gap and the
+categorized failure analysis define the role of each text signal in Phase 5. See
+[`reports/text_retrieval_final_comparison.md`](reports/text_retrieval_final_comparison.md).
+
 ## Setup, checks, and data preparation
 
 ```powershell
@@ -43,6 +49,7 @@ python -m venv .venv
 .venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml
 .venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml
 .venv\Scripts\shopee-image train --config configs\experiment\image_embedding_smoke.yaml
+.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_smoke.yaml
 ```
 
 The full image run reports training progress five times per epoch plus validation, checkpoint,
@@ -54,6 +61,29 @@ and completion stages without continuously redrawing the terminal:
 
 Use `--progress-updates-per-epoch N` to change the frequency, or set it to `0` to disable batch
 progress messages. This display option does not change model training or saved experiment config.
+
+The Phase 4 TextCNN full run uses the pilot-approved architecture and keeps test disabled:
+
+```powershell
+.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_training.yaml
+```
+
+The full-history report can be regenerated from the completed local checkpoint without training
+or model evaluation. Validation failures are exported for local review with separate commands:
+
+```powershell
+.venv\Scripts\shopee-text refresh-report --config configs\experiment\text_embedding_training.yaml
+.venv\Scripts\shopee-text analyze-validation --config configs\experiment\text_embedding_training.yaml
+```
+
+After the text checkpoint, training configuration, training metrics, validation threshold, and
+retrieval protocol are locked, the held-out test command is intentionally single-use:
+
+```powershell
+.venv\Scripts\shopee-text evaluate --config configs\experiment\text_embedding_final_evaluation.yaml
+```
+
+An existing final metrics file or report makes the evaluator refuse a second run.
 
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:

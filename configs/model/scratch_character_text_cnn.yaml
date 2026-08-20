@@ -1,0 +1,13 @@
+config_version: phase4.scratch_text_model.v1
+model:
+  name: scratch_character_text_cnn
+  source: repository
+  initialization: random
+  pretrained_checkpoint: null
+  character_embedding_dim: 64
+  convolution_channels: 128
+  kernel_sizes: [3, 5, 7]
+  projection_hidden_dim: 512
+  embedding_dim: 256
+  dropout: 0.1
+
