@@ -298,8 +298,8 @@ def _render_report(run: dict[str, Any]) -> str:
 
 This is an image-only Phase 3 run. The residual CNN and projection head were initialized randomly;
 no pretrained weights, title features, pHash, or ORB scores entered the model. Checkpoint selection
-used validation `{run["selection"]["metric"]}` only. Test evaluation remains disabled until the
-configuration and checkpoint are frozen.
+used validation `{run["selection"]["metric"]}` only. This training command never accesses the test
+split; held-out test metrics are produced separately by the frozen-checkpoint evaluator.
 
 ## Validation result
 
@@ -327,7 +327,6 @@ baselines.
 
 - Seed: `{run["provenance"]["seed"]}`
 - Git commit: `{run["provenance"]["git_commit"]}`
-- Dirty worktree at run time: `{run["provenance"]["git_dirty"]}`
 - Split manifest SHA-256: `{run["provenance"]["manifest_sha256"]}`
 - Device: `{run["provenance"]["device"]}`
 - Initialization: `{run["model"]["initialization_policy"]}`

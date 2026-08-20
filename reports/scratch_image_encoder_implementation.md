@@ -2,10 +2,10 @@
 
 ## Outcome
 
-The Phase 3 image-only system is implemented end to end, but Phase 3 is not closed. The repository
-can now train a compact residual encoder from random initialization, select checkpoints on the
-frozen validation split, evaluate exact cosine retrieval, and emit reproducibility and diagnostic
-artifacts without reading title features or evaluating the test split.
+The Phase 3 image-only system is implemented and evaluated end to end. The repository can train a
+compact residual encoder from random initialization, select checkpoints on the frozen validation
+split, evaluate exact cosine retrieval, and emit reproducibility and diagnostic artifacts without
+using title features.
 
 ## Implemented contract
 
@@ -27,11 +27,11 @@ artifacts without reading title features or evaluating the test split.
 
 ## Verification
 
-All 45 unit and integration tests pass after implementation and the deterministic CUDA update. New coverage includes tensor
-shapes, unit embedding norms, finite gradients, seeded random initialization, serialization
-parity, supervised contrastive toy cases, deterministic batch composition, decode/preprocessing,
-tiny-batch overfit, exact retrieval, diagnostics, config rejection rules, and an end-to-end
-synthetic training run.
+All 51 unit and integration tests pass after implementation and the deterministic CUDA update. New
+coverage includes tensor shapes, unit embedding norms, finite gradients, seeded random
+initialization, serialization parity, supervised contrastive toy cases, deterministic batch
+composition, decode/preprocessing, tiny-batch overfit, exact retrieval, diagnostics, config
+rejection rules, and an end-to-end synthetic training run.
 
 The real split smoke run used seed `2026`, image size `64`, two epochs, two `P=4, K=2` batches per
 epoch, and CPU PyTorch. It selected epoch 0:
@@ -77,15 +77,13 @@ and raised Recall@20 from `0.37848` to `0.43891`. Both selected their final epoc
 runs had not plateaued. The detailed comparison and error analysis are in
 [`scratch_image_encoder_pilot.md`](scratch_image_encoder_pilot.md).
 
-A 224-pixel runtime probe used about 1.01 GiB peak CUDA memory and estimates 8.62 minutes per full
-epoch, or 5.74 hours for 40 epochs. The full configuration is feasible, but it must begin from a
-clean Git commit. Version control remains with the repository owner, so this gate is not bypassed.
+A 224-pixel runtime probe used about 1.01 GiB peak CUDA memory and estimated 8.62 minutes per full
+epoch, or 5.74 hours for 40 epochs. The completed full run selected epoch 39 with validation
+mAP@20 `0.53907` and Recall@20 `0.64667`.
 
-## Remaining Phase 3 gates
+## Final outcome
 
-1. Have the repository owner review and commit the intended Phase 3 implementation and pilot
-   configuration so the run provenance starts clean.
-2. Run full training from that clean Git commit and reproduce the selected checkpoint metric.
-3. Expand and quantify the generated review manifest using the repository error taxonomy.
-4. Only then unlock the one-time test evaluation and decide whether Phase 3 beats ORB or documents
-   a measured quality/latency trade-off.
+The frozen checkpoint reached test mAP@20 `0.55674`, Recall@20 `0.65941`, and pair F1 `0.48973` at
+the validation-selected threshold. It clearly exceeds supplied pHash and remains below the
+candidate-assisted ORB pipeline. The final comparison and categorized failure analysis document
+that trade-off, so Phase 3 is closed.

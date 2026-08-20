@@ -219,7 +219,7 @@ tempCodeRunnerFile.py
 .DS_Store
 Thumbs.db
 
-# Local coding-agent instructions and state
+# Local workspace instructions and state
 AGENTS.md
 .agents/
 .codex/
@@ -270,6 +270,7 @@ mlruns/
 lightning_logs/
 reports/figures/generated/
 reports/tables/generated/
+reports/competition_solution_review.md
 *.ckpt
 *.pth
 *.pt
@@ -297,5 +298,3 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-
-reports/competition_solution_review.md

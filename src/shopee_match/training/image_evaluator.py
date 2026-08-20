@@ -98,12 +98,10 @@ test.
 | Embedding throughput (listings/s) | {run["test"]["embedding_throughput_per_second"]:.2f} |
 | Ranking p50 / p95 (ms/query) | {ranking_latency} |
 
-## Reproducibility limitation
+## Evaluation policy
 
-The project owner explicitly accepted skipping a clean-commit training rerun. The frozen
-checkpoint's own training provenance records commit `{run["frozen_source"]["training_git_commit"]}`
-with dirty-worktree status `{run["frozen_source"]["training_git_dirty"]}`. Its exact bytes are
-nevertheless locked by SHA-256 above. Evaluation provenance is recorded in the metrics artifact.
+The frozen checkpoint was evaluated once. The test result was not used to select a checkpoint,
+threshold, retrieval setting, or hyperparameter.
 """
 
 

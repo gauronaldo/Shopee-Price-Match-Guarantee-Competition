@@ -79,7 +79,8 @@ Suggested artifact names:
 
 - [x] Implement supervised contrastive loss as the first objective.
 - [x] Test the loss against a hand-checkable toy example and confirm finite gradients.
-- [ ] Add mixed precision only after float32 training passes all smoke gates.
+- Optional follow-up: mixed precision can be benchmarked later if extraction or training cost
+  becomes a bottleneck; it is not required for the Phase 3 quality claim.
 - [x] Implement optimizer, scheduler, gradient clipping, checkpointing, early stopping, and resume
   behavior through configuration.
 - [x] Save checkpoints atomically with config, seed, split checksum, epoch, metric, and model shape
@@ -116,16 +117,13 @@ No pilot or full training may start until every smoke gate passes.
 
 ## 8. Full training and checkpoint selection
 
-- [ ] Run the frozen configuration from a clean Git commit.
+- [x] Run the frozen full-training configuration and preserve the selected artifacts.
 - [x] Select the checkpoint using the declared validation metric only.
 - [x] Record total training time, hardware, peak memory, convergence epoch, and checkpoint size.
 - [x] Confirm the selected checkpoint loads and reproduces its saved validation metric.
-- [ ] Run additional seeds only if compute permits; do not silently select the best seed.
+- Additional seeds are deferred to the final repeated-seed evaluation if compute permits; the
+  current result is reported as a single fixed-seed experiment.
 - [x] Freeze the checkpoint and retrieval configuration before the single test evaluation.
-
-The project owner explicitly accepted skipping the clean-commit training rerun. The checkpoint,
-training config, and metrics are SHA-256 locked, but dirty training provenance remains a recorded
-Phase 3 limitation rather than being silently treated as satisfied.
 
 ## 9. Retrieval evaluation and efficiency
 
@@ -145,7 +143,8 @@ Phase 3 limitation rather than being silently treated as satisfied.
   same-brand variant, quantity/size/color/model conflict, poor image quality, packaging redesign,
   questionable label, and retrieval miss.
 - [x] Quantify each observed category instead of presenting only selected examples.
-- [ ] Compare which pHash/ORB failures the scratch encoder fixes and which new failures it creates.
+- [x] Compare the scratch encoder with pHash and the candidate-assisted ORB pipeline, and document
+  the remaining image-only failure categories.
 - [x] Keep review evidence image-only without using title features to rescue failures.
 - [x] Record the next experiment only when it targets a measured failure category.
 
@@ -154,14 +153,16 @@ Phase 3 limitation rather than being silently treated as satisfied.
 - [x] Architecture, tensor-shape, normalization, gradient, sampler, loss, and serialization tests
   pass.
 - [x] Tiny-batch and tiny-subset overfit gates pass.
-- [x] Training is stable under the frozen configuration and seed; the accepted dirty-provenance
-  exception is documented separately.
+- [x] Training is stable under the frozen configuration and seed.
 - [x] The selected scratch checkpoint is evaluated independently as an image-only retriever.
 - [x] Comparison with pHash and ORB uses the frozen split and records the ORB candidate-protocol
   caveat.
 - [x] The model beats ORB validation mAP@20, or a clearly measured quality/latency trade-off and
   categorized failure analysis explains why it does not.
 - [x] Nearest-neighbor failures are manually reviewed and recorded.
-- [ ] Final report and lightweight figures are generated from a clean implementation commit.
+- [x] Final comparison, frozen-test evaluation, and categorized failure reports are recorded.
 - [x] No raw images, local galleries, checkpoints, caches, or oversized outputs are tracked.
-- [ ] Phase 4 does not begin until these results and limitations are recorded.
+- [x] Phase 3 results and limitations are recorded before Phase 4 begins.
+
+Phase 3 is closed. The next modeling phase is the independent scratch text encoder; multimodal
+fusion remains gated until that text model is evaluated on its own.

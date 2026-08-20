@@ -6,6 +6,7 @@ import random
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from pathlib import Path
+from typing import cast
 
 import cv2
 import numpy as np
@@ -67,23 +68,34 @@ class ImagePreprocessor:
         angle = float(rng.uniform(-5.0, 5.0))
         shift_x = float(rng.uniform(-0.02, 0.02) * width)
         shift_y = float(rng.uniform(-0.02, 0.02) * height)
-        matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0)
+        matrix = cast(
+            NDArray[np.float64],
+            cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0),
+        )
         matrix[:, 2] += (shift_x, shift_y)
-        image = cv2.warpAffine(
-            image,
-            matrix,
-            (width, height),
-            flags=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_REFLECT_101,
+        warped = cast(
+            UInt8Image,
+            cv2.warpAffine(
+                image,
+                matrix,
+                (width, height),
+                flags=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_REFLECT_101,
+            ),
         )
 
         contrast = float(rng.uniform(0.92, 1.08))
         brightness = float(rng.uniform(-0.06, 0.06) * 255)
-        image = np.clip(image.astype(np.float32) * contrast + brightness, 0, 255)
+        adjusted = cast(
+            NDArray[np.float32],
+            np.clip(warped.astype(np.float32) * contrast + brightness, 0, 255),
+        )
         noise_sigma = float(rng.uniform(0.0, 2.5))
         if noise_sigma > 0:
-            image = image + rng.normal(0.0, noise_sigma, size=image.shape).astype(np.float32)
-        return np.clip(image, 0, 255).astype(np.uint8)
+            adjusted = adjusted + rng.normal(0.0, noise_sigma, size=adjusted.shape).astype(
+                np.float32
+            )
+        return cast(UInt8Image, np.clip(adjusted, 0, 255).astype(np.uint8))
 
     def __call__(self, image: UInt8Image, sample_index: int) -> Tensor:
         if self.training:
@@ -141,7 +153,7 @@ class ProductImageDataset(Dataset[dict[str, Tensor | str]]):
             raise DataValidationError(
                 f"Cannot decode image for posting_id={item.posting_id}: {path}"
             )
-        return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        return cast(UInt8Image, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
     def __getitem__(self, index: int) -> dict[str, Tensor | str]:
         item = self.items[index]

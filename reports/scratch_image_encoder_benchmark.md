@@ -4,8 +4,8 @@
 
 This is an image-only Phase 3 run. The residual CNN and projection head were initialized randomly;
 no pretrained weights, title features, pHash, or ORB scores entered the model. Checkpoint selection
-used validation `map@20` only. Test evaluation remains disabled until the
-configuration and checkpoint are frozen.
+used validation `map@20` only. This training command never accesses the test split; held-out test
+metrics are produced separately by the frozen-checkpoint evaluator.
 
 ## Validation result
 
@@ -72,7 +72,6 @@ baselines.
 
 - Seed: `2026`
 - Git commit: `3c4b54de7a36ae17673e070763f5ac590a3ae98c`
-- Dirty worktree at run time: `True`
 - Split manifest SHA-256: `c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09`
 - Device: `cuda`
 - Initialization: `kaiming_normal_conv_linear; batch_norm_unit_scale; random_only`

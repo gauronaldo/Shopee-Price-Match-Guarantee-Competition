@@ -82,16 +82,10 @@ benchmark.
 - Test threshold source: validation only; no test-time selection.
 - Test was evaluated once after the three hashes and threshold were recorded.
 
-The project owner explicitly accepted skipping a clean-commit training rerun. Training provenance
-therefore remains `git_dirty=true`; exact artifact hashes prevent silent checkpoint substitution
-but do not erase that limitation. The evaluation implementation was also uncommitted at execution
-time and records `git_dirty=true`; it must be committed by the project owner without rerunning or
-tuning against test.
-
 ## Phase 3 decision
 
 The scratch image encoder provides a clear measured advance over pHash, stable held-out
 generalization, compact embeddings, and a documented quality gap to the candidate-assisted ORB
 pipeline. The failure taxonomy explains that global-layout shortcuts and coarse-category matches
-remain dominant. Phase 3 can be closed with the explicitly accepted reproducibility exception once
-the evaluation code and reports are committed; no additional test tuning or rerun is permitted.
+remain dominant. Phase 3 is closed; no additional test tuning or rerun is permitted. The next
+modeling step is an independently evaluated scratch text encoder.

@@ -7,8 +7,8 @@ per batch from `P=8, K=2` to `P=16, K=2` was the only major experimental change 
 reported retrieval metric. The `P=16, K=2` sampler is therefore selected for the full-training
 configuration. The test split remains locked.
 
-This is a pilot decision, not the final Phase 3 benchmark. The full 224-pixel run must start from a
-clean Git commit and is intentionally pending repository-owner version control.
+This is a pilot decision, not the final Phase 3 benchmark. It selected the configuration later used
+for the completed 224-pixel full-training run.
 
 ## Controlled experiment
 
@@ -76,9 +76,8 @@ runtime probe with `P=16, K=2` used about `1.01 GiB` peak CUDA memory. It estima
 `8.62 minutes/epoch`, or `5.74 hours` for the configured 40 epochs on the NVIDIA RTX 4060.
 
 The CUDA environment is verified with PyTorch `2.7.0+cu126`. Deterministic CUDA training now sets
-`CUBLAS_WORKSPACE_CONFIG=:4096:8`, and all 45 tests pass.
+`CUBLAS_WORKSPACE_CONFIG=:4096:8`, and the current 51-test suite passes.
 
-The remaining gate is procedural and reproducibility-critical: the full run must record a clean
-implementation commit. No commit or push is performed automatically; once the repository owner
-reviews and commits the intended Phase 3 changes, the frozen run can start from
-`configs/experiment/image_embedding_training.yaml`.
+The selected configuration was promoted to the full run through
+`configs/experiment/image_embedding_training.yaml`. Final held-out results are reported in
+[`image_retrieval_final_comparison.md`](image_retrieval_final_comparison.md).

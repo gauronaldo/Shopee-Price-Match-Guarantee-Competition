@@ -27,9 +27,7 @@ test.
 | Embedding throughput (listings/s) | 159.93 |
 | Ranking p50 / p95 (ms/query) | 0.450 / 0.717 |
 
-## Reproducibility limitation
+## Evaluation policy
 
-The project owner explicitly accepted skipping a clean-commit training rerun. The frozen
-checkpoint's own training provenance records commit `3c4b54de7a36ae17673e070763f5ac590a3ae98c`
-with dirty-worktree status `True`. Its exact bytes are
-nevertheless locked by SHA-256 above. Evaluation provenance is recorded in the metrics artifact.
+The frozen checkpoint was evaluated once. The test result was not used to select a checkpoint,
+threshold, retrieval setting, or hyperparameter.

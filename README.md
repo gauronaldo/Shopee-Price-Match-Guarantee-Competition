@@ -22,12 +22,13 @@ Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, and validati
 fusion under one retrieval/pair protocol. Results and failure analysis are recorded in
 [`reports/classical_retrieval_benchmark.md`](reports/classical_retrieval_benchmark.md).
 
-Phase 3 now has a repository-owned residual image encoder, conservative OpenCV preprocessing,
-deterministic product-aware batches, supervised contrastive loss, exact cosine evaluation,
-atomic checkpoints, structured diagnostics, and concise terminal progress reporting. Controlled
-pilots selected `P=16, K=2` for full training; the full run is still pending, Phase 3 is not
-closed, and test evaluation remains disabled. See
-[`reports/scratch_image_encoder_pilot.md`](reports/scratch_image_encoder_pilot.md).
+Phase 3 is complete. A repository-owned residual image encoder was trained from random
+initialization with conservative OpenCV preprocessing, deterministic product-aware batches,
+supervised contrastive loss, exact cosine evaluation, atomic checkpoints, structured diagnostics,
+and concise terminal progress reporting. The frozen model reached test mAP@20 `0.55674` and
+Recall@20 `0.65941`, clearly improving on supplied pHash while remaining below the
+candidate-assisted ORB pipeline. See
+[`reports/image_retrieval_final_comparison.md`](reports/image_retrieval_final_comparison.md).
 
 ## Setup, checks, and data preparation
 

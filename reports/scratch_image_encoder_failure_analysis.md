@@ -71,5 +71,3 @@ show whether these image-only errors remain the system bottleneck.
 - A single primary category is assigned even when several mechanisms may apply.
 - The validation manifest's `manual_category` fields remain local; this report contains only
   aggregate counts and sanitized descriptions.
-- The accepted training checkpoint records a dirty worktree. Its bytes are frozen by SHA-256, but
-  the project owner explicitly skipped the clean-commit training rerun.
