@@ -34,6 +34,12 @@ retrieval = [
 pretrained = [
   "torchvision==0.22.0",
 ]
+demo = [
+  "fastapi==0.116.1",
+  "python-multipart==0.0.20",
+  "streamlit==1.48.1",
+  "uvicorn==0.35.0",
+]
 
 [project.scripts]
 shopee-data = "shopee_match.data.cli:main"
@@ -47,6 +53,7 @@ shopee-text = "shopee_match.training.text_cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 shopee-pretrained = "shopee_match.evaluation.pretrained_cli:main"
 shopee-final = "shopee_match.evaluation.final_cli:main"
+shopee-demo = "shopee_match.serving.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shopee_match"]

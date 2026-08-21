@@ -80,6 +80,47 @@ below the validation safety target. No final policy was selected on test. See
 [`reports/final_evaluation.md`](reports/final_evaluation.md),
 [`docs/model_card.md`](docs/model_card.md), and [`docs/architecture.md`](docs/architecture.md).
 
+Phase 11 provides a local end-to-end showcase without changing the frozen research result. A
+FastAPI service loads the custom encoders and hard-negative pair head once and searches a
+3,430-item validation catalog. Image-only and text-only inputs provide honest unimodal candidate
+retrieval; inputs containing both modalities additionally use FAISS HNSW, pair scoring, and the
+validation-selected entity policy. A Streamlit client and Docker Compose package the same API
+contract. See [`docs/demo.md`](docs/demo.md).
+
+## Run the demo
+
+The ignored checkpoints, validation embedding caches, entity assignments, split manifest, and
+authorized Kaggle images must be present locally. The demo deliberately uses the validation
+catalog and never uses `label_group` as an inference feature or decision input. The recommended
+local launcher starts and stops the API and UI as one process group:
+
+```powershell
+.venv\Scripts\python -m shopee_match.serving.cli launch
+```
+
+Open `http://localhost:8501` and press `Ctrl+C` once in the launcher terminal to stop both
+services.
+
+The separate commands below remain available for debugging each service independently.
+
+```powershell
+.venv\Scripts\python -m pip install -e ".[dev,retrieval,demo]"
+.venv\Scripts\python -m shopee_match.serving.cli preflight `
+  --config configs\serving\demo.yaml
+.venv\Scripts\python -m shopee_match.serving.cli api `
+  --config configs\serving\demo.yaml
+```
+
+In a second terminal:
+
+```powershell
+.venv\Scripts\streamlit run app\streamlit_app.py
+```
+
+Open `http://localhost:8501` for the interface or `http://localhost:8000/docs` for the OpenAPI
+contract. Alternatively, `docker compose up --build` starts both services. The Docker setup mounts
+`data/` and `artifacts/` read-only and does not copy them into the image.
+
 ## Setup, checks, and data preparation
 
 ```powershell
@@ -266,9 +307,9 @@ src/shopee_match/
   features/ models/ losses/      later modeling components
   training/ retrieval/           training and candidate retrieval
   clustering/ evaluation/        entity resolution and controlled evaluation
-  serving/                       inactive until the deployment phase
+  serving/                       frozen model runtime and FastAPI boundary
 tests/                           synthetic fixtures, unit and integration tests
-app/                             inactive until the final application phase
+app/                             Streamlit demonstration client
 ```
 
 This root file is the project entry point. `reports/README.md` is the only secondary README and acts

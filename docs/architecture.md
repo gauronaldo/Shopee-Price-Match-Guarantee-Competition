@@ -55,4 +55,20 @@ false-positive edge can transitively merge otherwise correct groups.
 For one query listing, the same encoders produce a joint embedding, retrieve Top-K catalog
 candidates, and score candidate pairs. The response should expose candidate IDs, total confidence,
 image/title similarity evidence, predicted entity or no-confident-match state, and a manual-review
-flag. No deployment claim is made until the final demo is independently tested.
+flag.
+
+```mermaid
+flowchart LR
+    A[Uploaded image and title] --> B[FastAPI validation]
+    B --> C[Custom image and text encoders]
+    C --> D[Residual multimodal fusion]
+    D --> E[FAISS HNSW Top-50 retrieval]
+    E --> F[Symmetric pair head]
+    F --> G[Reciprocal and variant gates]
+    G --> H[Entity, evidence, and review flag]
+    H --> I[Streamlit presentation]
+```
+
+The service loads all models and the index once at startup. Its showcase catalog is the validation
+split, not the held-out test split. Ground-truth labels remain outside the request path. The API and
+UI are portfolio demonstration components, not a claim of production readiness.

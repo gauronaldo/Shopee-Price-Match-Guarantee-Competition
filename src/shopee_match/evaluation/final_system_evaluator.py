@@ -38,7 +38,7 @@ from shopee_match.evaluation.protocol import load_named_split, retrieval_metrics
 from shopee_match.hashing import canonical_text_sha256, sha256_file
 from shopee_match.models import LearnedMultimodalFusion
 from shopee_match.reproducibility import seed_everything
-from shopee_match.retrieval.benchmark import _load_phase6_model, _profile_index
+from shopee_match.retrieval.benchmark import _profile_index, load_phase6_model
 from shopee_match.retrieval.vector_index import ExactCosineIndex, search_result_to_ranking
 from shopee_match.training.multimodal_data import extract_frozen_multimodal_split
 from shopee_match.training.multimodal_trainer import _git_state, _resolve_device
@@ -329,7 +329,7 @@ def run_final_system_evaluation(config_path: Path) -> dict[str, object]:
     if posting_ids != expected_ids:
         raise DataValidationError("Final extracted embeddings do not align with test manifest")
 
-    model = _load_phase6_model(phase7, device)
+    model = load_phase6_model(phase7, device)
     embeddings, fusion_seconds = _joint_embeddings(
         model,
         image,

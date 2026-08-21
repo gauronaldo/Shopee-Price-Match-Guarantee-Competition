@@ -1,0 +1,46 @@
+services:
+  api:
+    build: .
+    command:
+      - shopee-demo
+      - api
+      - --config
+      - configs/serving/demo.yaml
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    environment:
+      SHOPEE_MATCH_LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./artifacts:/workspace/artifacts:ro
+      - ./data:/workspace/data:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  ui:
+    build: .
+    command:
+      - streamlit
+      - run
+      - app/streamlit_app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+    environment:
+      SHOPEE_DEMO_API_URL: http://api:8000
+      SHOPEE_DEMO_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy

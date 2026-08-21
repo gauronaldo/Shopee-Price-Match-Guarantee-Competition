@@ -1,0 +1,17 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.idea
+.vscode
+artifacts
+data
+notebooks
+reports
+tests
+*.log
+*.pt
+*.pth
+*.faiss

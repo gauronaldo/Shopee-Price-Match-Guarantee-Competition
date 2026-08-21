@@ -1,0 +1,27 @@
+config_version: demo.inference.v1
+source:
+  entity_config: configs/experiment/entity_resolution_benchmark.yaml
+  entity_config_sha256: 84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794
+  entity_metrics: artifacts/entity_resolution/validation/metrics.json
+  entity_metrics_sha256: 1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f
+  modality_embeddings: artifacts/multimodal_fusion/frozen_encoder_cache/validation.npz
+  modality_embeddings_sha256: 3db134dabd96fd4aa020c6369435027ab19c78a72d9cf2e866180023f54e0581
+  entity_assignments: artifacts/entity_resolution/validation/entity_assignments.csv
+  entity_assignments_sha256: 0677a3eea8c6ff43b45183adf112b198cd796eb72ffa2384cbe239bbdce34719
+catalog:
+  split: validation
+index:
+  backend: faiss_hnsw
+  m: 32
+  ef_construction: 200
+  ef_search: 64
+  threads: 1
+  rerank_buffer: 32
+policy:
+  candidate_k: 50
+  default_top_k: 10
+  maximum_top_k: 20
+runtime:
+  device: auto
+  maximum_upload_mb: 10
+  maximum_batch_size: 8
