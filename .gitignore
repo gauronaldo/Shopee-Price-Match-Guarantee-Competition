@@ -284,6 +284,7 @@ reports/tables/generated/
 !/reports/hard_negative_mining.md
 !/reports/image_encoder.md
 !/reports/multimodal_model.md
+!/reports/pretrained_benchmark.md
 !/reports/text_encoder.md
 
 # Local research notes and extended walkthroughs are not portfolio deliverables

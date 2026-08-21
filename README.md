@@ -65,6 +65,13 @@ entities without using labels as graph features. The selected policy reaches pai
 `0.30818`, especially for large diverse groups. Test remains untouched. See
 [`reports/entity_resolution.md`](reports/entity_resolution.md).
 
+Phase 9 is complete on validation. The SHA-256-verified TorchVision EfficientNet-B1
+`IMAGENET1K_V2` representation reaches mAP@20 `0.73753` and Recall@20 `0.82481`. It clearly
+beats the scratch image-only encoder (`0.53907 / 0.64667`) but remains below the scratch
+multimodal joint representation (`0.87023 / 0.93780`). This is a frozen comparison with no local
+fine-tuning and no test access. See
+[`reports/pretrained_benchmark.md`](reports/pretrained_benchmark.md).
+
 ## Setup, checks, and data preparation
 
 ```powershell
@@ -173,6 +180,19 @@ once, and selects a conservative reciprocal-neighbour clustering policy:
 
 The command writes ignored scored-pair, assignment, metrics, and failure-review artifacts plus the
 reviewed aggregate report. It refuses to overwrite an existing completed Phase 8 run.
+
+Phase 9 installs the optional TorchVision dependency, acquires the official weight through its
+weight enum, verifies the full SHA-256, and evaluates the frozen image representation:
+
+```powershell
+.venv\Scripts\python -m pip install -e ".[dev,retrieval,pretrained]"
+.venv\Scripts\shopee-pretrained prepare-weights
+.venv\Scripts\shopee-pretrained benchmark `
+  --config configs\experiment\pretrained_image_benchmark.yaml
+```
+
+The benchmark uses the same validation split and exact Top-50 protocol as Phase 7. It does not
+fine-tune EfficientNet or access test, and it refuses to overwrite completed evidence.
 
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:
