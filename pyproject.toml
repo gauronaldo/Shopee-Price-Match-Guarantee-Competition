@@ -39,6 +39,7 @@ shopee-image = "shopee_match.training.cli:main"
 shopee-hard-negatives = "shopee_match.training.hard_negative_cli:main"
 shopee-multimodal = "shopee_match.training.multimodal_cli:main"
 shopee-retrieval = "shopee_match.retrieval.cli:main"
+shopee-entity-resolution = "shopee_match.clustering.cli:main"
 shopee-text = "shopee_match.training.text_cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 

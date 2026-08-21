@@ -1,0 +1,31 @@
+config_version: phase8.entity_resolution.v1
+seed: 2026
+source:
+  phase7_config: configs/experiment/candidate_retrieval_benchmark.yaml
+  phase7_config_sha256: 5120674d95a6ed9030c38e7f04feb6236050d777fa63e177f6b2efda86a78303
+  phase7_metrics: artifacts/candidate_retrieval/validation/metrics.json
+  phase7_metrics_sha256: 8f8a0447434f0bc162991604dd37c38e0c8f0599ed89a111d82483d3e5dd68eb
+  embedding_cache: artifacts/candidate_retrieval/validation/embeddings.npz
+  embedding_cache_sha256: bde491d37222e69a8fe549cf4eba83c37ecad97f34272f3016cb6f356eaf34ae
+data:
+  split: validation
+  evaluate_test: false
+pair_scoring:
+  device: cuda
+  batch_size: 8192
+selection:
+  pair_probability_thresholds: [0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.6]
+  reciprocal_rank_values: [5, 10, 20, 50]
+  cross_component_coverage_values: [0.0, 0.5, 1.0]
+  minimum_pairwise_precision: 0.9
+  variant_conflict_override_probability: 0.15
+  maximum_cluster_size: 64
+  manual_review_margin: 0.02
+  failure_example_limit: 30
+artifacts:
+  root: artifacts/entity_resolution/validation
+  scored_pairs: artifacts/entity_resolution/validation/scored_pairs.jsonl
+  assignments: artifacts/entity_resolution/validation/entity_assignments.csv
+  metrics: artifacts/entity_resolution/validation/metrics.json
+  review: artifacts/entity_resolution/validation/failure_review.json
+  report: reports/entity_resolution.md

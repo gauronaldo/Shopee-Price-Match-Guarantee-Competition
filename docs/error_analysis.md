@@ -58,3 +58,22 @@ cases; two false matches are probable label fragmentation.
 
 Full counts, examples, sampling limitations, and the resulting Phase 4 motivation are recorded in
 [`../reports/image_encoder.md`](../reports/image_encoder.md).
+
+## Entity-resolution graph
+
+The selected validation-only graph reaches pairwise precision `0.90165` and B-cubed F1 `0.82794`
+under the configured false-merge safety gate. The bounded review artifact contains 91 impure
+clusters, 339 split label groups, and 106 label-blind manual-review flags.
+
+Manual inspection identifies three dominant categories:
+
+- **Same-brand variant false merge:** matching packaging and quantity can bridge different flavors
+  or variants, such as standard and extra-spicy products of the same brand.
+- **Possible label fragmentation:** some cross-label clusters have near-identical titles, brand,
+  and quantity. They remain false merges under competition ground truth and are not relabeled.
+- **Large-group false split:** diverse images and wording inside groups of 10 or more listings do
+  not provide full cross-component support, so the conservative graph produces several fragments.
+
+The selected precision-first policy is therefore appropriate for avoiding catastrophic catalog
+merges, but it does not solve recall for large heterogeneous entities. Detailed metrics and the
+group-size breakdown are in [`../reports/entity_resolution.md`](../reports/entity_resolution.md).

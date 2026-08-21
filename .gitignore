@@ -279,12 +279,15 @@ reports/tables/generated/
 !/reports/README.md
 !/reports/candidate_retrieval.md
 !/reports/classical_retrieval.md
-!/reports/competition_solution_review.md
 !/reports/data_quality_and_split.md
+!/reports/entity_resolution.md
 !/reports/hard_negative_mining.md
 !/reports/image_encoder.md
 !/reports/multimodal_model.md
 !/reports/text_encoder.md
+
+# Local research notes and extended walkthroughs are not portfolio deliverables
+/docs/end_to_end_pipeline.md
 *.ckpt
 *.pth
 *.pt
@@ -312,3 +315,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+docs/end_to_end_pipeline.md
+reports/competition_solution_review.md
