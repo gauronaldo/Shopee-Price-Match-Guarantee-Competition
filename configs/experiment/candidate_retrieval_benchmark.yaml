@@ -1,0 +1,44 @@
+config_version: phase7.candidate_retrieval.v1
+seed: 2026
+source:
+  phase6_config: configs/experiment/hard_negative_pair_head_pilot.yaml
+  phase6_config_sha256: 12b8b7e97815b8cd710f3a3a6160ca3263d36453face15627b2ecc17ccab94fa
+  checkpoint: artifacts/hard_negative_mining/pair_head_pilot/training/best.pt
+  checkpoint_sha256: d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e
+  metrics: artifacts/hard_negative_mining/pair_head_pilot/training/metrics.json
+  metrics_sha256: 7bff1b804b0a611e1a5380540e54f3b6955da3c4b4ad42ff5d7aff2442e898ee
+  mined_manifest: artifacts/hard_negative_mining/pair_head_pilot/mined_pairs.jsonl
+  mined_manifest_sha256: ad716c1c7a4d5e1aa31cbd668c98b3d1c6f42117d865d2bc2aa5bf995e19d2d2
+data:
+  split: validation
+  evaluate_test: false
+embedding:
+  device: cuda
+  batch_size: 512
+  num_workers: 0
+exact:
+  block_size: 512
+faiss:
+  index_type: hnsw_flat
+  metric: inner_product
+  m: 32
+  ef_construction: 200
+  ef_search_values: [16, 32, 64, 128]
+  threads: 1
+  rerank_buffer: 32
+selection:
+  k_values: [1, 5, 10, 20, 50, 100]
+  target_recall: 0.95
+  maximum_approximate_recall_drop: 0.001
+  minimum_exact_candidate_agreement: 0.99
+  latency_query_count: 256
+  latency_repetitions: 3
+artifacts:
+  root: artifacts/candidate_retrieval/validation
+  embedding_cache: artifacts/candidate_retrieval/validation/embeddings.npz
+  exact_index: artifacts/candidate_retrieval/validation/exact_index.npz
+  faiss_index: artifacts/candidate_retrieval/validation/hnsw.faiss
+  faiss_metadata: artifacts/candidate_retrieval/validation/hnsw.metadata.json
+  metrics: artifacts/candidate_retrieval/validation/metrics.json
+  review: artifacts/candidate_retrieval/validation/failure_review.json
+  report: reports/candidate_retrieval.md

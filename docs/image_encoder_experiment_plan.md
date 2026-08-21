@@ -40,7 +40,7 @@ Suggested artifact names:
 - `configs/experiment/image_embedding_smoke.yaml`
 - `configs/experiment/image_embedding_pilot.yaml`
 - `configs/experiment/image_embedding_training.yaml`
-- `reports/image_encoder_benchmark.md`
+- `reports/image_encoder.md`
 
 ## 2. Image data pipeline
 

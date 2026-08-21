@@ -354,12 +354,8 @@ def load_hard_negative_experiment_config(path: Path) -> HardNegativeExperimentCo
         _positive_int(value, f"evaluation.recall_at[{index}]")
         for index, value in enumerate(recall_values)
     )
-    ap_at = _positive_int(
-        evaluation_raw["average_precision_at"], "evaluation.average_precision_at"
-    )
-    validation_candidate_k = _positive_int(
-        evaluation_raw["candidate_k"], "evaluation.candidate_k"
-    )
+    ap_at = _positive_int(evaluation_raw["average_precision_at"], "evaluation.average_precision_at")
+    validation_candidate_k = _positive_int(evaluation_raw["candidate_k"], "evaluation.candidate_k")
     checkpoint_metric = _typed(
         evaluation_raw["checkpoint_metric"], str, "evaluation.checkpoint_metric"
     )

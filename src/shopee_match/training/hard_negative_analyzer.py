@@ -77,9 +77,7 @@ def _load_summary_config(
                 checkpoint_sha256=_digest(
                     raw["checkpoint_sha256"], f"runs[{index}].checkpoint_sha256"
                 ),
-                metrics_sha256=_digest(
-                    raw["metrics_sha256"], f"runs[{index}].metrics_sha256"
-                ),
+                metrics_sha256=_digest(raw["metrics_sha256"], f"runs[{index}].metrics_sha256"),
             )
         )
     if len({run.seed for run in runs}) != len(runs) or canonical_seed not in {
@@ -102,9 +100,7 @@ def _load_frozen_run(run: FrozenRun, baseline: dict[str, float]) -> dict[str, An
     if sha256_file(config.artifacts.metrics) != run.metrics_sha256:
         raise ConfigurationError(f"Frozen metrics hash mismatch for seed {run.seed}")
     checkpoint = torch.load(config.artifacts.checkpoint, map_location="cpu", weights_only=False)
-    metrics = cast(
-        dict[str, Any], json.loads(config.artifacts.metrics.read_text(encoding="utf-8"))
-    )
+    metrics = cast(dict[str, Any], json.loads(config.artifacts.metrics.read_text(encoding="utf-8")))
     if (
         checkpoint.get("checkpoint_version") != "phase6.hard_negative_finetune.v1"
         or checkpoint.get("seed") != run.seed
@@ -174,17 +170,17 @@ improved precision at the frozen Phase 5 recall operating point in every run, pr
 Recall@20 exactly, and did not regress mAP@20. The effect is deliberately reported as modest.
 
 The earlier joint fusion/pair-head pilot failed because it distorted the retrieval embedding; its
-failure is retained in `hard_negative_mining_pilot.md`. The accepted method freezes fusion and
-updates only the symmetric pair classifier using a 75/25 mix of original/random-pair and mined
-hard-negative BCE.
+failure remains in local run evidence and is summarized in `reports/hard_negative_mining.md`.
+The accepted method freezes fusion and updates only the symmetric pair classifier using a 75/25
+mix of original/random-pair and mined hard-negative BCE.
 
 ## Frozen Phase 5 reference
 
 | Metric | Value |
 |---|---:|
-| Pair-head mAP@20 | {baseline['map_at_20']:.5f} |
-| Controlled-recall precision | {baseline['controlled_precision']:.5f} |
-| Pair-head Recall@20 | {baseline['recall_at_20']:.5f} |
+| Pair-head mAP@20 | {baseline["map_at_20"]:.5f} |
+| Controlled-recall precision | {baseline["controlled_precision"]:.5f} |
+| Pair-head Recall@20 | {baseline["recall_at_20"]:.5f} |
 
 ## Repeated-seed validation
 
@@ -226,9 +222,7 @@ def summarize_hard_negative_runs(config_path: Path) -> dict[str, object]:
     """Verify frozen run hashes, aggregate validation results, and close Phase 6."""
     canonical_seed, baseline, runs, report_path = _load_summary_config(config_path)
     frozen_runs = [(run, _load_frozen_run(run, baseline)) for run in runs]
-    manifest_hashes = {
-        metrics["provenance"]["manifest_sha256"] for _run, metrics in frozen_runs
-    }
+    manifest_hashes = {metrics["provenance"]["manifest_sha256"] for _run, metrics in frozen_runs}
     if len(manifest_hashes) != 1:
         raise DataValidationError("Repeated Phase 6 runs did not use the same mined manifest")
     _write_text_atomic(report_path, _render_report(canonical_seed, baseline, frozen_runs))

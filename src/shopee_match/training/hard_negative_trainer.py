@@ -82,9 +82,7 @@ def _load_mining_metadata(config: HardNegativeExperimentConfig) -> dict[str, Any
         "config_sha256": config.source.multimodal_config_sha256,
         "checkpoint_sha256": config.source.checkpoint_sha256,
         "metrics_sha256": config.source.metrics_sha256,
-        "split_manifest_sha256": sha256_file(
-            config.source.experiment.data.split_manifest
-        ),
+        "split_manifest_sha256": sha256_file(config.source.experiment.data.split_manifest),
     }
     if (
         metadata.get("pipeline_version") != "phase6.hard_negative_mining.v1"
@@ -287,11 +285,11 @@ loss; it does not replace the original training signal.
 
 ### Acceptance gates
 
-- mAP non-regression: `{str(checks['map_pass']).lower()}`
-- Recall@20 drop no greater than 0.002: `{str(checks['recall_pass']).lower()}`
+- mAP non-regression: `{str(checks["map_pass"]).lower()}`
+- Recall@20 drop no greater than 0.002: `{str(checks["recall_pass"]).lower()}`
 - Precision improved at the Phase 5 recall target: `{controlled_pass}`
-- Variant-conflict errors did not increase: `{str(checks['variant_conflict_pass']).lower()}`
-- Pilot outcome: **{checks['status']}**
+- Variant-conflict errors did not increase: `{str(checks["variant_conflict_pass"]).lower()}`
+- Pilot outcome: **{checks["status"]}**
 
 ## Training history
 
@@ -366,9 +364,7 @@ def run_hard_negative_experiment(
         T_max=config.training.epochs,
         eta_min=config.training.minimum_learning_rate,
     )
-    source_pair = config.source.metrics["validation"]["selected_checkpoint"][
-        "pair_head_rerank"
-    ]
+    source_pair = config.source.metrics["validation"]["selected_checkpoint"]["pair_head_rerank"]
     target_recall = float(source_pair["selected_pair_threshold"]["recall"])
     baseline, baseline_cosine, baseline_pair = _evaluate_validation(
         model,
@@ -557,18 +553,12 @@ def run_hard_negative_experiment(
         device,
         minimum_recall=target_recall,
     )
-    baseline_failures = _failure_counts(
-        baseline_cosine, baseline_pair, splits["validation"]
-    )
-    selected_failures = _failure_counts(
-        selected_cosine, selected_pair, splits["validation"]
-    )
+    baseline_failures = _failure_counts(baseline_cosine, baseline_pair, splits["validation"])
+    selected_failures = _failure_counts(selected_cosine, selected_pair, splits["validation"])
     baseline_retrieval = baseline["pair_head_rerank"]["retrieval"]
     selected_retrieval = selected_validation["pair_head_rerank"]["retrieval"]
     baseline_controlled = baseline["pair_head_rerank"]["precision_at_controlled_recall"]
-    selected_controlled = selected_validation["pair_head_rerank"][
-        "precision_at_controlled_recall"
-    ]
+    selected_controlled = selected_validation["pair_head_rerank"]["precision_at_controlled_recall"]
     map_delta = float(selected_retrieval["map@20"] - baseline_retrieval["map@20"])
     recall_delta = float(selected_retrieval["recall@20"] - baseline_retrieval["recall@20"])
     precision_delta = float(selected_controlled["precision"] - baseline_controlled["precision"])

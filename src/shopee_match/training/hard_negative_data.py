@@ -227,9 +227,8 @@ def select_query_hard_negatives(
         if exclude_same_phash and query.image_phash == neighbour.image_phash:
             stats.excluded_same_phash += 1
             continue
-        if (
-            exclude_exact_normalized_title
-            and normalize_title(query.title) == normalize_title(neighbour.title)
+        if exclude_exact_normalized_title and normalize_title(query.title) == normalize_title(
+            neighbour.title
         ):
             stats.excluded_exact_title += 1
             continue
@@ -247,9 +246,7 @@ def select_query_hard_negatives(
         for row in eligible
         if has_variant_conflict(query.title, items[row.candidate_index].title)
     }
-    variants = [
-        row for row in eligible if (row.query_index, row.candidate_index) in variant_keys
-    ]
+    variants = [row for row in eligible if (row.query_index, row.candidate_index) in variant_keys]
     ordinary = [
         row for row in eligible if (row.query_index, row.candidate_index) not in variant_keys
     ]

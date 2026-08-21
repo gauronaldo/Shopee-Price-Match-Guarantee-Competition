@@ -132,31 +132,31 @@ labels. Symmetric duplicates were collapsed into one canonical pair.
 
 | Measure | Value |
 |---|---:|
-| Train listings queried | {metadata['train_listings']:,} |
-| Exact neighbours per query | {metadata['candidate_k']} |
-| Raw retrieved candidates | {counts['candidates_seen']:,} |
-| Eligible cross-label candidates | {counts['eligible']:,} |
-| Final unique mined pairs | {metadata['mined_pairs']:,} |
-| Variant-conflict pairs | {metadata['variant_conflict_pairs']:,} |
-| Symmetric duplicates removed | {counts['symmetric_duplicates_removed']:,} |
-| Pair probability median / P95 | {score['median']:.5f} / {score['p95']:.5f} |
-| Mining wall time | {metadata['wall_time_seconds']:.2f} s |
+| Train listings queried | {metadata["train_listings"]:,} |
+| Exact neighbours per query | {metadata["candidate_k"]} |
+| Raw retrieved candidates | {counts["candidates_seen"]:,} |
+| Eligible cross-label candidates | {counts["eligible"]:,} |
+| Final unique mined pairs | {metadata["mined_pairs"]:,} |
+| Variant-conflict pairs | {metadata["variant_conflict_pairs"]:,} |
+| Symmetric duplicates removed | {counts["symmetric_duplicates_removed"]:,} |
+| Pair probability median / P95 | {score["median"]:.5f} / {score["p95"]:.5f} |
+| Mining wall time | {metadata["wall_time_seconds"]:.2f} s |
 
 ## False-negative guards
 
 | Exclusion | Count |
 |---|---:|
-| Same label (true train positive) | {counts['excluded_same_label']:,} |
-| Outside probability bounds | {counts['excluded_probability']:,} |
-| Same pHash across labels | {counts['excluded_same_phash']:,} |
-| Exact normalized title across labels | {counts['excluded_exact_title']:,} |
-| Variant candidates removed by final share cap | {counts['variant_quota_removed']:,} |
+| Same label (true train positive) | {counts["excluded_same_label"]:,} |
+| Outside probability bounds | {counts["excluded_probability"]:,} |
+| Same pHash across labels | {counts["excluded_same_phash"]:,} |
+| Exact normalized title across labels | {counts["excluded_exact_title"]:,} |
+| Variant candidates removed by final share cap | {counts["variant_quota_removed"]:,} |
 
 ## Provenance
 
-- Source checkpoint SHA-256: `{metadata['source']['checkpoint_sha256']}`
-- Source config SHA-256 (canonical LF): `{metadata['source']['config_sha256']}`
-- Mined manifest SHA-256: `{metadata['manifest_sha256']}`
+- Source checkpoint SHA-256: `{metadata["source"]["checkpoint_sha256"]}`
+- Source config SHA-256 (canonical LF): `{metadata["source"]["config_sha256"]}`
+- Mined manifest SHA-256: `{metadata["manifest_sha256"]}`
 - Split: `train`
 - Test accessed: `false`
 
@@ -207,9 +207,7 @@ def mine_hard_negatives(config_path: Path) -> dict[str, object]:
     )
     for block_number, start in enumerate(range(0, len(joint), block_size), start=1):
         stop = min(start + block_size, len(joint))
-        indices, cosine = exact_topk_cosine_block(
-            joint, start, stop, config.mining.candidate_k
-        )
+        indices, cosine = exact_topk_cosine_block(joint, start, stop, config.mining.candidate_k)
         query_indices = [
             query_index
             for query_index in range(start, stop)

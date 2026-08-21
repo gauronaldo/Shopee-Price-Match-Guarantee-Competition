@@ -20,7 +20,7 @@ not silently rewritten labels.
 
 Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, and validation-tuned late
 fusion under one retrieval/pair protocol. Results and failure analysis are recorded in
-[`reports/classical_retrieval_benchmark.md`](reports/classical_retrieval_benchmark.md).
+[`reports/classical_retrieval.md`](reports/classical_retrieval.md).
 
 Phase 3 is complete. A repository-owned residual image encoder was trained from random
 initialization with conservative OpenCV preprocessing, deterministic product-aware batches,
@@ -28,20 +28,20 @@ supervised contrastive loss, exact cosine evaluation, atomic checkpoints, struct
 and concise terminal progress reporting. The frozen model reached test mAP@20 `0.55674` and
 Recall@20 `0.65941`, clearly improving on supplied pHash while remaining below the
 candidate-assisted ORB pipeline. See
-[`reports/image_retrieval_final_comparison.md`](reports/image_retrieval_final_comparison.md).
+[`reports/image_encoder.md`](reports/image_encoder.md).
 
 Phase 4 is complete. The train-only, randomly initialized character TextCNN reached
 validation/test mAP@20 `0.75698 / 0.74841` and Recall@20 `0.87414 / 0.86978`. It generalizes
 consistently but remains below character TF-IDF test mAP@20 `0.8564`; this honest gap and the
 categorized failure analysis define the role of each text signal in Phase 5. See
-[`reports/text_retrieval_final_comparison.md`](reports/text_retrieval_final_comparison.md).
+[`reports/text_encoder.md`](reports/text_encoder.md).
 
 Phase 5 is complete. Frozen image and text embeddings are cached once, then a repository-owned
 residual fusion module and symmetric pair head are trained without updating either encoder. Across
 three seeds, validation mAP@20 is `0.88008 ± 0.00132`. The canonical frozen-test result is mAP@20
 `0.86848`, Recall@20 `0.93235`, and pair F1 `0.68429`. It beats custom unimodal systems and TF-IDF
 retrieval on mAP, but remains below the strongest classical fused baseline (`0.8810` test mAP@20).
-See [`reports/multimodal_model_final_comparison.md`](reports/multimodal_model_final_comparison.md).
+See [`reports/multimodal_model.md`](reports/multimodal_model.md).
 
 Phase 6 is complete on validation. Exact train-only mining produced `24,332` deterministic
 cross-label hard-negative pairs after pHash/title false-negative guards and a `50%` variant cap.
@@ -49,13 +49,24 @@ The initial joint fine-tuning pilot regressed and was rejected. Freezing fusion 
 the pair head passed all three seeds: mean validation mAP@20 is `0.87926` (population std.
 `0.00007`), controlled-recall precision improves by `+0.00244` on average, and Recall@20 is
 unchanged. The improvement is real but modest; Phase 6 did not access test. See
-[`reports/hard_negative_mining_final_comparison.md`](reports/hard_negative_mining_final_comparison.md).
+[`reports/hard_negative_mining.md`](reports/hard_negative_mining.md).
+
+Phase 7 is complete on validation. Deterministic exact cosine search selected `K=50` as the
+smallest tested candidate budget that exceeds the `0.95` macro-recall target, reaching
+Recall@50 `0.97438`. FAISS HNSW with `efSearch=64` preserves the same Recall@50 and has `0.99851`
+candidate-set agreement with exact search, while reducing measured single-query p50 latency from
+`0.414 ms` to `0.200 ms`. Test remains untouched. See
+[`reports/candidate_retrieval.md`](reports/candidate_retrieval.md).
+
+For a plain-language walkthrough of every implemented stage, technique, artifact, metric, and
+manual command from raw data through candidate generation, see
+[`docs/end_to_end_pipeline.md`](docs/end_to_end_pipeline.md).
 
 ## Setup, checks, and data preparation
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python -m pip install -e ".[dev]"
+.venv\Scripts\python -m pip install -e ".[dev,retrieval]"
 .venv\Scripts\ruff format --check .
 .venv\Scripts\ruff check .
 .venv\Scripts\mypy src
@@ -139,6 +150,16 @@ manual sequence is:
 Each versioned output refuses silent overwrite. To repeat a completed experiment, choose a new
 artifact root/report path or deliberately remove only that local ignored run after reviewing it.
 
+Phase 7 extracts one frozen joint embedding per validation listing, verifies exact search first,
+then benchmarks FAISS HNSW and selects `K`/`efSearch` without accessing test:
+
+```powershell
+.venv\Scripts\shopee-retrieval benchmark --config configs\experiment\candidate_retrieval_benchmark.yaml
+```
+
+The command refuses to overwrite completed metrics or the tracked report. Use a distinct artifact
+root and report path for a deliberate rerun.
+
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:
 
@@ -147,7 +168,7 @@ the held-out image test evaluation is run without retraining or test-time select
 ```
 
 Phase 3 final results and caveats are in
-[`reports/image_retrieval_final_comparison.md`](reports/image_retrieval_final_comparison.md).
+[`reports/image_encoder.md`](reports/image_encoder.md).
 
 For the optional EDA environment, install `-e ".[dev,eda]"` and open
 `notebooks/exploration/catalog_data_exploration.ipynb`. Clear notebook outputs before every
@@ -182,7 +203,7 @@ configs/                         versioned data, model, and experiment inputs
 data/                            ignored raw/derived data and frozen local split manifests
 docs/                            product contract, data/model cards, error analysis
 notebooks/exploration/           bounded diagnostics only
-reports/                         reviewed aggregate reports and lightweight figures
+reports/                         function-grouped reports, index, and lightweight figures
 scripts/                         thin command adapters only
 src/shopee_match/
   data/                          Phase 1 ingestion, audit, split, reporting
@@ -194,12 +215,12 @@ tests/                           synthetic fixtures, unit and integration tests
 app/                             inactive until the final application phase
 ```
 
-This root file is the single repository README; individual folders intentionally do not contain
-separate README files.
+This root file is the project entry point. `reports/README.md` is the only secondary README and acts
+as a navigation index for function-grouped experiment evidence.
 
 ## Phase 1 outputs
 
-- Aggregate report: [`reports/data_audit_v1.md`](reports/data_audit_v1.md)
+- Aggregate report: [`reports/data_quality_and_split.md`](reports/data_quality_and_split.md)
 - Data card: [`docs/data_card.md`](docs/data_card.md)
 - Local manifest: `data/splits/shopee_group_split_v1.jsonl` (ignored)
 - Local manifest summary: `data/splits/shopee_group_split_v1.summary.json` (ignored)

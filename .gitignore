@@ -272,7 +272,19 @@ mlruns/
 lightning_logs/
 reports/figures/generated/
 reports/tables/generated/
-reports/competition_solution_review.md
+# Frozen experiment configs still emit their immutable run-level Markdown at
+# the reports root. Keep those regenerated files local; reviewed showcase
+# reports live in function-specific subdirectories.
+/reports/*.md
+!/reports/README.md
+!/reports/candidate_retrieval.md
+!/reports/classical_retrieval.md
+!/reports/competition_solution_review.md
+!/reports/data_quality_and_split.md
+!/reports/hard_negative_mining.md
+!/reports/image_encoder.md
+!/reports/multimodal_model.md
+!/reports/text_encoder.md
 *.ckpt
 *.pth
 *.pt

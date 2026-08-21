@@ -99,6 +99,52 @@ def load_splits(metadata_csv: Path, manifest_path: Path) -> dict[str, Evaluation
     }
 
 
+def load_named_split(metadata_csv: Path, manifest_path: Path, split_name: str) -> EvaluationSplit:
+    """Load only one named split so validation workflows never retain test labels."""
+    if split_name not in {"train", "validation", "test"}:
+        raise ValueError("split_name must be train, validation, or test")
+    selected_ids: set[str] = set()
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            try:
+                record = json.loads(line)
+                posting_id = str(record["posting_id"])
+                split = str(record["split"])
+            except (json.JSONDecodeError, KeyError, TypeError) as error:
+                raise DataValidationError(
+                    f"Invalid split manifest record at line {line_number}"
+                ) from error
+            if split == split_name:
+                if posting_id in selected_ids:
+                    raise DataValidationError(f"Duplicate manifest posting_id: {posting_id}")
+                selected_ids.add(posting_id)
+    if not selected_ids:
+        raise DataValidationError(f"Split {split_name!r} is empty")
+
+    items: list[CorpusItem] = []
+    labels: dict[str, str] = {}
+    with metadata_csv.open("r", encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            posting_id = row["posting_id"]
+            if posting_id not in selected_ids:
+                continue
+            if posting_id in labels:
+                raise DataValidationError(f"Metadata contains duplicate posting_id: {posting_id}")
+            labels[posting_id] = row["label_group"]
+            items.append(
+                CorpusItem(
+                    posting_id=posting_id,
+                    image=row["image"],
+                    image_phash=row["image_phash"],
+                    title=row["title"],
+                )
+            )
+    if set(labels) != selected_ids:
+        raise DataValidationError(f"Metadata is missing rows from split {split_name!r}")
+    items.sort(key=lambda item: item.posting_id)
+    return EvaluationSplit(tuple(items), labels)
+
+
 def _relevant_by_query(labels: dict[str, str]) -> dict[str, set[str]]:
     members: dict[str, set[str]] = {}
     for posting_id, label in labels.items():

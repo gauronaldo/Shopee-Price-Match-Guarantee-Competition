@@ -149,7 +149,7 @@ def run_multimodal_validation_failure_analysis(config_path: Path) -> dict[str, A
         for name, ranking in rankings.items()
     }
     output_path = config.artifacts.root / "validation_failure_review.json"
-    report_path = Path("reports/multimodal_fusion_failure_analysis.md")
+    report_path = Path("artifacts/multimodal_fusion/training/failure_analysis.md")
     _write_text_atomic(
         output_path, json.dumps(review, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     )

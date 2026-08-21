@@ -80,10 +80,7 @@ def test_variant_priority_is_a_hard_share_cap() -> None:
     labels = {item.posting_id: item.posting_id for item in items}
     pairs, _stats = select_query_hard_negatives(
         0,
-        [
-            MiningCandidate(0, index, 0.9 - index / 100, 0.8 - index / 100)
-            for index in range(1, 5)
-        ],
+        [MiningCandidate(0, index, 0.9 - index / 100, 0.8 - index / 100) for index in range(1, 5)],
         items,
         labels,
         negatives_per_query=4,
