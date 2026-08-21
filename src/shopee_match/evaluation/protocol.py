@@ -248,6 +248,60 @@ def select_threshold(ranking: Ranking, label_by_id: dict[str, str]) -> dict[str,
     return best
 
 
+def precision_at_minimum_recall(
+    ranking: Ranking,
+    label_by_id: dict[str, str],
+    minimum_recall: float,
+) -> dict[str, float]:
+    """Find the most precise retrieved-pair threshold that preserves a recall target."""
+    if not 0 < minimum_recall <= 1:
+        raise ValueError("minimum_recall must be inside (0, 1]")
+    _validate_ranking(ranking, label_by_id)
+    relevant = _relevant_by_query(label_by_id)
+    scored_labels = sorted(
+        (
+            (candidate.score, candidate.posting_id in relevant[query_id])
+            for query_id, candidates in ranking.items()
+            for candidate in candidates
+        ),
+        key=lambda item: -item[0],
+    )
+    total_positive = sum(len(value) for value in relevant.values())
+    true_positive = false_positive = 0
+    best: dict[str, float] | None = None
+    index = 0
+    while index < len(scored_labels):
+        threshold = scored_labels[index][0]
+        while index < len(scored_labels) and scored_labels[index][0] == threshold:
+            if scored_labels[index][1]:
+                true_positive += 1
+            else:
+                false_positive += 1
+            index += 1
+        recall = true_positive / total_positive if total_positive else 0.0
+        if recall < minimum_recall:
+            continue
+        precision = true_positive / (true_positive + false_positive) if true_positive else 0.0
+        result = {
+            "threshold": threshold,
+            "precision": precision,
+            "recall": recall,
+            "true_positive": float(true_positive),
+            "false_positive": float(false_positive),
+            "false_negative": float(total_positive - true_positive),
+            "minimum_recall": minimum_recall,
+        }
+        if best is None or (precision, threshold) > (best["precision"], best["threshold"]):
+            best = result
+    if best is None:
+        maximum_recall = true_positive / total_positive if total_positive else 0.0
+        raise ValueError(
+            f"Retrieved candidates cannot reach minimum recall {minimum_recall}; "
+            f"maximum is {maximum_recall}"
+        )
+    return best
+
+
 def ranking_to_json(ranking: Ranking) -> dict[str, list[dict[str, Any]]]:
     return {
         query: [

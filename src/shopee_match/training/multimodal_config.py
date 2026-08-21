@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from shopee_match.errors import ConfigurationError
+from shopee_match.hashing import matches_frozen_sha256
 from shopee_match.models import MultimodalFusionSpec
 from shopee_match.training.image_evaluation_config import (
     FrozenImageTestConfig,
@@ -25,7 +26,6 @@ from shopee_match.training.text_config import (
 from shopee_match.training.text_evaluation_config import (
     FrozenTextTestConfig,
     load_frozen_text_test_config,
-    sha256_file,
 )
 
 
@@ -115,10 +115,10 @@ def _sha256_digest(value: Any, location: str) -> str:
 
 def _verify_frozen_config(path: Path, expected: str, location: str) -> None:
     try:
-        actual = sha256_file(path)
+        matches, actual = matches_frozen_sha256(path, expected)
     except OSError as exc:
         raise ConfigurationError(f"Cannot read {location}: {path}") from exc
-    if actual != expected:
+    if not matches:
         raise ConfigurationError(f"{location} SHA-256 mismatch: expected {expected}, got {actual}")
 
 
