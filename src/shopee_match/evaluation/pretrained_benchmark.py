@@ -255,7 +255,7 @@ def _render_report(run: dict[str, Any]) -> str:
         for band, row in run["validation"]["group_size_strata"].items()
     )
     scratch_image_row = (
-        "| Scratch residual CNN | image | none | "
+        "| Custom residual CNN | image | random initialization | "
         f"{scratch_image['map@20']:.5f} | {scratch_image['recall@20']:.5f} | n/a | n/a |"
     )
     pretrained_row = (
@@ -264,7 +264,7 @@ def _render_report(run: dict[str, Any]) -> str:
         f"{pretrained50['map@50']:.5f} | {pretrained50['recall@50']:.5f} |"
     )
     scratch_joint_row = (
-        "| Scratch multimodal joint | image + title | none | "
+        "| Custom multimodal joint | image + title | random initialization | "
         f"{scratch_joint['map@20']:.5f} | {scratch_joint['recall@20']:.5f} | "
         f"{scratch_joint['map@50']:.5f} | {scratch_joint['recall@50']:.5f} |"
     )
@@ -274,7 +274,7 @@ def _render_report(run: dict[str, Any]) -> str:
     pretrained_model = run["model"]
     pretrained_efficiency = run["efficiency"]
     scratch_efficiency_row = (
-        "| Scratch residual CNN | "
+        "| Custom residual CNN | "
         f"{scratch_model['parameter_count']:,} | {scratch_model['checkpoint_bytes']:,} | "
         f"{scratch_model['embedding_dim']} / {scratch_model['embedding_storage_bytes']:,} | "
         f"{scratch_validation['embedding_throughput_per_second']:.2f} | "
@@ -335,7 +335,7 @@ not access test.
 This is the modality-matched efficiency comparison. Both rows use the same validation listings and
 exact-cosine protocol. The EfficientNet weight file is not a training checkpoint from this project.
 Its local training cost is zero, but the external ImageNet pretraining cost is unknown and must not
-be interpreted as free compute. The scratch multimodal system is omitted from this table because its
+be interpreted as free compute. The custom multimodal system is omitted from this table because its
 Phase 7 extraction benchmark used cached encoder outputs rather than end-to-end image/title
 decoding.
 
@@ -361,8 +361,9 @@ and layout cues rather than exact identity-critical text, quantity, and model-nu
 ## Interpretation
 
 This comparison isolates the value of generic supervised image pretraining. It is directly fair
-against the scratch CNN on data split, image modality, exact cosine ranking, and mAP@20/Recall@20.
-The scratch multimodal row is a system-level ceiling rather than a modality-matched comparison
+against the custom residual CNN trained from random initialization on data split, image modality,
+exact cosine ranking, and mAP@20/Recall@20.
+The custom multimodal row is a system-level ceiling rather than a modality-matched comparison
 because it also uses title information.
 
 ImageNet features can recognize shapes and semantic categories, but exact-product matching often

@@ -10,9 +10,9 @@ TorchVision EfficientNet-B1 `IMAGENET1K_V2` representation without local trainin
 
 - use the same group-disjoint validation split as Phases 3-8;
 - use the full validation corpus and deterministic exact cosine search;
-- report mAP@20 and Recall@20 against the scratch image encoder;
+- report mAP@20 and Recall@20 against the custom image encoder trained from random initialization;
 - also report Top-50 metrics under the frozen Phase 7 candidate budget;
-- keep the scratch multimodal result visible but label it as a system-level, not modality-matched,
+- keep the custom multimodal result visible but label it as a system-level, not modality-matched,
   comparison;
 - do not select weights, architecture, preprocessing, K, or thresholds on test;
 - do not access test in Phase 9 model selection.
@@ -33,7 +33,7 @@ training cost is zero; the unknown external ImageNet pretraining cost must not b
 - weight origin and SHA-256 are recorded;
 - preprocessing and feature dimension match the official weight contract;
 - exact retrieval uses the frozen Phase 7 K and validation split;
-- quality and efficiency are compared with scratch evidence in one report;
+- quality and efficiency are compared with custom-model evidence in one report;
 - domain-gap failures are documented honestly;
 - tests and static checks pass;
 - test remains untouched.

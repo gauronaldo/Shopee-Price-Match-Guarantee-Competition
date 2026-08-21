@@ -67,9 +67,9 @@ entities without using labels as graph features. The selected policy reaches pai
 
 Phase 9 is complete on validation. The SHA-256-verified TorchVision EfficientNet-B1
 `IMAGENET1K_V2` representation reaches mAP@20 `0.73753` and Recall@20 `0.82481`. It clearly
-beats the scratch image-only encoder (`0.53907 / 0.64667`) but remains below the scratch
-multimodal joint representation (`0.87023 / 0.93780`). This is a frozen comparison with no local
-fine-tuning and no test access. See
+beats the custom image-only encoder trained from random initialization (`0.53907 / 0.64667`) but
+remains below the custom multimodal joint representation (`0.87023 / 0.93780`). This is a frozen
+comparison with no local fine-tuning and no test access. See
 [`reports/pretrained_benchmark.md`](reports/pretrained_benchmark.md).
 
 ## Setup, checks, and data preparation
