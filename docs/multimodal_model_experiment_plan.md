@@ -1,4 +1,4 @@
-# Scratch multimodal model plan
+# Custom multimodal model experiment plan
 
 ## Phase 5 objective
 
@@ -41,8 +41,11 @@ fingerprints.
 - [x] A real-data smoke run completes with all five validation comparisons.
 - [x] A bounded pilot and pair-loss ablation justify the full Phase 5 configuration.
 - [x] Full validation-only training runs with early stopping and test disabled.
-- [ ] Categorize modality-disagreement and pair-reranking failures.
-- [ ] Freeze the selected artifacts and protocol before one-time test evaluation.
+- [x] Categorize modality-disagreement and pair-reranking failures.
+- [x] Run three deterministic seeds and record mean/standard deviation.
+- [x] Run contrastive-only and pair-BCE-only validation ablations.
+- [x] Freeze the selected artifacts and protocol before one-time test evaluation.
+- [x] Evaluate the held-out test exactly once and refuse output overwrite.
 
 ## Pilot decision
 
@@ -53,5 +56,6 @@ The full run selected epoch 1 at mAP@20 `0.87903`, Recall@20 `0.93780`, and pair
 stopped after 7 of 30 epochs. See
 [`../reports/multimodal_fusion_training_summary.md`](../reports/multimodal_fusion_training_summary.md).
 
-Phase 5 remains open until modality-disagreement failures are categorized, repeated-seed value is
-assessed, and the selected checkpoint/protocol are frozen before one-time test evaluation.
+Phase 5 is closed. The canonical held-out result is mAP@20 `0.86848`, Recall@20 `0.93235`, and
+pair F1 `0.68429`. See
+[`../reports/multimodal_model_final_comparison.md`](../reports/multimodal_model_final_comparison.md).

@@ -10,7 +10,11 @@ from pathlib import Path
 
 from shopee_match.errors import ShopeeMatchError
 from shopee_match.logging import configure_logging
+from shopee_match.training.multimodal_analyzer import (
+    run_multimodal_validation_failure_analysis,
+)
 from shopee_match.training.multimodal_data import prepare_frozen_multimodal_cache
+from shopee_match.training.multimodal_evaluator import run_frozen_multimodal_test
 from shopee_match.training.multimodal_trainer import (
     refresh_multimodal_training_report,
     run_multimodal_experiment,
@@ -28,7 +32,16 @@ def _nonnegative_int(value: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="shopee-multimodal")
-    parser.add_argument("command", choices=("prepare", "train", "refresh-report"))
+    parser.add_argument(
+        "command",
+        choices=(
+            "prepare",
+            "train",
+            "analyze-validation",
+            "evaluate-frozen-test",
+            "refresh-report",
+        ),
+    )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
         "--progress-updates-per-epoch",
@@ -50,6 +63,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.config,
                 progress_updates_per_epoch=args.progress_updates_per_epoch,
             )
+        elif args.command == "analyze-validation":
+            result = run_multimodal_validation_failure_analysis(args.config)
+        elif args.command == "evaluate-frozen-test":
+            result = run_frozen_multimodal_test(args.config)
         else:
             result = refresh_multimodal_training_report(args.config)
     except (ShopeeMatchError, OSError, ValueError, RuntimeError) as exc:

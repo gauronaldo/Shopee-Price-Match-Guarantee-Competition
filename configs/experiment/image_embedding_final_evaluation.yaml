@@ -8,7 +8,7 @@ frozen:
   checkpoint: artifacts/scratch_image_encoder/training/best.pt
   checkpoint_sha256: 6ea26b493d643b148cbcc48006231637b266491a0a026d7fdbd22284f7100e07
   training_config: configs/experiment/image_embedding_training.yaml
-  training_config_sha256: 7d9551060b2b47a023eaf00d39f92fbb2174102914101a613cfa2f8a1cb8c06a
+  training_config_sha256: 93286c4c66cd68a0d72c2f5894ac6a8347208892267c269ba59bc3f46fee3bd1
   training_metrics: artifacts/scratch_image_encoder/training/metrics.json
   training_metrics_sha256: 3b389c5dd6cb58548249931fa77b1aa6b5821d540f07f9d99294e8725cee2a6a
   validation_metric: map@20
@@ -23,4 +23,4 @@ evaluation:
   candidate_k: 20
 artifacts:
   root: artifacts/scratch_image_encoder/final_evaluation
-  report: reports/scratch_image_encoder_final_evaluation.md
+  report: reports/image_encoder_final_evaluation.md

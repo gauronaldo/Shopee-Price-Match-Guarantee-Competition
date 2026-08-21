@@ -3,7 +3,7 @@ seed: 2026
 data:
   metadata_csv: data/raw/train.csv
   split_manifest: data/splits/shopee_group_split_v1.jsonl
-model_config: configs/model/scratch_character_text_cnn.yaml
+model_config: configs/model/custom_character_text_cnn.yaml
 tokenization:
   level: character
   normalization: nfkc_casefold_identity_preserving
@@ -37,4 +37,3 @@ evaluation:
 artifacts:
   root: artifacts/scratch_text_encoder/pilot
   report: artifacts/scratch_text_encoder/pilot/report.md
-

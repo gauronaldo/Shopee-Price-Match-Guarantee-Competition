@@ -62,7 +62,7 @@ These findings motivate Phase 5 directly: preserve TF-IDF as a strong lexical ch
 the scratch TextCNN with the frozen scratch image encoder, and measure whether multimodal evidence
 recovers lexical misses without increasing variant-confusion errors. Detailed validation-only
 examples and taxonomy are recorded in
-[`scratch_text_encoder_failure_analysis.md`](scratch_text_encoder_failure_analysis.md).
+[`text_encoder_failure_analysis.md`](text_encoder_failure_analysis.md).
 
 ## Phase 4 closure
 
@@ -74,4 +74,3 @@ The Phase 4 exit criteria are satisfied:
 - the model is compared fairly with character TF-IDF;
 - categorized validation failures are documented;
 - the weak result relative to TF-IDF is retained and explained rather than hidden.
-

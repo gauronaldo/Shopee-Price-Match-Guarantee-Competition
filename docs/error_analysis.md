@@ -46,7 +46,7 @@ The next approved experiment is the already configured 224-pixel full run. Highe
 preserve packaging text, logos, and fine product details that are suppressed at 128 pixels. This
 is a targeted response to the measured layout-shortcut failure; no larger backbone or additional
 loss is introduced before that hypothesis is evaluated. Quantitative details are recorded in
-[`../reports/scratch_image_encoder_pilot.md`](../reports/scratch_image_encoder_pilot.md).
+[`../reports/image_encoder_pilot.md`](../reports/image_encoder_pilot.md).
 
 ## Final scratch image review
 
@@ -57,4 +57,4 @@ of reviewed retrieval misses. Coarse-category or brand-family negatives account 
 cases; two false matches are probable label fragmentation.
 
 Full counts, examples, sampling limitations, and the resulting Phase 4 motivation are recorded in
-[`../reports/scratch_image_encoder_failure_analysis.md`](../reports/scratch_image_encoder_failure_analysis.md).
+[`../reports/image_encoder_failure_analysis.md`](../reports/image_encoder_failure_analysis.md).

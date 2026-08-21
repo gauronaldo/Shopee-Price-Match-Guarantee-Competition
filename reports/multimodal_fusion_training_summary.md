@@ -27,7 +27,7 @@ learning rate, pair-negative ratio, and validation protocol. Only the pair-BCE w
 
 | System | Pair-BCE weight | mAP@20 | Recall@20 | Pair F1 |
 |---|---:|---:|---:|---:|
-| Simple score fusion | — | 0.87358 | **0.94005** | 0.70437 |
+| Simple score fusion | - | 0.87358 | **0.94005** | 0.70437 |
 | Residual pair head | 0.50 | 0.87565 | 0.93666 | 0.70274 |
 | Residual pair head | 0.25 | 0.87868 | 0.93813 | 0.71081 |
 | Residual pair head | **0.10** | **0.87903** | 0.93780 | **0.71285** |
@@ -41,8 +41,8 @@ not an across-the-board improvement.
 
 | Method | Validation mAP@20 | Validation Recall@20 | Pair F1 |
 |---|---:|---:|---:|
-| Frozen image encoder | 0.53907 | 0.64667 | — |
-| Frozen text encoder | 0.75693 | 0.87414 | — |
+| Frozen image encoder | 0.53907 | 0.64667 | - |
+| Frozen text encoder | 0.75693 | 0.87414 | - |
 | Simple score fusion | 0.87358 | **0.94005** | 0.70437 |
 | Selected residual joint embedding | 0.87023 | 0.93780 | 0.70185 |
 | Selected residual pair-head rerank | **0.87903** | 0.93780 | **0.71285** |
@@ -62,15 +62,15 @@ that lower optimization loss does not automatically mean better retrieval qualit
 ## Frozen artifact identifiers
 
 - Full checkpoint SHA-256: `95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4`.
-- Full training config SHA-256: `2a0d9912668fa0758bffc13e16a34791c3708cee02063ae4b6d25bc4956bab53`.
-- Refreshed training metrics SHA-256: `980d13cbc7723dd2462b88ccfdbd4b61434928b794600f29adb81b0dcb25884e`.
+- Full training config SHA-256: `279c96794c207fb2e62e4638cdae315dc4ffd4a2b85ecf039f41861e7412377c`.
+- Refreshed training metrics SHA-256: `da4d681cf0fb656905748a85c88f1285016ae4aee690826fdcd809521de4a313`.
+- Frozen-test config SHA-256: `efff32e01de6eae9024c71b60c7472e63ca137b50977372ceaa416b4ee5c8e00`.
+- Frozen-test metrics SHA-256: `93d19d1f18489a3b2c561770b9a11fa233f972b82dcff743b85c9259c29dc89f`.
 
-These hashes identify the current validation-selected artifacts. A dedicated frozen-test config
-has not yet been created, and test remains disabled.
+These hashes identify the validation-selected artifacts and the completed one-time test result.
 
-## Remaining Phase 5 gates
+## Phase 5 closure
 
-Full training is complete, but Phase 5 remains open until modality-disagreement failures are
-categorized, the selected artifacts/protocol are frozen in a one-time test configuration, and the
-value of repeated seeds is assessed.
-
+Categorized validation analysis, three-seed stability, loss-component ablation, SHA-256 locking,
+and one-time held-out test evaluation are complete. Phase 5 is closed; the canonical test result is
+mAP@20 `0.86848`, Recall@20 `0.93235`, and pair F1 `0.68429`.

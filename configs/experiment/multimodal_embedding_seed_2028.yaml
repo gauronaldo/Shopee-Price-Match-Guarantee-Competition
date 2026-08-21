@@ -1,5 +1,5 @@
 config_version: phase5.multimodal_experiment.v1
-seed: 2026
+seed: 2028
 data:
   metadata_csv: data/raw/train.csv
   split_manifest: data/splits/shopee_group_split_v1.jsonl
@@ -13,24 +13,24 @@ cache:
   root: artifacts/multimodal_fusion/frozen_encoder_cache
   batch_size: 64
   num_workers: 0
-model_config: configs/model/custom_multimodal_fusion.yaml
+model_config: configs/model/residual_multimodal_fusion.yaml
 training:
   device: cuda
-  epochs: 2
-  products_per_batch: 8
+  epochs: 30
+  products_per_batch: 16
   samples_per_product: 2
-  batches_per_epoch: 4
-  learning_rate: 0.001
+  batches_per_epoch: 150
+  learning_rate: 0.0003
   weight_decay: 0.0001
   minimum_learning_rate: 0.000001
   gradient_clip_norm: 5.0
-  early_stopping_patience: 2
+  early_stopping_patience: 6
   deterministic: true
   freeze_image_encoder: true
   freeze_text_encoder: true
 loss:
   supervised_contrastive_weight: 1.0
-  pair_bce_weight: 0.5
+  pair_bce_weight: 0.1
   temperature: 0.07
   maximum_negative_ratio: 3
 evaluation:
@@ -43,7 +43,8 @@ evaluation:
   average_precision_at: 20
   candidate_k: 20
   checkpoint_metric: map@20
-  simple_fusion_image_weights: [0.0, 0.25, 0.5, 0.75, 1.0]
+  checkpoint_target: pair_head_rerank
+  simple_fusion_image_weights: [0.0, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1.0]
 artifacts:
-  root: artifacts/multimodal_fusion/smoke
-  report: reports/multimodal_fusion_smoke.md
+  root: artifacts/multimodal_fusion/seed_2028
+  report: reports/multimodal_fusion_seed_2028_benchmark.md

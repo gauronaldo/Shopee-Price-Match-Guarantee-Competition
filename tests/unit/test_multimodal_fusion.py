@@ -8,11 +8,19 @@ import pytest
 import torch
 
 from shopee_match.errors import ConfigurationError
+from shopee_match.evaluation.multimodal_failure_analysis import (
+    build_multimodal_failure_review,
+)
 from shopee_match.evaluation.multimodal_retrieval import (
     rank_simple_score_fusion,
     select_simple_score_fusion,
 )
-from shopee_match.evaluation.protocol import retrieval_metrics
+from shopee_match.evaluation.protocol import (
+    CorpusItem,
+    EvaluationSplit,
+    ScoredCandidate,
+    retrieval_metrics,
+)
 from shopee_match.models import (
     LearnedMultimodalFusion,
     MultimodalFusionSpec,
@@ -23,6 +31,7 @@ from shopee_match.training.multimodal_config import (
     load_multimodal_model_config,
 )
 from shopee_match.training.multimodal_data import CachedMultimodalDataset
+from shopee_match.training.multimodal_evaluator import ensure_frozen_test_output_absent
 
 
 def _spec() -> MultimodalFusionSpec:
@@ -126,6 +135,49 @@ def test_multimodal_spec_rejects_mismatched_modality_dimensions() -> None:
         MultimodalFusionSpec(8, 7, 16, 6, 8, 0.0).validate()
 
 
+def test_multimodal_failure_review_separates_rescues_and_regressions() -> None:
+    posting_ids = ("a1", "a2", "b1", "b2")
+    labels = {"a1": "a", "a2": "a", "b1": "b", "b2": "b"}
+    split = EvaluationSplit(
+        tuple(
+            CorpusItem(value, f"{value}.jpg", value, f"product {value[-1]} 10ml")
+            for value in posting_ids
+        ),
+        labels,
+    )
+
+    def ranking(top_by_query: dict[str, str]) -> dict[str, list[ScoredCandidate]]:
+        return {
+            query: [
+                ScoredCandidate(top_by_query[query], 0.9),
+                ScoredCandidate(
+                    next(
+                        value for value in posting_ids if value not in {query, top_by_query[query]}
+                    ),
+                    0.5,
+                ),
+            ]
+            for query in posting_ids
+        }
+
+    correct = {"a1": "a2", "a2": "a1", "b1": "b2", "b2": "b1"}
+    wrong = {"a1": "b1", "a2": "b2", "b1": "a1", "b2": "a2"}
+    review = build_multimodal_failure_review(
+        {
+            "image": ranking(correct),
+            "text": ranking(wrong),
+            "simple_fusion": ranking(correct),
+            "learned_fusion": ranking(correct),
+            "pair_head": ranking(wrong),
+        },
+        split,
+    )
+    assert review["counts"]["image_rescue"] == 4
+    assert review["counts"]["pair_head_regression"] == 4
+    assert review["counts"]["pair_head_rescue"] == 0
+    assert review["test_accessed"] is False
+
+
 def test_multimodal_model_config_accepts_only_repository_random_initialization(
     tmp_path: Path,
 ) -> None:
@@ -165,6 +217,16 @@ def test_cached_multimodal_dataset_preserves_alignment(tmp_path: Path) -> None:
     assert dataset.posting_ids == ("p1", "p2")
     assert dataset.labels == ("g", "g")
     assert dataset[1]["posting_id"] == "p2"
+
+
+def test_frozen_multimodal_evaluation_refuses_to_overwrite_output(tmp_path: Path) -> None:
+    report = tmp_path / "report.md"
+    artifact_root = tmp_path / "evaluation"
+    artifact_root.mkdir()
+    (artifact_root / "metrics.json").write_text("{}", encoding="utf-8")
+    config = SimpleNamespace(artifact_root=artifact_root, report_path=report)
+    with pytest.raises(ConfigurationError, match="refusing to rerun"):
+        ensure_frozen_test_output_absent(config)  # type: ignore[arg-type]
 
 
 def test_multimodal_experiment_rejects_test_access_and_encoder_updates(

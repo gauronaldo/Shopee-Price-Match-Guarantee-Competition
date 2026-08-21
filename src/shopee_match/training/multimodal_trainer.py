@@ -653,7 +653,7 @@ def run_multimodal_experiment(
 
 
 def refresh_multimodal_training_report(config_path: Path) -> dict[str, object]:
-    """Refresh metrics/report metadata from checkpoints without training or evaluation."""
+    """Refresh report and path-sensitive provenance without training or evaluation."""
     config = load_multimodal_experiment_config(config_path)
     best_path = config.artifacts.root / "best.pt"
     latest_path = config.artifacts.root / "latest.pt"
@@ -684,6 +684,11 @@ def refresh_multimodal_training_report(config_path: Path) -> dict[str, object]:
         "best_epoch": int(best["best_epoch"]),
         "stopped_early": len(history) < config.training.epochs,
     }
+    provenance = cast(dict[str, Any], run.get("provenance", {}))
+    provenance["config_sha256"] = _sha256(config.config_path)
+    provenance["model_config_sha256"] = _sha256(config.model_config_path)
+    provenance["metadata_refresh"] = "path_refactor_only_no_training_or_evaluation"
+    run["provenance"] = provenance
     _write_text_atomic(metrics_path, json.dumps(run, indent=2, sort_keys=True) + "\n")
     _write_text_atomic(config.artifacts.report, _render_report(run))
     return {

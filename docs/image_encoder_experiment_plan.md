@@ -36,11 +36,11 @@ multimodal evidence are allowed in this phase.
 
 Suggested artifact names:
 
-- `configs/model/scratch_residual_image_encoder.yaml`
+- `configs/model/custom_residual_image_encoder.yaml`
 - `configs/experiment/image_embedding_smoke.yaml`
 - `configs/experiment/image_embedding_pilot.yaml`
 - `configs/experiment/image_embedding_training.yaml`
-- `reports/scratch_image_encoder_benchmark.md`
+- `reports/image_encoder_benchmark.md`
 
 ## 2. Image data pipeline
 

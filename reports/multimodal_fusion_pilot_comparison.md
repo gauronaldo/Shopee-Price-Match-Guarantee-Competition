@@ -57,5 +57,6 @@ The validation-only ablation changed one factor at a time:
 2. pair-BCE `0.25`: mAP@20 `0.87868`, pair F1 `0.71081`;
 3. pair-BCE `0.10`: mAP@20 `0.87903`, pair F1 `0.71285`.
 
-Weight `0.10` leads both selection metrics and was used for full training. The held-out test split
-remains locked.
+Weight `0.10` led both selection metrics and was used for full training. This validation-only
+selection was later frozen and evaluated once on test; see
+[`multimodal_model_final_comparison.md`](multimodal_model_final_comparison.md).

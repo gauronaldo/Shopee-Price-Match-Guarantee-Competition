@@ -164,6 +164,64 @@ def _extract_text_embeddings(
     return tuple(identifiers), np.concatenate(arrays), time.perf_counter() - started
 
 
+def extract_frozen_multimodal_split(
+    config: MultimodalExperimentConfig,
+    split_name: str,
+    *,
+    device: torch.device,
+    batch_size: int,
+    num_workers: int,
+) -> tuple[tuple[str, ...], FloatArray, FloatArray, dict[str, float]]:
+    """Extract aligned frozen image/text embeddings without creating a reusable cache."""
+    if split_name not in {"train", "validation", "test"}:
+        raise ConfigurationError("Unknown multimodal split")
+    splits = load_splits(config.data.metadata_csv, config.data.split_manifest)
+    split = splits[split_name]
+    image_model, text_model, vocabulary, maximum_length = _load_frozen_encoders(config, device)
+    image_dataset = ProductImageDataset.for_split(
+        split,
+        config.data.image_dir,
+        ImagePreprocessor(
+            config.frozen.image_config.training_experiment.image_size,
+            training=False,
+            seed=config.seed,
+        ),
+    )
+    text_dataset = ProductTextDataset(split, vocabulary, maximum_length)
+    image_loader = DataLoader(
+        image_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=device.type == "cuda",
+    )
+    text_loader = DataLoader(
+        text_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=device.type == "cuda",
+    )
+    image_ids, image_embeddings, image_seconds = _extract_image_embeddings(
+        image_model, image_loader, device, split_name
+    )
+    text_ids, text_embeddings, text_seconds = _extract_text_embeddings(
+        text_model, text_loader, device, split_name
+    )
+    expected_ids = tuple(item.posting_id for item in split.items)
+    if image_ids != text_ids or image_ids != expected_ids:
+        raise DataValidationError("Frozen image/text extraction order differs from the split")
+    return (
+        image_ids,
+        image_embeddings,
+        text_embeddings,
+        {
+            "image_extraction_seconds": image_seconds,
+            "text_extraction_seconds": text_seconds,
+        },
+    )
+
+
 def _cache_contract(config: MultimodalExperimentConfig, split_name: str) -> dict[str, object]:
     return {
         "version": "phase5.frozen_multimodal_cache.v1",

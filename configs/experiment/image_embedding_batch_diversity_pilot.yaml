@@ -4,7 +4,7 @@ data:
   metadata_csv: data/raw/train.csv
   split_manifest: data/splits/shopee_group_split_v1.jsonl
   image_dir: data/raw/train_images
-model_config: configs/model/scratch_residual_image_encoder.yaml
+model_config: configs/model/custom_residual_image_encoder.yaml
 preprocessing:
   image_size: 128
   normalization: fixed_half_range
