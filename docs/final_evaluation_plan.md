@@ -60,7 +60,8 @@ to the project owner. This limitation must remain explicit in the final report.
 - [x] consolidate final model card, limitations, ethical considerations, and dataset access terms;
 - [x] summarize repeated-seed and ablation evidence already produced in earlier phases;
 - [x] add architecture and inference-flow diagrams;
-- [ ] verify commands from a clean clone after the user supplies the competition dataset;
+- [x] verify tests and CLI imports from a clean clone; full data regeneration still requires the
+  user-provided competition download and prior frozen artifact sequence;
 - [x] audit Git for secrets, datasets, checkpoints, caches, oversized outputs, and unintended
   provenance metadata before merging.
 
