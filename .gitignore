@@ -281,6 +281,7 @@ reports/tables/generated/
 !/reports/classical_retrieval.md
 !/reports/data_quality_and_split.md
 !/reports/entity_resolution.md
+!/reports/final_evaluation.md
 !/reports/hard_negative_mining.md
 !/reports/image_encoder.md
 !/reports/multimodal_model.md

@@ -7,7 +7,11 @@ from shopee_match.clustering.graph import (
     ScoredPair,
     build_conservative_clusters,
 )
-from shopee_match.clustering.metrics import clustering_metrics, edge_metrics
+from shopee_match.clustering.metrics import (
+    candidate_pair_classification_metrics,
+    clustering_metrics,
+    edge_metrics,
+)
 
 
 def _pair(
@@ -101,3 +105,29 @@ def test_edge_metrics_use_all_true_pairs_as_recall_denominator() -> None:
     assert metrics["precision"] == pytest.approx(0.5)
     assert metrics["recall"] == pytest.approx(1 / 3)
     assert metrics["false_negative"] == pytest.approx(2)
+
+
+def test_candidate_pair_metrics_include_ranking_and_calibration() -> None:
+    labels = {"p1": "a", "p2": "a", "p3": "b", "p4": "b"}
+    pairs = [
+        _pair(1, 2, 0.9),
+        _pair(1, 3, 0.8),
+        _pair(3, 4, 0.6),
+        _pair(2, 4, 0.1),
+    ]
+    metrics = candidate_pair_classification_metrics(
+        pairs,
+        labels,
+        threshold=0.5,
+        calibration_bins=5,
+        required_recall=0.8,
+        required_precision=0.9,
+    )
+    assert metrics["precision"] == pytest.approx(2 / 3)
+    assert metrics["recall_within_candidates"] == pytest.approx(1.0)
+    assert metrics["f1_within_candidates"] == pytest.approx(0.8)
+    assert metrics["average_precision_pr_auc"] == pytest.approx(5 / 6)
+    assert metrics["brier_score"] == pytest.approx(0.205)
+    assert metrics["true_positive"] == pytest.approx(2)
+    assert metrics["false_positive"] == pytest.approx(1)
+    assert metrics["true_negative"] == pytest.approx(1)

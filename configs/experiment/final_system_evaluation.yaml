@@ -1,0 +1,42 @@
+config_version: final.system_evaluation.v1
+seed: 2026
+frozen:
+  entity_config: configs/experiment/entity_resolution_benchmark.yaml
+  entity_config_sha256: 84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794
+  entity_metrics: artifacts/entity_resolution/validation/metrics.json
+  entity_metrics_sha256: 1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f
+  candidate_k: 50
+  pair_probability_threshold: 0.16
+  reciprocal_rank: 5
+  cross_component_minimum_coverage: 1.0
+  variant_conflict_override_probability: 0.15
+  maximum_cluster_size: 64
+  manual_review_margin: 0.02
+data:
+  split: test
+  evaluate_once: true
+  allow_test_selection: false
+runtime:
+  device: cuda
+  embedding_batch_size: 64
+  pair_batch_size: 8192
+  num_workers: 0
+evaluation:
+  recall_at: [1, 5, 10, 20, 50]
+  average_precision_at: [20, 50]
+  exact_block_size: 512
+  latency_query_count: 256
+  latency_repetitions: 3
+  calibration_bins: 10
+  required_recall: 0.8
+  required_precision: 0.9
+  failure_example_limit: 30
+artifacts:
+  root: artifacts/final_evaluation/system_test
+  access_marker: artifacts/final_evaluation/system_test/test_access_started.json
+  embeddings: artifacts/final_evaluation/system_test/embeddings.npz
+  scored_pairs: artifacts/final_evaluation/system_test/scored_pairs.jsonl
+  assignments: artifacts/final_evaluation/system_test/entity_assignments.csv
+  metrics: artifacts/final_evaluation/system_test/metrics.json
+  review: artifacts/final_evaluation/system_test/failure_review.json
+  report: reports/final_evaluation.md
