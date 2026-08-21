@@ -301,7 +301,6 @@ data/                            ignored raw/derived data and frozen local split
 docs/                            product contract, data/model cards, error analysis
 notebooks/exploration/           bounded diagnostics only
 reports/                         function-grouped reports, index, and lightweight figures
-scripts/                         thin command adapters only
 src/shopee_match/
   data/                          Phase 1 ingestion, audit, split, reporting
   features/ models/ losses/      later modeling components
