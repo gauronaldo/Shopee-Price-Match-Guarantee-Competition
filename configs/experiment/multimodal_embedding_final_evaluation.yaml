@@ -1,0 +1,28 @@
+config_version: phase5.frozen_multimodal_test.v1
+seed: 2026
+runtime:
+  device: cuda
+  num_workers: 0
+  batch_size: 64
+frozen:
+  checkpoint: artifacts/multimodal_fusion/training/best.pt
+  checkpoint_sha256: 95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4
+  training_config: configs/experiment/multimodal_embedding_training.yaml
+  training_config_sha256: 279c96794c207fb2e62e4638cdae315dc4ffd4a2b85ecf039f41861e7412377c
+  training_metrics: artifacts/multimodal_fusion/training/metrics.json
+  training_metrics_sha256: da4d681cf0fb656905748a85c88f1285016ae4aee690826fdcd809521de4a313
+  validation_metric: map@20
+  validation_metric_value: 0.8790286838488245
+  checkpoint_target: pair_head_rerank
+  validation_pair_threshold: 0.24417054653167725
+  simple_fusion_image_weight: 0.4
+evaluation:
+  split: test
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+  candidate_k: 20
+artifacts:
+  root: artifacts/multimodal_fusion/final_evaluation
+  report: reports/multimodal_fusion_final_evaluation.md

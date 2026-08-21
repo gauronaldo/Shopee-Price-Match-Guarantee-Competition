@@ -1,0 +1,15 @@
+config_version: phase5.scratch_multimodal_model.v1
+model:
+  name: learned_multimodal_fusion
+  source: repository
+  initialization: random
+  image_embedding_dim: 256
+  text_embedding_dim: 256
+  fusion_hidden_dim: 512
+  joint_embedding_dim: 512
+  pair_hidden_dim: 256
+  dropout: 0.1
+  fusion_mode: residual_score_preserving
+  base_image_weight: 0.4
+  residual_scale: 0.1
+

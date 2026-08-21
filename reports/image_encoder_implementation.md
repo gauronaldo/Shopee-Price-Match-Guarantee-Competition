@@ -75,7 +75,7 @@ Two controlled 128-pixel pilots completed successfully. The original `P=8, K=2` 
 validation mAP@20 `0.30032`; changing only product diversity to `P=16, K=2` raised it to `0.34738`
 and raised Recall@20 from `0.37848` to `0.43891`. Both selected their final epoch, so the bounded
 runs had not plateaued. The detailed comparison and error analysis are in
-[`scratch_image_encoder_pilot.md`](scratch_image_encoder_pilot.md).
+[`image_encoder_pilot.md`](image_encoder_pilot.md).
 
 A 224-pixel runtime probe used about 1.01 GiB peak CUDA memory and estimated 8.62 minutes per full
 epoch, or 5.74 hours for 40 epochs. The completed full run selected epoch 39 with validation

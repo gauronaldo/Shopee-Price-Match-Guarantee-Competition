@@ -1,0 +1,50 @@
+config_version: phase5.multimodal_experiment.v1
+seed: 2026
+data:
+  metadata_csv: data/raw/train.csv
+  split_manifest: data/splits/shopee_group_split_v1.jsonl
+  image_dir: data/raw/train_images
+frozen_encoders:
+  image_evaluation_config: configs/experiment/image_embedding_final_evaluation.yaml
+  image_evaluation_config_sha256: fff0f3b410de009968f0eb140fe6e1da06806017a69cc0b423187d02cd1a6ced
+  text_evaluation_config: configs/experiment/text_embedding_final_evaluation.yaml
+  text_evaluation_config_sha256: 5c2fb9dbcf91d0e12ae32fcab134b81e725316c1a341fc23054eedf909133b07
+cache:
+  root: artifacts/multimodal_fusion/frozen_encoder_cache
+  batch_size: 64
+  num_workers: 0
+model_config: configs/model/residual_multimodal_fusion.yaml
+training:
+  device: cuda
+  epochs: 30
+  products_per_batch: 16
+  samples_per_product: 2
+  batches_per_epoch: 150
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  minimum_learning_rate: 0.000001
+  gradient_clip_norm: 5.0
+  early_stopping_patience: 6
+  deterministic: true
+  freeze_image_encoder: true
+  freeze_text_encoder: true
+loss:
+  supervised_contrastive_weight: 1.0
+  pair_bce_weight: 0.0
+  temperature: 0.07
+  maximum_negative_ratio: 3
+evaluation:
+  tune_split: validation
+  final_split: test
+  evaluate_test: false
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+  candidate_k: 20
+  checkpoint_metric: map@20
+  checkpoint_target: learned_fusion
+  simple_fusion_image_weights: [0.0, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1.0]
+artifacts:
+  root: artifacts/multimodal_fusion/contrastive_only_ablation
+  report: reports/multimodal_contrastive_only_ablation.md

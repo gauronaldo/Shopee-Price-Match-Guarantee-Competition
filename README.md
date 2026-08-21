@@ -36,6 +36,13 @@ consistently but remains below character TF-IDF test mAP@20 `0.8564`; this hones
 categorized failure analysis define the role of each text signal in Phase 5. See
 [`reports/text_retrieval_final_comparison.md`](reports/text_retrieval_final_comparison.md).
 
+Phase 5 is complete. Frozen image and text embeddings are cached once, then a repository-owned
+residual fusion module and symmetric pair head are trained without updating either encoder. Across
+three seeds, validation mAP@20 is `0.88008 ± 0.00132`. The canonical frozen-test result is mAP@20
+`0.86848`, Recall@20 `0.93235`, and pair F1 `0.68429`. It beats custom unimodal systems and TF-IDF
+retrieval on mAP, but remains below the strongest classical fused baseline (`0.8810` test mAP@20).
+See [`reports/multimodal_model_final_comparison.md`](reports/multimodal_model_final_comparison.md).
+
 ## Setup, checks, and data preparation
 
 ```powershell
@@ -84,6 +91,30 @@ retrieval protocol are locked, the held-out test command is intentionally single
 ```
 
 An existing final metrics file or report makes the evaluator refuse a second run.
+
+Phase 5 separates the one-time frozen-embedding preparation from lightweight fusion training:
+
+```powershell
+.venv\Scripts\shopee-multimodal prepare --config configs\experiment\multimodal_embedding_smoke.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_smoke.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_pilot.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_residual_fusion_pilot.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_pair_loss_025_pilot.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_pair_loss_010_pilot.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_training.yaml
+.venv\Scripts\shopee-multimodal refresh-report --config configs\experiment\multimodal_embedding_training.yaml
+.venv\Scripts\shopee-multimodal analyze-validation --config configs\experiment\multimodal_embedding_training.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_seed_2027.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_seed_2028.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_contrastive_only_ablation.yaml
+.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_pair_only_ablation.yaml
+.venv\Scripts\shopee-multimodal evaluate-frozen-test --config configs\experiment\multimodal_embedding_final_evaluation.yaml
+```
+
+`prepare` creates or verifies train/validation caches only. Subsequent fusion runs reuse those
+fingerprinted artifacts and do not recompute the frozen CNN or TextCNN embeddings.
+The frozen-test command is one-time by design and refuses to overwrite an existing metrics file or
+report.
 
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:

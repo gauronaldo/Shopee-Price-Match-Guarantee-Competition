@@ -240,6 +240,8 @@ reports/tables/local/
 *.local.jpg
 .pytest_tmp/
 .pytest-tmp/
+.codex_pytest_tmp*/
+.codex_pytest_cache*/
 
 # Shopee competition data and derived datasets
 data/raw/**
