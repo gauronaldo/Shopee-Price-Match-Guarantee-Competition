@@ -160,8 +160,8 @@ labels. Symmetric duplicates were collapsed into one canonical pair.
 - Split: `train`
 - Test accessed: `false`
 
-This report records mining only. The training and validation comparison section is appended by the
-Phase 6 training command.
+The section above records mining evidence. The Phase 6 training command appends its validation
+comparison below without changing the mined manifest.
 """
 
 

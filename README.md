@@ -43,6 +43,14 @@ three seeds, validation mAP@20 is `0.88008 ± 0.00132`. The canonical frozen-tes
 retrieval on mAP, but remains below the strongest classical fused baseline (`0.8810` test mAP@20).
 See [`reports/multimodal_model_final_comparison.md`](reports/multimodal_model_final_comparison.md).
 
+Phase 6 is complete on validation. Exact train-only mining produced `24,332` deterministic
+cross-label hard-negative pairs after pHash/title false-negative guards and a `50%` variant cap.
+The initial joint fine-tuning pilot regressed and was rejected. Freezing fusion and updating only
+the pair head passed all three seeds: mean validation mAP@20 is `0.87926` (population std.
+`0.00007`), controlled-recall precision improves by `+0.00244` on average, and Recall@20 is
+unchanged. The improvement is real but modest; Phase 6 did not access test. See
+[`reports/hard_negative_mining_final_comparison.md`](reports/hard_negative_mining_final_comparison.md).
+
 ## Setup, checks, and data preparation
 
 ```powershell
@@ -115,6 +123,21 @@ Phase 5 separates the one-time frozen-embedding preparation from lightweight fus
 fingerprinted artifacts and do not recompute the frozen CNN or TextCNN embeddings.
 The frozen-test command is one-time by design and refuses to overwrite an existing metrics file or
 report.
+
+Phase 6 separates immutable mining evidence from fine-tuning. `mine` uses train only, `train` uses
+train plus validation, and `summarize` verifies frozen hashes across the three seeds. The canonical
+manual sequence is:
+
+```powershell
+.venv\Scripts\shopee-hard-negatives mine --config configs\experiment\hard_negative_pair_head_pilot.yaml
+.venv\Scripts\shopee-hard-negatives train --config configs\experiment\hard_negative_pair_head_pilot.yaml
+.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_seed_2027.yaml --progress-updates-per-epoch 2
+.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_seed_2028.yaml --progress-updates-per-epoch 2
+.venv\Scripts\shopee-hard-negatives summarize --config configs\experiment\hard_negative_repeated_seed_summary.yaml
+```
+
+Each versioned output refuses silent overwrite. To repeat a completed experiment, choose a new
+artifact root/report path or deliberately remove only that local ignored run after reviewing it.
 
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:
