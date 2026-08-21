@@ -43,6 +43,7 @@ class MatchResponse(BaseModel):
 
     status: str
     query_mode: str
+    query_posting_id: str | None
     predicted_entity_id: str | None
     confident_match: bool
     manual_review: bool
@@ -75,6 +76,15 @@ class HealthResponse(BaseModel):
     pair_probability_threshold: float
     supported_query_modes: list[str]
     ground_truth_used_for_inference: bool
+
+
+class GuidedSampleResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    posting_id: str
+    scenario: str
+    description: str
+    title: str
 
 
 def _runtime(app: FastAPI) -> DemoRuntime:
@@ -126,11 +136,20 @@ def create_app(
     def health() -> dict[str, Any]:
         return _runtime(app).health()
 
+    @app.get(
+        "/api/v1/guided-samples",
+        response_model=list[GuidedSampleResponse],
+        tags=["catalog"],
+    )
+    def guided_samples() -> list[dict[str, str]]:
+        return _runtime(app).guided_samples()
+
     @app.post("/api/v1/match", response_model=MatchResponse, tags=["matching"])
     async def match(
         image: Annotated[UploadFile | None, File(description="Optional product image")] = None,
         title: Annotated[str | None, Form(max_length=500)] = None,
         top_k: Annotated[int | None, Form(ge=1)] = None,
+        query_posting_id: Annotated[str | None, Form()] = None,
     ) -> MatchResponse:
         service = _runtime(app)
         content = (
@@ -138,7 +157,9 @@ def create_app(
             if image is not None
             else None
         )
-        return _match_response(service.match(content, title, top_k))
+        return _match_response(
+            service.match(content, title, top_k, query_posting_id=query_posting_id)
+        )
 
     @app.post("/api/v1/match/batch", response_model=BatchMatchResponse, tags=["matching"])
     async def match_batch(

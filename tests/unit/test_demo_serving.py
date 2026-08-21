@@ -38,8 +38,22 @@ class _FakeRuntime:
             "ground_truth_used_for_inference": False,
         }
 
+    def guided_samples(self) -> list[dict[str, str]]:
+        return [
+            {
+                "posting_id": "candidate-1",
+                "scenario": "Example scenario",
+                "description": "Example description",
+                "title": "sample title",
+            }
+        ]
+
     def match(
-        self, image_bytes: bytes | None, title: str | None, top_k: int | None
+        self,
+        image_bytes: bytes | None,
+        title: str | None,
+        top_k: int | None,
+        query_posting_id: str | None = None,
     ) -> MatchPrediction:
         assert top_k == 1
         if image_bytes is not None and title:
@@ -71,6 +85,7 @@ class _FakeRuntime:
         return MatchPrediction(
             status="complete" if multimodal else "retrieval_only",
             query_mode=query_mode,
+            query_posting_id=query_posting_id,
             predicted_entity_id="entity-1" if multimodal else None,
             confident_match=multimodal,
             manual_review=False,
@@ -110,6 +125,22 @@ def test_health_and_match_contract(tmp_path: Path) -> None:
         payload = response.json()
         assert payload["predicted_entity_id"] == "entity-1"
         assert payload["candidates"][0]["accepted_match"] is True
+
+        samples = client.get("/api/v1/guided-samples")
+        assert samples.status_code == 200
+        assert samples.json()[0]["posting_id"] == "candidate-1"
+
+        guided = client.post(
+            "/api/v1/match",
+            files={"image": ("query.jpg", b"image-bytes", "image/jpeg")},
+            data={
+                "title": "sample title",
+                "top_k": "1",
+                "query_posting_id": "candidate-1",
+            },
+        )
+        assert guided.status_code == 200
+        assert guided.json()["query_posting_id"] == "candidate-1"
 
 
 def test_single_endpoint_accepts_either_modality(tmp_path: Path) -> None:

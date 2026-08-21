@@ -51,6 +51,7 @@ class CandidateEvidence:
 class MatchPrediction:
     status: str
     query_mode: str
+    query_posting_id: str | None
     predicted_entity_id: str | None
     confident_match: bool
     manual_review: bool
@@ -218,6 +219,10 @@ class DemoRuntime:
         if self.posting_ids != expected_ids:
             raise DataValidationError("Demo catalog does not align with the validation manifest")
         self.item_by_id = {item.posting_id: item for item in catalog_items}
+        self.guided_sample_ids = {sample.posting_id for sample in config.guided_samples}
+        if not self.guided_sample_ids <= set(self.item_by_id):
+            missing = sorted(self.guided_sample_ids - set(self.item_by_id))
+            raise DataValidationError(f"Guided samples are absent from the catalog: {missing}")
         self.assignment_by_id = _load_assignments(config.source.entity_assignments_path)
         if set(self.assignment_by_id) != set(self.posting_ids):
             raise DataValidationError("Demo entity assignments do not cover the catalog exactly")
@@ -271,6 +276,17 @@ class DemoRuntime:
             "supported_query_modes": ["multimodal", "image_only", "text_only"],
             "ground_truth_used_for_inference": False,
         }
+
+    def guided_samples(self) -> list[dict[str, str]]:
+        return [
+            {
+                "posting_id": sample.posting_id,
+                "scenario": sample.scenario,
+                "description": sample.description,
+                "title": self.item_by_id[sample.posting_id].title,
+            }
+            for sample in self.config.guided_samples
+        ]
 
     def catalog_image_path(self, posting_id: str) -> Path:
         item = self.item_by_id.get(posting_id)
@@ -345,6 +361,7 @@ class DemoRuntime:
         query_embedding: FloatArray,
         requested_k: int,
         started: float,
+        query_posting_id: str | None,
     ) -> MatchPrediction:
         if mode == "image_only":
             index = self.image_index
@@ -353,7 +370,10 @@ class DemoRuntime:
         else:  # pragma: no cover - internal invariant
             raise AssertionError("unsupported unimodal query mode")
         indices, scores = index.search(
-            query_embedding, self.config.policy.candidate_k, block_size=512
+            query_embedding,
+            self.config.policy.candidate_k,
+            query_ids=(query_posting_id,) if query_posting_id is not None else None,
+            block_size=512,
         )
         candidates: list[CandidateEvidence] = []
         for offset, candidate_index in enumerate(indices[0, :requested_k].tolist()):
@@ -384,6 +404,7 @@ class DemoRuntime:
         return MatchPrediction(
             status="retrieval_only",
             query_mode=mode,
+            query_posting_id=query_posting_id,
             predicted_entity_id=None,
             confident_match=False,
             manual_review=False,
@@ -404,6 +425,7 @@ class DemoRuntime:
         image_bytes: bytes | None,
         title: str | None,
         top_k: int | None = None,
+        query_posting_id: str | None = None,
     ) -> MatchPrediction:
         requested_k = top_k or self.config.policy.default_top_k
         if not 1 <= requested_k <= self.config.policy.maximum_top_k:
@@ -413,25 +435,42 @@ class DemoRuntime:
         has_title = bool(normalized_title)
         if not has_image and not has_title:
             raise ContractError("Provide a product image, a product title, or both")
+        if query_posting_id is not None and query_posting_id not in self.guided_sample_ids:
+            raise ContractError("query_posting_id must identify a configured guided sample")
         started = time.perf_counter()
         with self._inference_lock:
             if has_image and not has_title:
                 assert image_bytes is not None
                 return self._unimodal_prediction(
-                    "image_only", self._encode_image(image_bytes), requested_k, started
+                    "image_only",
+                    self._encode_image(image_bytes),
+                    requested_k,
+                    started,
+                    query_posting_id,
                 )
             if has_title and not has_image:
                 return self._unimodal_prediction(
-                    "text_only", self._encode_text(normalized_title), requested_k, started
+                    "text_only",
+                    self._encode_text(normalized_title),
+                    requested_k,
+                    started,
+                    query_posting_id,
                 )
             assert image_bytes is not None
             image, text, joint = self._encode_multimodal(image_bytes, normalized_title)
             if isinstance(self.index, ExactCosineIndex):
                 indices, scores = self.index.search(
-                    joint, self.config.policy.candidate_k, block_size=512
+                    joint,
+                    self.config.policy.candidate_k,
+                    query_ids=(query_posting_id,) if query_posting_id is not None else None,
+                    block_size=512,
                 )
             else:
-                indices, scores = self.index.search(joint, self.config.policy.candidate_k)
+                indices, scores = self.index.search(
+                    joint,
+                    self.config.policy.candidate_k,
+                    query_ids=(query_posting_id,) if query_posting_id is not None else None,
+                )
             selected_indices = indices[0]
             candidate_joint = torch.from_numpy(self.joint_embeddings[selected_indices]).to(
                 self.device
@@ -499,6 +538,7 @@ class DemoRuntime:
         return MatchPrediction(
             status="complete",
             query_mode="multimodal",
+            query_posting_id=query_posting_id,
             predicted_entity_id=unique_entities[0] if unique_entities else None,
             confident_match=confident,
             manual_review=manual_review,

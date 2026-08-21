@@ -28,6 +28,19 @@ manual-review flag. A label-blind catalog adapter retains only `posting_id`, `im
 The displayed `match_probability` is a model score at a frozen operating point. It is not a legal,
 commercial, or statistical guarantee that two listings are identical.
 
+## Guided and open-ended use
+
+The Streamlit client has two tabs:
+
+- `Guided demo` exposes six curated validation scenarios covering near duplicates, varied photos,
+  noisy wording, and variant/model confusion. Only the sample `posting_id` and scenario text are
+  versioned; images and product titles remain in the local competition data.
+- `Upload your own` accepts an image, title, or both without assuming dataset knowledge.
+
+Guided requests include their catalog `posting_id`, and every retrieval backend excludes that ID
+before ranking. This prevents a trivial similarity-1.0 self-match. Each result then places the
+query and candidate image/title side by side with the measured evidence below them.
+
 ## Local commands
 
 Install the optional runtime dependencies:
@@ -86,8 +99,9 @@ competition files and checkpoints must never be baked into or committed with the
 ## API contract
 
 - `GET /health`: model, index, device, catalog, and label-use status.
+- `GET /api/v1/guided-samples`: curated scenario metadata without labels.
 - `POST /api/v1/match`: optional multipart image, optional title, and display `top_k`; at least one
-  modality is required.
+  modality is required. Guided requests may include `query_posting_id` for self-exclusion.
 - `POST /api/v1/match/batch`: up to eight independent image/title requests.
 - `GET /api/v1/catalog/{posting_id}/image`: image evidence for a known catalog candidate.
 

@@ -25,3 +25,22 @@ runtime:
   device: auto
   maximum_upload_mb: 10
   maximum_batch_size: 8
+guided_samples:
+  - posting_id: train_3836388007
+    scenario: Near-identical visual listing
+    description: Find another smartwatch listing after excluding the selected catalog row.
+  - posting_id: train_1359948092
+    scenario: Same product across varied photos
+    description: Explore a large rose-water group with diverse packaging and seller images.
+  - posting_id: train_3185834018
+    scenario: Noisy wording and abbreviations
+    description: Match a 100-piece cotton-swab product across spelling and wording changes.
+  - posting_id: train_2128373817
+    scenario: Flavor variant confusion
+    description: Distinguish original chili sauce from the visually similar extra-spicy variant.
+  - posting_id: train_1089765047
+    scenario: Similar electronics, different models
+    description: Test whether visually similar wireless earbuds are kept as separate products.
+  - posting_id: train_2178865199
+    scenario: Product-line variant confusion
+    description: Compare closely related milk products with the same package weight.

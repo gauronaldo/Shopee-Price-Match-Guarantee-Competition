@@ -64,11 +64,19 @@ class DemoRuntimeConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class GuidedSampleSpec:
+    posting_id: str
+    scenario: str
+    description: str
+
+
+@dataclass(frozen=True, slots=True)
 class DemoConfig:
     source: DemoSourceConfig
     index: DemoIndexConfig
     policy: DemoPolicyConfig
     runtime: DemoRuntimeConfig
+    guided_samples: tuple[GuidedSampleSpec, ...]
     config_path: Path
 
 
@@ -111,7 +119,15 @@ def load_demo_config(path: Path) -> DemoConfig:
     root = _read_yaml(path, "demo config")
     _only_keys(
         root,
-        {"config_version", "source", "catalog", "index", "policy", "runtime"},
+        {
+            "config_version",
+            "source",
+            "catalog",
+            "index",
+            "policy",
+            "runtime",
+            "guided_samples",
+        },
         "config",
     )
     if root["config_version"] != "demo.inference.v1":
@@ -209,6 +225,25 @@ def load_demo_config(path: Path) -> DemoConfig:
             runtime_raw["maximum_batch_size"], "runtime.maximum_batch_size"
         ),
     )
+    samples_raw = _typed(root["guided_samples"], list, "guided_samples")
+    guided_samples: list[GuidedSampleSpec] = []
+    seen_sample_ids: set[str] = set()
+    for index_value, value in enumerate(samples_raw):
+        sample = _mapping(value, f"guided_samples[{index_value}]")
+        _only_keys(
+            sample,
+            {"posting_id", "scenario", "description"},
+            f"guided_samples[{index_value}]",
+        )
+        posting_id = _typed(sample["posting_id"], str, "guided_samples.posting_id").strip()
+        scenario = _typed(sample["scenario"], str, "guided_samples.scenario").strip()
+        description = _typed(sample["description"], str, "guided_samples.description").strip()
+        if not posting_id or not scenario or not description or posting_id in seen_sample_ids:
+            raise ConfigurationError("Guided samples must be non-empty and uniquely identified")
+        seen_sample_ids.add(posting_id)
+        guided_samples.append(GuidedSampleSpec(posting_id, scenario, description))
+    if not guided_samples:
+        raise ConfigurationError("At least one guided sample is required")
     return DemoConfig(
         source=DemoSourceConfig(
             entity_config_path=entity_path,
@@ -225,5 +260,6 @@ def load_demo_config(path: Path) -> DemoConfig:
         index=index,
         policy=policy,
         runtime=runtime,
+        guided_samples=tuple(guided_samples),
         config_path=path,
     )
