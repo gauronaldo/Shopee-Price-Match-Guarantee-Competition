@@ -88,3 +88,14 @@ The labels may contain fragmentation or variant-policy inconsistencies. Product 
 on attributes such as size, color, quantity, flavor, and model number that pHash or normalized
 titles can obscure. Dataset performance does not establish marketplace, commercial, or legal
 identity, and raw competition content must not be published from this repository.
+
+## Evaluation-use disclosure
+
+The group-disjoint test split contains 3,429 listings and 1,097 label groups. Image, text, and
+multimodal component reports evaluated this split after their respective checkpoints and thresholds
+were frozen. The complete retrieval-plus-pair-plus-clustering system was later evaluated once from
+clean commit `f87639b8942020cbd0ba04a2113f3edb15f0d3d3`; its policy was locked entirely by validation.
+
+Accordingly, the final test result is free of final-system test-time selection, but the split is not
+globally unseen to the project owner. This limitation is disclosed rather than presenting the test
+as a fresh external benchmark.

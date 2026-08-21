@@ -46,6 +46,7 @@ shopee-entity-resolution = "shopee_match.clustering.cli:main"
 shopee-text = "shopee_match.training.text_cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 shopee-pretrained = "shopee_match.evaluation.pretrained_cli:main"
+shopee-final = "shopee_match.evaluation.final_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shopee_match"]

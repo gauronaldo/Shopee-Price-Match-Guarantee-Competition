@@ -53,6 +53,107 @@ def edge_metrics(
     }
 
 
+def candidate_pair_classification_metrics(
+    pairs: list[ScoredPair],
+    label_by_id: dict[str, str],
+    *,
+    threshold: float,
+    calibration_bins: int,
+    required_recall: float,
+    required_precision: float,
+) -> dict[str, float]:
+    """Evaluate raw pair-head probabilities within the frozen retrieved candidate set."""
+    if not pairs:
+        raise ValueError("pairs must be non-empty")
+    if calibration_bins <= 0:
+        raise ValueError("calibration_bins must be positive")
+    if not all(0 <= value <= 1 for value in (threshold, required_recall, required_precision)):
+        raise ValueError("threshold and operating requirements must be inside [0, 1]")
+
+    scored: list[tuple[float, bool, str, str]] = []
+    for pair in pairs:
+        if not 0 <= pair.pair_probability <= 1:
+            raise ValueError("pair probabilities must be inside [0, 1]")
+        try:
+            positive = label_by_id[pair.left_posting_id] == label_by_id[pair.right_posting_id]
+        except KeyError as exc:
+            raise ValueError("pair references an unknown posting ID") from exc
+        scored.append(
+            (
+                pair.pair_probability,
+                positive,
+                pair.left_posting_id,
+                pair.right_posting_id,
+            )
+        )
+    scored.sort(key=lambda row: (-row[0], row[2], row[3]))
+    positive_count = sum(row[1] for row in scored)
+    negative_count = len(scored) - positive_count
+    if positive_count == 0 or negative_count == 0:
+        raise ValueError("candidate pairs must contain both positive and negative examples")
+
+    true_positive = sum(row[1] and row[0] >= threshold for row in scored)
+    false_positive = sum(not row[1] and row[0] >= threshold for row in scored)
+    false_negative = positive_count - true_positive
+    true_negative = negative_count - false_positive
+    precision = _safe_divide(true_positive, true_positive + false_positive)
+    recall = _safe_divide(true_positive, positive_count)
+
+    cumulative_positive = 0
+    average_precision_sum = 0.0
+    precision_at_required_recall = 0.0
+    recall_at_required_precision = 0.0
+    for rank, (_score, positive, _left, _right) in enumerate(scored, start=1):
+        cumulative_positive += int(positive)
+        prefix_precision = cumulative_positive / rank
+        prefix_recall = cumulative_positive / positive_count
+        if positive:
+            average_precision_sum += prefix_precision
+        if prefix_recall >= required_recall:
+            precision_at_required_recall = max(precision_at_required_recall, prefix_precision)
+        if prefix_precision >= required_precision:
+            recall_at_required_precision = max(recall_at_required_precision, prefix_recall)
+
+    brier = sum((score - float(positive)) ** 2 for score, positive, _left, _right in scored) / len(
+        scored
+    )
+    calibration_error = 0.0
+    for bin_index in range(calibration_bins):
+        lower = bin_index / calibration_bins
+        upper = (bin_index + 1) / calibration_bins
+        members = [
+            row
+            for row in scored
+            if row[0] >= lower
+            and (row[0] < upper or (bin_index == calibration_bins - 1 and row[0] <= upper))
+        ]
+        if not members:
+            continue
+        mean_probability = sum(row[0] for row in members) / len(members)
+        observed_rate = sum(row[1] for row in members) / len(members)
+        calibration_error += len(members) / len(scored) * abs(mean_probability - observed_rate)
+
+    return {
+        "threshold": threshold,
+        "precision": precision,
+        "recall_within_candidates": recall,
+        "f1_within_candidates": _f1(precision, recall),
+        "average_precision_pr_auc": average_precision_sum / positive_count,
+        "brier_score": brier,
+        "expected_calibration_error": calibration_error,
+        "precision_at_required_recall": precision_at_required_recall,
+        "required_recall": required_recall,
+        "recall_at_required_precision": recall_at_required_precision,
+        "required_precision": required_precision,
+        "true_positive": float(true_positive),
+        "false_positive": float(false_positive),
+        "true_negative": float(true_negative),
+        "false_negative_within_candidates": float(false_negative),
+        "candidate_positive_pairs": float(positive_count),
+        "candidate_negative_pairs": float(negative_count),
+    }
+
+
 def clustering_metrics(
     assignments: list[ClusterAssignment], label_by_id: dict[str, str]
 ) -> dict[str, Any]:
