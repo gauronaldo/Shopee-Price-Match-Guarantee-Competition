@@ -58,9 +58,12 @@ candidate-set agreement with exact search, while reducing measured single-query 
 `0.414 ms` to `0.200 ms`. Test remains untouched. See
 [`reports/candidate_retrieval.md`](reports/candidate_retrieval.md).
 
-For a plain-language walkthrough of every implemented stage, technique, artifact, metric, and
-manual command from raw data through candidate generation, see
-[`docs/end_to_end_pipeline.md`](docs/end_to_end_pipeline.md).
+Phase 8 is complete on validation. The frozen Phase 6 pair head scores the Phase 7 Top-50
+candidates, then reciprocal-neighbour edges and full cross-component support create conservative
+entities without using labels as graph features. The selected policy reaches pairwise precision
+`0.90165`, pairwise F1 `0.48444`, and B-cubed F1 `0.82794`; false-split group rate remains
+`0.30818`, especially for large diverse groups. Test remains untouched. See
+[`reports/entity_resolution.md`](reports/entity_resolution.md).
 
 ## Setup, checks, and data preparation
 
@@ -159,6 +162,17 @@ then benchmarks FAISS HNSW and selects `K`/`efSearch` without accessing test:
 
 The command refuses to overwrite completed metrics or the tracked report. Use a distinct artifact
 root and report path for a deliberate rerun.
+
+Phase 8 reuses the frozen validation embeddings and pair head, scores each undirected Top-50 pair
+once, and selects a conservative reciprocal-neighbour clustering policy:
+
+```powershell
+.venv\Scripts\shopee-entity-resolution benchmark `
+  --config configs\experiment\entity_resolution_benchmark.yaml
+```
+
+The command writes ignored scored-pair, assignment, metrics, and failure-review artifacts plus the
+reviewed aggregate report. It refuses to overwrite an existing completed Phase 8 run.
 
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:
