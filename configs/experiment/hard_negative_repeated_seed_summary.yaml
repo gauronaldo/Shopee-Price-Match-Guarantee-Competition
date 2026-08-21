@@ -1,0 +1,23 @@
+config_version: phase6.hard_negative_repeated_seed_summary.v1
+canonical_seed: 2026
+baseline:
+  map_at_20: 0.8790286838488245
+  controlled_precision: 0.7455724943237106
+  recall_at_20: 0.9377984084266889
+runs:
+  - seed: 2026
+    config: configs/experiment/hard_negative_pair_head_pilot.yaml
+    config_sha256: 12b8b7e97815b8cd710f3a3a6160ca3263d36453face15627b2ecc17ccab94fa
+    checkpoint_sha256: d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e
+    metrics_sha256: 7bff1b804b0a611e1a5380540e54f3b6955da3c4b4ad42ff5d7aff2442e898ee
+  - seed: 2027
+    config: configs/experiment/hard_negative_pair_head_seed_2027.yaml
+    config_sha256: d3805ccde1b23c92c6f24f0c71d8fd6e0827e181f9c0ac35e4e2f1ae6570ad6e
+    checkpoint_sha256: de483b55f666b47ce235bc52806aa131171a7ebdf37a432ab1ccab23639fb3e1
+    metrics_sha256: 71a11b7a3384deb09d850f1bde79d6fa2f0390dd109099a2720af0bae0183b00
+  - seed: 2028
+    config: configs/experiment/hard_negative_pair_head_seed_2028.yaml
+    config_sha256: bd01cfc48c55cb51ecdb89dad07ac91c0ca9326eec57ea5b402c1de948b7bbf1
+    checkpoint_sha256: 61fb65fd4103e2947c33bcb2176ee3700fe5fc5f07277a258a4521f49e99af73
+    metrics_sha256: 22fde5d6297163a13ea22ed2dd2f9d8a2421d6721cf0583acc46b216ec9000df
+report: reports/hard_negative_mining_final_comparison.md
