@@ -54,8 +54,8 @@ fusion `0.87358`. Pair-BCE weights `0.50`, `0.25`, and `0.10` were then compared
 inputs fixed. Weight `0.10` led validation mAP@20 and pair F1, so it was selected for full training.
 The full run selected epoch 1 at mAP@20 `0.87903`, Recall@20 `0.93780`, and pair F1 `0.71285`, then
 stopped after 7 of 30 epochs. See
-[`../reports/multimodal_fusion_training_summary.md`](../reports/multimodal_fusion_training_summary.md).
+[`../reports/multimodal_model.md`](../reports/multimodal_model.md).
 
 Phase 5 is closed. The canonical held-out result is mAP@20 `0.86848`, Recall@20 `0.93235`, and
 pair F1 `0.68429`. See
-[`../reports/multimodal_model_final_comparison.md`](../reports/multimodal_model_final_comparison.md).
+[`../reports/multimodal_model.md`](../reports/multimodal_model.md).

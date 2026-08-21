@@ -1,0 +1,55 @@
+config_version: phase6.hard_negative_experiment.v1
+seed: 2026
+source:
+  multimodal_config: configs/experiment/multimodal_embedding_training.yaml
+  multimodal_config_sha256: 279c96794c207fb2e62e4638cdae315dc4ffd4a2b85ecf039f41861e7412377c
+  checkpoint: artifacts/multimodal_fusion/training/best.pt
+  checkpoint_sha256: 95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4
+  metrics: artifacts/multimodal_fusion/training/metrics.json
+  metrics_sha256: da4d681cf0fb656905748a85c88f1285016ae4aee690826fdcd809521de4a313
+mining:
+  split: train
+  candidate_k: 100
+  negatives_per_query: 4
+  minimum_pair_probability: 0.20
+  maximum_pair_probability: 0.98
+  similarity_block_size: 512
+  pair_batch_size: 4096
+  exclude_same_phash: true
+  exclude_exact_normalized_title: true
+  variant_priority_fraction: 0.50
+training:
+  device: cuda
+  trainable_components: fusion_and_pair_head
+  epochs: 12
+  products_per_batch: 16
+  samples_per_product: 2
+  batches_per_epoch: 150
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  minimum_learning_rate: 0.000001
+  gradient_clip_norm: 5.0
+  early_stopping_patience: 4
+  hard_pairs_per_batch: 32
+  hard_negative_loss_fraction: 0.50
+  deterministic: true
+evaluation:
+  split: validation
+  evaluate_test: false
+  candidate_pool: full_split
+  exclude_query_itself: true
+  recall_at: [1, 5, 10, 20]
+  average_precision_at: 20
+  candidate_k: 20
+  checkpoint_metric: map@20
+  checkpoint_target: pair_head_rerank
+  maximum_map_drop: 0.0
+  maximum_recall_at_20_drop: 0.002
+artifacts:
+  root: artifacts/hard_negative_mining/pilot
+  manifest: artifacts/hard_negative_mining/pilot/mined_pairs.jsonl
+  manifest_metadata: artifacts/hard_negative_mining/pilot/mined_pairs.metadata.json
+  training_root: artifacts/hard_negative_mining/pilot/training
+  checkpoint: artifacts/hard_negative_mining/pilot/training/best.pt
+  metrics: artifacts/hard_negative_mining/pilot/training/metrics.json
+  report: reports/hard_negative_mining_pilot.md

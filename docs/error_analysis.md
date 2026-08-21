@@ -4,7 +4,7 @@
 
 The deterministic classical retrieval run uses split manifest
 `c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09`. Aggregate results are in
-[`../reports/classical_retrieval_benchmark.md`](../reports/classical_retrieval_benchmark.md); raw
+[`../reports/classical_retrieval.md`](../reports/classical_retrieval.md); raw
 titles and listing IDs for the bounded review sample remain in ignored
 `artifacts/classical_retrieval/review_examples.json`.
 
@@ -46,7 +46,7 @@ The next approved experiment is the already configured 224-pixel full run. Highe
 preserve packaging text, logos, and fine product details that are suppressed at 128 pixels. This
 is a targeted response to the measured layout-shortcut failure; no larger backbone or additional
 loss is introduced before that hypothesis is evaluated. Quantitative details are recorded in
-[`../reports/image_encoder_pilot.md`](../reports/image_encoder_pilot.md).
+[`../reports/image_encoder.md`](../reports/image_encoder.md).
 
 ## Final scratch image review
 
@@ -57,4 +57,4 @@ of reviewed retrieval misses. Coarse-category or brand-family negatives account 
 cases; two false matches are probable label fragmentation.
 
 Full counts, examples, sampling limitations, and the resulting Phase 4 motivation are recorded in
-[`../reports/image_encoder_failure_analysis.md`](../reports/image_encoder_failure_analysis.md).
+[`../reports/image_encoder.md`](../reports/image_encoder.md).

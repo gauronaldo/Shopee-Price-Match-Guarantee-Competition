@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from shopee_match.errors import ConfigurationError
+from shopee_match.hashing import matches_frozen_sha256
 from shopee_match.training.text_config import (
     TextExperimentConfig,
     _mapping,
@@ -115,10 +116,10 @@ def load_frozen_text_test_config(path: Path) -> FrozenTextTestConfig:
         (training_metrics_path, training_metrics_sha256, "training metrics"),
     ):
         try:
-            actual_hash = sha256_file(input_path)
+            matches, actual_hash = matches_frozen_sha256(input_path, expected_hash)
         except OSError as exc:
             raise ConfigurationError(f"Cannot read frozen {location}: {input_path}") from exc
-        if actual_hash != expected_hash:
+        if not matches:
             raise ConfigurationError(
                 f"Frozen {location} SHA-256 mismatch: expected {expected_hash}, got {actual_hash}"
             )

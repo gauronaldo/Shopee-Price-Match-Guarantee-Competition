@@ -99,6 +99,52 @@ def load_splits(metadata_csv: Path, manifest_path: Path) -> dict[str, Evaluation
     }
 
 
+def load_named_split(metadata_csv: Path, manifest_path: Path, split_name: str) -> EvaluationSplit:
+    """Load only one named split so validation workflows never retain test labels."""
+    if split_name not in {"train", "validation", "test"}:
+        raise ValueError("split_name must be train, validation, or test")
+    selected_ids: set[str] = set()
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            try:
+                record = json.loads(line)
+                posting_id = str(record["posting_id"])
+                split = str(record["split"])
+            except (json.JSONDecodeError, KeyError, TypeError) as error:
+                raise DataValidationError(
+                    f"Invalid split manifest record at line {line_number}"
+                ) from error
+            if split == split_name:
+                if posting_id in selected_ids:
+                    raise DataValidationError(f"Duplicate manifest posting_id: {posting_id}")
+                selected_ids.add(posting_id)
+    if not selected_ids:
+        raise DataValidationError(f"Split {split_name!r} is empty")
+
+    items: list[CorpusItem] = []
+    labels: dict[str, str] = {}
+    with metadata_csv.open("r", encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            posting_id = row["posting_id"]
+            if posting_id not in selected_ids:
+                continue
+            if posting_id in labels:
+                raise DataValidationError(f"Metadata contains duplicate posting_id: {posting_id}")
+            labels[posting_id] = row["label_group"]
+            items.append(
+                CorpusItem(
+                    posting_id=posting_id,
+                    image=row["image"],
+                    image_phash=row["image_phash"],
+                    title=row["title"],
+                )
+            )
+    if set(labels) != selected_ids:
+        raise DataValidationError(f"Metadata is missing rows from split {split_name!r}")
+    items.sort(key=lambda item: item.posting_id)
+    return EvaluationSplit(tuple(items), labels)
+
+
 def _relevant_by_query(labels: dict[str, str]) -> dict[str, set[str]]:
     members: dict[str, set[str]] = {}
     for posting_id, label in labels.items():
@@ -245,6 +291,60 @@ def select_threshold(ranking: Ranking, label_by_id: dict[str, str]) -> dict[str,
             best = result
     if best is None:  # pragma: no cover - guarded by the non-empty check
         raise AssertionError("Threshold selection did not evaluate a score")
+    return best
+
+
+def precision_at_minimum_recall(
+    ranking: Ranking,
+    label_by_id: dict[str, str],
+    minimum_recall: float,
+) -> dict[str, float]:
+    """Find the most precise retrieved-pair threshold that preserves a recall target."""
+    if not 0 < minimum_recall <= 1:
+        raise ValueError("minimum_recall must be inside (0, 1]")
+    _validate_ranking(ranking, label_by_id)
+    relevant = _relevant_by_query(label_by_id)
+    scored_labels = sorted(
+        (
+            (candidate.score, candidate.posting_id in relevant[query_id])
+            for query_id, candidates in ranking.items()
+            for candidate in candidates
+        ),
+        key=lambda item: -item[0],
+    )
+    total_positive = sum(len(value) for value in relevant.values())
+    true_positive = false_positive = 0
+    best: dict[str, float] | None = None
+    index = 0
+    while index < len(scored_labels):
+        threshold = scored_labels[index][0]
+        while index < len(scored_labels) and scored_labels[index][0] == threshold:
+            if scored_labels[index][1]:
+                true_positive += 1
+            else:
+                false_positive += 1
+            index += 1
+        recall = true_positive / total_positive if total_positive else 0.0
+        if recall < minimum_recall:
+            continue
+        precision = true_positive / (true_positive + false_positive) if true_positive else 0.0
+        result = {
+            "threshold": threshold,
+            "precision": precision,
+            "recall": recall,
+            "true_positive": float(true_positive),
+            "false_positive": float(false_positive),
+            "false_negative": float(total_positive - true_positive),
+            "minimum_recall": minimum_recall,
+        }
+        if best is None or (precision, threshold) > (best["precision"], best["threshold"]):
+            best = result
+    if best is None:
+        maximum_recall = true_positive / total_positive if total_positive else 0.0
+        raise ValueError(
+            f"Retrieved candidates cannot reach minimum recall {minimum_recall}; "
+            f"maximum is {maximum_recall}"
+        )
     return best
 
 

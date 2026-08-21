@@ -47,4 +47,4 @@ Phase 4 is complete. The frozen scratch TextCNN reached validation/test mAP@20 o
 `0.75698 / 0.74841` and Recall@20 of `0.87414 / 0.86978`. Character TF-IDF remains stronger at
 test mAP@20 `0.8564`, so Phase 5 should treat the learned embedding as complementary multimodal
 evidence and retain TF-IDF as a lexical reference channel. See
-[`../reports/text_retrieval_final_comparison.md`](../reports/text_retrieval_final_comparison.md).
+[`../reports/text_encoder.md`](../reports/text_encoder.md).

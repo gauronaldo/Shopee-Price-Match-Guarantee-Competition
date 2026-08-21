@@ -28,12 +28,17 @@ eda = [
   "jupyterlab==4.6.2",
   "matplotlib==3.11.1",
 ]
+retrieval = [
+  "faiss-cpu==1.15.0",
+]
 
 [project.scripts]
 shopee-data = "shopee_match.data.cli:main"
 shopee-benchmark = "shopee_match.evaluation.cli:main"
 shopee-image = "shopee_match.training.cli:main"
+shopee-hard-negatives = "shopee_match.training.hard_negative_cli:main"
 shopee-multimodal = "shopee_match.training.multimodal_cli:main"
+shopee-retrieval = "shopee_match.retrieval.cli:main"
 shopee-text = "shopee_match.training.text_cli:main"
 shopee-smoke = "shopee_match.smoke:main"
 
