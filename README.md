@@ -72,6 +72,14 @@ remains below the custom multimodal joint representation (`0.87023 / 0.93780`). 
 comparison with no local fine-tuning and no test access. See
 [`reports/pretrained_benchmark.md`](reports/pretrained_benchmark.md).
 
+Phase 10 final system evaluation is complete. From a clean commit, the frozen Top-50 retrieval,
+pair-head, and conservative graph policy reached held-out mAP@20 `0.85946`, Recall@50 `0.96882`,
+pairwise precision/F1 `0.89591 / 0.47937`, and B-cubed F1 `0.82234`. Validation-to-test changes
+are small, but large entities remain fragmented and the held-out pairwise precision is slightly
+below the validation safety target. No final policy was selected on test. See
+[`reports/final_evaluation.md`](reports/final_evaluation.md),
+[`docs/model_card.md`](docs/model_card.md), and [`docs/architecture.md`](docs/architecture.md).
+
 ## Setup, checks, and data preparation
 
 ```powershell
@@ -193,6 +201,20 @@ weight enum, verifies the full SHA-256, and evaluates the frozen image represent
 
 The benchmark uses the same validation split and exact Top-50 protocol as Phase 7. It does not
 fine-tune EfficientNet or access test, and it refuses to overwrite completed evidence.
+
+The final end-to-end evaluator verifies the recursively frozen validation evidence before any test
+access. `preflight` never loads test rows. `evaluate` requires a clean worktree, writes a one-time
+access marker, and refuses all later runs:
+
+```powershell
+.venv\Scripts\shopee-final preflight `
+  --config configs\experiment\final_system_evaluation.yaml
+.venv\Scripts\shopee-final evaluate `
+  --config configs\experiment\final_system_evaluation.yaml
+```
+
+The completed local run is intentionally blocked from repetition. Do not delete its access marker
+or outputs to tune against the held-out result.
 
 After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
 the held-out image test evaluation is run without retraining or test-time selection:

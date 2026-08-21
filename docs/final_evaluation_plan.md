@@ -47,21 +47,21 @@ to the project owner. This limitation must remain explicit in the final report.
 
 ## Pre-test gates
 
-- [ ] full unit/integration suite, Ruff, and mypy pass;
-- [ ] hand-computed pair classification and clustering fixtures pass;
-- [ ] config loader rejects any policy drift or non-clean validation source;
-- [ ] CLI is installed and `preflight` reports `test_accessed=false`;
-- [ ] implementation and frozen config are committed before test access;
-- [ ] worktree is clean and no final output/access marker exists.
+- [x] full unit/integration suite, Ruff, and mypy pass;
+- [x] hand-computed pair classification and clustering fixtures pass;
+- [x] config loader rejects any policy drift or non-clean validation source;
+- [x] CLI wrapper is installed; pre-test preflight reported no prior access and loaded no test rows;
+- [x] implementation and frozen config are committed before test access;
+- [x] worktree is clean and no final output/access marker exists.
 
 ## Post-test packaging
 
-- [ ] record the immutable aggregate final report;
-- [ ] consolidate final model card, limitations, ethical considerations, and dataset access terms;
-- [ ] summarize repeated-seed and ablation evidence already produced in earlier phases;
-- [ ] add architecture and inference-flow diagrams;
+- [x] record the immutable aggregate final report;
+- [x] consolidate final model card, limitations, ethical considerations, and dataset access terms;
+- [x] summarize repeated-seed and ablation evidence already produced in earlier phases;
+- [x] add architecture and inference-flow diagrams;
 - [ ] verify commands from a clean clone after the user supplies the competition dataset;
-- [ ] audit Git for secrets, datasets, checkpoints, caches, oversized outputs, and unintended
+- [x] audit Git for secrets, datasets, checkpoints, caches, oversized outputs, and unintended
   provenance metadata before merging.
 
 ## Manual commands

@@ -111,7 +111,8 @@ def preflight_final_system_evaluation(config_path: Path) -> dict[str, object]:
     device = _resolve_device(config.runtime.device)
     return {
         "status": "ready" if not dirty and not outputs else "blocked",
-        "test_accessed": False,
+        "prior_test_access_detected": config.artifacts.access_marker.exists(),
+        "test_accessed_by_preflight": False,
         "git_commit": commit,
         "git_dirty": dirty,
         "device": str(device),
@@ -214,7 +215,7 @@ threshold, candidate K, or graph rule was selected on this test result.
 - Split manifest SHA-256: `{run["provenance"]["split_manifest_sha256"]}`
 - Candidate K / pair threshold / reciprocal rank: `{policy["candidate_k"]}` /
   `{policy["pair_probability_threshold"]:.2f}` / `{policy["reciprocal_rank"]}`
-- Cross-component coverage / maximum cluster size: 
+- Cross-component coverage / maximum cluster size:
   `{policy["cross_component_minimum_coverage"]:.2f}` / `{policy["maximum_cluster_size"]}`
 
 ## Retrieval: validation to test

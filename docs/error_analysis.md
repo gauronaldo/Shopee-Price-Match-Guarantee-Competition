@@ -77,3 +77,23 @@ Manual inspection identifies three dominant categories:
 The selected precision-first policy is therefore appropriate for avoiding catastrophic catalog
 merges, but it does not solve recall for large heterogeneous entities. Detailed metrics and the
 group-size breakdown are in [`../reports/entity_resolution.md`](../reports/entity_resolution.md).
+
+## Final held-out system
+
+The validation-frozen end-to-end policy reaches held-out pairwise precision/recall/F1
+`0.89591 / 0.32723 / 0.47937` and B-cubed precision/recall/F1
+`0.95279 / 0.72331 / 0.82234`. Relative to validation, B-cubed F1 decreases by `0.00559`, while
+the false-merge pair rate increases from `0.09835` to `0.10409`. This small degradation supports
+reasonable generalization but does not satisfy a strict 0.90 held-out pairwise-precision target.
+
+The held-out review contains 95 impure clusters, 369 split label groups, and 91 manual-review
+clusters. Fragmentation is strongly size-dependent:
+
+- size-2 groups are recovered without splits 75.87% of the time;
+- groups of size 3-5 are recovered without splits 61.54% of the time;
+- groups of size 6-9 are recovered without splits 17.19% of the time;
+- no group of size at least 10 is recovered as one entity; these groups average 7.69 fragments.
+
+The highest-value future modeling work is therefore large-group recall and component linking under
+strict false-merge controls, not a global threshold reduction. Lowering the threshold after seeing
+test would violate the frozen protocol and is not performed.

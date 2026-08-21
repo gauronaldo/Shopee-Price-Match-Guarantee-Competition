@@ -9,6 +9,8 @@ import pytest
 
 from shopee_match.errors import ConfigurationError
 from shopee_match.evaluation import final_system_config as module
+from shopee_match.evaluation.final_system_config import FinalArtifactConfig
+from shopee_match.evaluation.final_system_evaluator import _existing_outputs
 
 
 def _config_text(pair_threshold: float) -> str:
@@ -122,3 +124,19 @@ def test_final_config_rejects_pair_threshold_drift(
     config_path.write_text(_config_text(0.17), encoding="utf-8")
     with pytest.raises(ConfigurationError, match="differs from validation-selected"):
         module.load_final_system_evaluation_config(config_path)
+
+
+def test_final_output_guard_detects_access_marker(tmp_path: Path) -> None:
+    artifacts = FinalArtifactConfig(
+        root=tmp_path,
+        access_marker=tmp_path / "access.json",
+        embeddings=tmp_path / "embeddings.npz",
+        scored_pairs=tmp_path / "pairs.jsonl",
+        assignments=tmp_path / "assignments.csv",
+        metrics=tmp_path / "metrics.json",
+        review=tmp_path / "review.json",
+        report=tmp_path / "report.md",
+    )
+    assert _existing_outputs(artifacts) == []
+    artifacts.access_marker.write_text("{}", encoding="utf-8")
+    assert _existing_outputs(artifacts) == [str(artifacts.access_marker)]
