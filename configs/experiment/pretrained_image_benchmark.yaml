@@ -1,0 +1,35 @@
+config_version: phase9.pretrained_efficientnet_b1.v1
+seed: 2026
+source:
+  phase7_config: configs/experiment/candidate_retrieval_benchmark.yaml
+  phase7_config_sha256: 5120674d95a6ed9030c38e7f04feb6236050d777fa63e177f6b2efda86a78303
+  phase7_metrics: artifacts/candidate_retrieval/validation/metrics.json
+  phase7_metrics_sha256: 8f8a0447434f0bc162991604dd37c38e0c8f0599ed89a111d82483d3e5dd68eb
+  image_metrics: artifacts/scratch_image_encoder/training/metrics.json
+  image_metrics_sha256: 3b389c5dd6cb58548249931fa77b1aa6b5821d540f07f9d99294e8725cee2a6a
+model:
+  architecture: torchvision_efficientnet_b1
+  weights_enum: IMAGENET1K_V2
+  weights_filename: efficientnet_b1-c27df63c.pth
+  weights_sha256: c27df63ce6eb17ef8bcea58922fd3a254cba910c720f41ee89d64d99fb7a4ddf
+  weights_source: https://download.pytorch.org/models/efficientnet_b1-c27df63c.pth
+  feature_dimension: 1280
+data:
+  split: validation
+  evaluate_test: false
+runtime:
+  device: cuda
+  batch_size: 64
+  num_workers: 0
+evaluation:
+  candidate_k: 50
+  recall_at: [1, 5, 10, 20, 50]
+  average_precision_at: [20, 50]
+  block_size: 512
+  latency_query_count: 256
+artifacts:
+  root: artifacts/pretrained_benchmark/efficientnet_b1_v2
+  embeddings: artifacts/pretrained_benchmark/efficientnet_b1_v2/embeddings.npz
+  metrics: artifacts/pretrained_benchmark/efficientnet_b1_v2/metrics.json
+  review: artifacts/pretrained_benchmark/efficientnet_b1_v2/failure_review.json
+  report: reports/pretrained_benchmark.md

@@ -31,6 +31,9 @@ eda = [
 retrieval = [
   "faiss-cpu==1.15.0",
 ]
+pretrained = [
+  "torchvision==0.22.0",
+]
 
 [project.scripts]
 shopee-data = "shopee_match.data.cli:main"
@@ -42,6 +45,7 @@ shopee-retrieval = "shopee_match.retrieval.cli:main"
 shopee-entity-resolution = "shopee_match.clustering.cli:main"
 shopee-text = "shopee_match.training.text_cli:main"
 shopee-smoke = "shopee_match.smoke:main"
+shopee-pretrained = "shopee_match.evaluation.pretrained_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shopee_match"]
