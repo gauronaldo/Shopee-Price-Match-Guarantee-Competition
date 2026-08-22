@@ -1,6 +1,6 @@
 # Multimodal Product Deduplication & Entity Resolution
 
-[![CI](https://github.com/gauronaldo/Shopee-Price-Match-Guarantee-Competition/actions/workflows/ci.yml/badge.svg)](https://github.com/gauronaldo/Shopee-Price-Match-Guarantee-Competition/actions/workflows/ci.yml)
+[![Quality checks](https://img.shields.io/github/actions/workflow/status/gauronaldo/Shopee-Price-Match-Guarantee-Competition/ci.yml?branch=main&label=quality%20checks&logo=github)](https://github.com/gauronaldo/Shopee-Price-Match-Guarantee-Competition/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.11--3.13-3776AB?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.7-EE4C2C?logo=pytorch&logoColor=white)
 ![OpenCV](https://img.shields.io/badge/OpenCV-4.12-5C3EE8?logo=opencv&logoColor=white)
@@ -11,26 +11,29 @@
 ![Code style](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=261230)
 ![Tests](https://img.shields.io/badge/tests-102%20passing-2EA44F)
 
-An end-to-end portfolio project for resolving duplicate e-commerce listings into catalog entities.
-The system learns from product images and noisy multilingual titles, retrieves likely duplicates,
-scores exact-product matches, and builds conservative duplicate clusters with review signals.
+A multimodal retrieval and entity-resolution system for identifying duplicate product listings in
+an e-commerce catalog. It combines visual and textual representations with candidate retrieval,
+pairwise verification, and conservative graph clustering to recover product identities while
+controlling false merges.
 
-The project uses the Kaggle **Shopee — Price Match Guarantee** dataset. Raw competition data and
-trained artifacts are intentionally excluded from Git.
+Experiments use the Kaggle **Shopee Price Match Guarantee** dataset. Competition data and trained
+artifacts remain outside version control in accordance with dataset access and repository hygiene
+requirements.
 
-## Why this problem is difficult
+## Problem context
 
-A listing is a seller's representation of a product: one image, one title, and one unique
-`posting_id`. Different listings may refer to the same exact product despite different photos,
-cropping, packaging, spelling, language, or seller formatting. Conversely, visually similar
-listings may be different sizes, quantities, colors, flavors, or model numbers.
+Marketplace catalogs rarely provide a clean one-to-one mapping between listings and physical
+products. Multiple sellers can describe the same item using different photos, crops, languages,
+abbreviations, packaging, and promotional text. At the same time, products from one brand or
+product line may appear nearly identical while differing in model number, size, quantity, color,
+or flavor.
 
-This is therefore more than generic visual similarity. A useful system must solve three connected
-problems:
+The system treats matching as a sequence of related decisions rather than a generic similarity
+search:
 
-1. retrieve almost all plausible duplicates from a catalog;
-2. reject visually or textually similar product variants;
-3. prevent a small number of false-positive pairs from merging unrelated clusters.
+1. retrieve a high-recall set of plausible duplicate listings;
+2. verify exact-product identity using evidence from both modalities;
+3. form catalog entities without allowing isolated false-positive edges to trigger large merges.
 
 The exact matching contract and variant policy are documented in
 [`docs/problem_definition.md`](docs/problem_definition.md).

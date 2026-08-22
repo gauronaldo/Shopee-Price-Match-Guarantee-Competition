@@ -1,19 +1,26 @@
-name: phase-0-checks
+name: quality-checks
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   checks:
+    name: lint, type-check, test, and smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
-      - run: python -m pip install -e ".[dev]"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev,retrieval,pretrained,demo]"
       - run: ruff format --check .
       - run: ruff check .
-      - run: mypy src
+      - run: mypy src/shopee_match
       - run: pytest --cov=shopee_match --cov-report=term-missing
       - run: shopee-smoke --config configs/smoke.yaml
