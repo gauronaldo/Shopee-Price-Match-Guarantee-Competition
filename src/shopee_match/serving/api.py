@@ -85,6 +85,7 @@ class GuidedSampleResponse(BaseModel):
     scenario: str
     description: str
     title: str
+    display_title: str
 
 
 def _runtime(app: FastAPI) -> DemoRuntime:

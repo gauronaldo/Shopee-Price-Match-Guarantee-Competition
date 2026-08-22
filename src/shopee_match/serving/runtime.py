@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -26,6 +27,7 @@ from shopee_match.training.multimodal_data import load_frozen_encoders
 
 FloatArray = NDArray[np.float32]
 UInt8Image = NDArray[np.uint8]
+ESCAPED_UTF8_RUN = re.compile(r"(?:\\x[0-9a-fA-F]{2})+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +91,19 @@ def _decode_rgb(image_bytes: bytes) -> UInt8Image:
     if decoded is None:
         raise ContractError("Uploaded file is not a decodable image")
     return cast(UInt8Image, cv2.cvtColor(decoded, cv2.COLOR_BGR2RGB))
+
+
+def decode_title_for_display(value: str) -> str:
+    """Decode valid literal UTF-8 byte escapes without changing model input text."""
+
+    def replace(match: re.Match[str]) -> str:
+        try:
+            payload = bytes.fromhex(match.group(0).replace("\\x", ""))
+            return payload.decode("utf-8")
+        except (UnicodeDecodeError, ValueError):
+            return match.group(0)
+
+    return ESCAPED_UTF8_RUN.sub(replace, value)
 
 
 def _load_embedding_arrays(
@@ -284,6 +299,7 @@ class DemoRuntime:
                 "scenario": sample.scenario,
                 "description": sample.description,
                 "title": self.item_by_id[sample.posting_id].title,
+                "display_title": decode_title_for_display(self.item_by_id[sample.posting_id].title),
             }
             for sample in self.config.guided_samples
         ]
@@ -384,7 +400,7 @@ class DemoRuntime:
             candidates.append(
                 CandidateEvidence(
                     posting_id=posting_id,
-                    title=item.title,
+                    title=decode_title_for_display(item.title),
                     rank=offset + 1,
                     image_similarity=similarity if mode == "image_only" else None,
                     title_similarity=similarity if mode == "text_only" else None,
@@ -509,7 +525,7 @@ class DemoRuntime:
                 candidates.append(
                     CandidateEvidence(
                         posting_id=posting_id,
-                        title=item.title,
+                        title=decode_title_for_display(item.title),
                         rank=rank,
                         image_similarity=float(image[0] @ self.image_embeddings[candidate_index]),
                         title_similarity=float(text[0] @ self.text_embeddings[candidate_index]),

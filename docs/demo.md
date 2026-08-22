@@ -33,13 +33,17 @@ commercial, or statistical guarantee that two listings are identical.
 The Streamlit client has two tabs:
 
 - `Guided demo` exposes six curated validation scenarios covering near duplicates, varied photos,
-  noisy wording, and variant/model confusion. Only the sample `posting_id` and scenario text are
-  versioned; images and product titles remain in the local competition data.
+  noisy wording, and variant/model confusion. Every scenario offers three catalog-backed query
+  choices representing three different products, not three listings from one duplicate group.
+  Only the sample `posting_id` and scenario text are versioned; images and product titles remain in
+  the local competition data.
 - `Upload your own` accepts an image, title, or both without assuming dataset knowledge.
 
 Guided requests include their catalog `posting_id`, and every retrieval backend excludes that ID
 before ranking. This prevents a trivial similarity-1.0 self-match. Each result then places the
 query and candidate image/title side by side with the measured evidence below them.
+Literal UTF-8 byte escapes in source titles are decoded for display only; the text encoder still
+receives the original frozen representation.
 
 ## Local commands
 
@@ -90,11 +94,14 @@ Useful URLs:
 Container alternative:
 
 ```powershell
+docker compose config
 docker compose up --build
 ```
 
 Both containers use the same image. Compose mounts `data/` and `artifacts/` read-only because raw
 competition files and checkpoints must never be baked into or committed with the application.
+Docker Desktop must be running with its Linux container engine. Stop both services with
+`docker compose down`.
 
 ## API contract
 

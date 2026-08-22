@@ -15,6 +15,7 @@ from shopee_match.serving.runtime import (
     MatchPrediction,
     _apply_pair_policy,
     _load_label_blind_catalog,
+    decode_title_for_display,
 )
 
 
@@ -45,6 +46,7 @@ class _FakeRuntime:
                 "scenario": "Example scenario",
                 "description": "Example description",
                 "title": "sample title",
+                "display_title": "sample title",
             }
         ]
 
@@ -229,3 +231,9 @@ def test_launch_cli_has_one_command_defaults() -> None:
     assert arguments.command == "launch"
     assert arguments.api_port == 8000
     assert arguments.ui_port == 8501
+
+
+def test_literal_utf8_byte_escapes_are_decoded_for_display_only() -> None:
+    raw = r"[\xe2\x9c\x85COD] A6S TWS"
+    assert decode_title_for_display(raw) == "[✅COD] A6S TWS"
+    assert decode_title_for_display(r"keep invalid \xff escape") == r"keep invalid \xff escape"

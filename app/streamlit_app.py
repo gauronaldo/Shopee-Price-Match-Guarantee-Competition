@@ -193,10 +193,15 @@ with guided_tab:
             samples = []
         if samples:
             sample_by_id = {sample["posting_id"]: sample for sample in samples}
+            scenario_names = list(dict.fromkeys(sample["scenario"] for sample in samples))
+            selected_scenario = st.selectbox("Choose a scenario", options=scenario_names)
+            scenario_samples = [
+                sample for sample in samples if sample["scenario"] == selected_scenario
+            ]
             selected_id = st.selectbox(
-                "Choose a scenario",
-                options=list(sample_by_id),
-                format_func=lambda posting_id: sample_by_id[posting_id]["scenario"],
+                "Choose a sample listing",
+                options=[sample["posting_id"] for sample in scenario_samples],
+                format_func=lambda posting_id: sample_by_id[posting_id]["display_title"],
             )
             selected = sample_by_id[selected_id]
             preview_left, preview_right = st.columns([1, 2])
@@ -207,7 +212,7 @@ with guided_tab:
             )
             preview_right.markdown(f"**{selected['scenario']}**")
             preview_right.write(selected["description"])
-            preview_right.write(selected["title"])
+            preview_right.write(selected["display_title"])
             guided_mode = st.radio(
                 "Input mode",
                 options=["Image + title", "Image only", "Title only"],
@@ -232,12 +237,13 @@ with guided_tab:
                         "query_image": (
                             _catalog_image_url(selected_id, public=True) if use_image else None
                         ),
-                        "query_title": selected["title"] if use_title else "",
+                        "query_title": selected["display_title"] if use_title else "",
+                        "query_posting_id": selected_id,
                     }
                 except (httpx.HTTPError, RuntimeError) as exc:
                     st.error(str(exc))
             guided_state = st.session_state.get("guided_result")
-            if guided_state is not None:
+            if guided_state is not None and guided_state["query_posting_id"] == selected_id:
                 _render_result(
                     guided_state["result"],
                     query_image=guided_state["query_image"],

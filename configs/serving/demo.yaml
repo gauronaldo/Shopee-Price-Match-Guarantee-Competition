@@ -26,21 +26,57 @@ runtime:
   maximum_upload_mb: 10
   maximum_batch_size: 8
 guided_samples:
-  - posting_id: train_3836388007
+  - posting_id: train_1072427985
     scenario: Near-identical visual listing
-    description: Find another smartwatch listing after excluding the selected catalog row.
-  - posting_id: train_1359948092
+    description: Inspect a large water bottle that is visually close to another catalog product.
+  - posting_id: train_1929623650
+    scenario: Near-identical visual listing
+    description: Inspect honey listings whose packaging and quantity text are nearly identical.
+  - posting_id: train_2961446265
+    scenario: Near-identical visual listing
+    description: Inspect a face cream with near-duplicate catalog photography and wording.
+  - posting_id: train_1251926547
     scenario: Same product across varied photos
     description: Explore a large rose-water group with diverse packaging and seller images.
-  - posting_id: train_3185834018
+  - posting_id: train_2442928452
+    scenario: Same product across varied photos
+    description: Explore LED valve-cap listings photographed on different wheels and backgrounds.
+  - posting_id: train_2104971635
+    scenario: Same product across varied photos
+    description: Explore an apple-pattern kitchen knife across varied seller photos.
+  - posting_id: train_2329028418
     scenario: Noisy wording and abbreviations
     description: Match a 100-piece cotton-swab product across spelling and wording changes.
+  - posting_id: train_2419351869
+    scenario: Noisy wording and abbreviations
+    description: Test an unusually short serum title against fuller catalog descriptions.
+  - posting_id: train_2472621938
+    scenario: Noisy wording and abbreviations
+    description: Match a 31-in-1 screwdriver kit across mixed Indonesian and English wording.
   - posting_id: train_2128373817
     scenario: Flavor variant confusion
     description: Distinguish original chili sauce from the visually similar extra-spicy variant.
+  - posting_id: train_1658175990
+    scenario: Flavor variant confusion
+    description: Separate closely packaged fruit-jelly flavors and nominally distinct catalog groups.
+  - posting_id: train_1017707148
+    scenario: Flavor variant confusion
+    description: Distinguish a spicy noodle level from similar products in the same brand family.
   - posting_id: train_1089765047
     scenario: Similar electronics, different models
-    description: Test whether visually similar wireless earbuds are kept as separate products.
+    description: Distinguish Xiaomi AirDots from visually similar Haylou wireless earbuds.
+  - posting_id: train_1684580804
+    scenario: Similar electronics, different models
+    description: Distinguish portable Bluetooth speakers with different model numbers.
+  - posting_id: train_1018366203
+    scenario: Similar electronics, different models
+    description: Distinguish closely related U9 and DZ09 smartwatch listings.
   - posting_id: train_2178865199
     scenario: Product-line variant confusion
     description: Compare closely related milk products with the same package weight.
+  - posting_id: train_3137481017
+    scenario: Product-line variant confusion
+    description: Compare diaper line, gender, size, and pack-count variants.
+  - posting_id: train_2518407869
+    scenario: Product-line variant confusion
+    description: Compare Ensure flavor and packaging variants at the same nominal weight.
