@@ -90,24 +90,10 @@ validation only. Aggregate statistics and known label ambiguities are documented
 
 ## System overview
 
-```mermaid
-flowchart LR
-    A[Catalog image + title] --> B[Audit and group-disjoint split]
-    B --> C[Custom residual image encoder]
-    B --> D[Custom character TextCNN]
-    C --> E[Image embedding]
-    D --> F[Title embedding]
-    E --> G[Residual multimodal fusion]
-    F --> G
-    G --> H[Joint listing embedding]
-    H --> I[Exact reference / FAISS HNSW Top-K]
-    I --> J[Symmetric pair head]
-    J --> K[Threshold + reciprocal-rank + variant gates]
-    K --> L[Union-find entity resolution]
-    L --> M[Entity ID + confidence + review flag]
-    H -. train-only hard negatives .-> J
-    M --> N[FastAPI + Streamlit demo]
-```
+[![Multimodal product entity-resolution pipeline](assets/diagrams/product_entity_resolution_pipeline.svg)](assets/diagrams/product_entity_resolution_pipeline.svg)
+
+*Candidate retrieval, pair verification, and conservative entity clustering. Open the diagram at
+full size by selecting it, or edit the [draw.io source](assets/diagrams/product_entity_resolution_pipeline.drawio).*
 
 The image encoder, text encoder, fusion module, losses, sampling logic, training loops, pair head,
 retrieval evaluation, and clustering policy are implemented in this repository. The core neural
