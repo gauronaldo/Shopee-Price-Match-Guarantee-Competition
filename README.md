@@ -38,6 +38,56 @@ search:
 The exact matching contract and variant policy are documented in
 [`docs/problem_definition.md`](docs/problem_definition.md).
 
+## Competition and dataset
+
+The **Shopee Price Match Guarantee** competition was hosted on Kaggle to identify listings that
+refer to the same product. For each query listing, participants produced a set of matching
+`posting_id` values using the product image, seller-written title, and any representations derived
+from them. The challenge reflects a common catalog problem: product identity is not explicitly
+shared across sellers, and neither image similarity nor title similarity is reliable on its own.
+
+This repository treats the competition as an entity-resolution case study rather than a
+leaderboard-only exercise. The original set-prediction task is decomposed into candidate retrieval,
+pair verification, and graph clustering so that retrieval misses, false matches, and transitive
+cluster errors can be evaluated separately.
+
+The provided training metadata contains five fields:
+
+| Field | Role |
+|---|---|
+| `posting_id` | Unique identifier for one seller listing |
+| `image` | Filename of the associated product image |
+| `image_phash` | Supplied perceptual hash used by the classical image baseline |
+| `title` | Noisy, multilingual seller-written product description |
+| `label_group` | Competition ground-truth product group, used only offline |
+
+| Dataset property | Observed value |
+|---|---:|
+| Listings | 34,250 |
+| Product groups | 11,014 |
+| Unique referenced images | 32,412 |
+| Median / maximum group size | 2 / 51 |
+| Median image dimensions | 700 × 700 px |
+| Median title length | 53 characters |
+
+The downloadable competition test set contains only three placeholder listings because the actual
+competition test labels were hidden by Kaggle. For leakage-controlled experimentation, this project
+creates its own deterministic split from the labeled training release:
+
+| Split | Listings | Product groups |
+|---|---:|---:|
+| Train | 27,391 | 8,817 |
+| Validation | 3,430 | 1,100 |
+| Test | 3,429 | 1,097 |
+
+Splitting is performed by `label_group` and by super-components connected through exact image
+references, image hashes, or perceptual hashes. As a result, the same labeled product group or
+exact duplicated visual asset cannot appear in more than one split. Vocabulary construction,
+checkpoint selection, thresholds, retrieval settings, and clustering rules use train and
+validation only. Aggregate statistics and known label ambiguities are documented in the
+[`data card`](docs/data_card.md) and
+[`data quality report`](reports/data_quality_and_split.md).
+
 ## System overview
 
 ```mermaid
