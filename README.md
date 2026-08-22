@@ -92,9 +92,6 @@ validation only. Aggregate statistics and known label ambiguities are documented
 
 [![Multimodal product entity-resolution pipeline](assets/diagrams/shopee_entity_resolution_swiss_grid_large.drawio.svg)](assets/diagrams/shopee_entity_resolution_swiss_grid_large.drawio.svg)
 
-*Candidate retrieval, pair verification, and conservative entity clustering. Open the diagram at
-full size by selecting it, or edit the [draw.io source](assets/diagrams/product_entity_resolution_pipeline.drawio).*
-
 The image encoder, text encoder, fusion module, losses, sampling logic, training loops, pair head,
 retrieval evaluation, and clustering policy are implemented in this repository. The core neural
 track is trained from random initialization; pretrained EfficientNet-B1 is evaluated later as a
