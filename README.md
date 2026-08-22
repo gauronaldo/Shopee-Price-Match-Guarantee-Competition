@@ -90,7 +90,7 @@ validation only. Aggregate statistics and known label ambiguities are documented
 
 ## System overview
 
-[![Multimodal product entity-resolution pipeline](assets/diagrams/product_entity_resolution_pipeline.svg)](assets/diagrams/product_entity_resolution_pipeline.svg)
+[![Multimodal product entity-resolution pipeline](assets/diagrams/shopee_entity_resolution_swiss_grid_large.drawio.svg)](assets/diagrams/shopee_entity_resolution_swiss_grid_large.drawio.svg)
 
 *Candidate retrieval, pair verification, and conservative entity clustering. Open the diagram at
 full size by selecting it, or edit the [draw.io source](assets/diagrams/product_entity_resolution_pipeline.drawio).*
