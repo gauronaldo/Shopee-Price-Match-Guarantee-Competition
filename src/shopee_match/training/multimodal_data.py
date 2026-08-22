@@ -66,9 +66,10 @@ def _posting_ids(batch: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(value)
 
 
-def _load_frozen_encoders(
+def load_frozen_encoders(
     config: MultimodalExperimentConfig, device: torch.device
 ) -> tuple[ScratchResidualImageEncoder, ScratchTextCNN, CharacterVocabulary, int]:
+    """Load the validated custom image/text encoders for inference or extraction."""
     image_payload = torch.load(
         config.frozen.image_config.checkpoint.path, map_location="cpu", weights_only=False
     )
@@ -177,7 +178,7 @@ def extract_frozen_multimodal_split(
         raise ConfigurationError("Unknown multimodal split")
     splits = load_splits(config.data.metadata_csv, config.data.split_manifest)
     split = splits[split_name]
-    image_model, text_model, vocabulary, maximum_length = _load_frozen_encoders(config, device)
+    image_model, text_model, vocabulary, maximum_length = load_frozen_encoders(config, device)
     image_dataset = ProductImageDataset.for_split(
         split,
         config.data.image_dir,
@@ -300,7 +301,7 @@ def prepare_frozen_multimodal_cache(config_path: Path) -> dict[str, object]:
     config = load_multimodal_experiment_config(config_path)
     device = _resolve_device(config.training.device)
     splits = load_splits(config.data.metadata_csv, config.data.split_manifest)
-    image_model, text_model, vocabulary, maximum_length = _load_frozen_encoders(config, device)
+    image_model, text_model, vocabulary, maximum_length = load_frozen_encoders(config, device)
     LOGGER.info("frozen encoder cache: device=%s test=disabled", device)
     results: dict[str, object] = {}
     for split_name in ("train", "validation"):

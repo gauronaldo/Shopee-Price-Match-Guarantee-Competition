@@ -73,9 +73,10 @@ def _write_embeddings_atomic(
     temporary.replace(path)
 
 
-def _load_phase6_model(
+def load_phase6_model(
     config: CandidateRetrievalConfig, device: torch.device
 ) -> LearnedMultimodalFusion:
+    """Load the accepted hard-negative pair model after provenance validation."""
     checkpoint = torch.load(config.source.checkpoint_path, map_location="cpu", weights_only=False)
     phase6 = config.source.experiment
     expected_spec = asdict(phase6.source.experiment.model_spec)
@@ -466,7 +467,7 @@ def run_candidate_retrieval_benchmark(config_path: Path) -> dict[str, object]:
         shuffle=False,
         num_workers=config.embedding.num_workers,
     )
-    model = _load_phase6_model(config, device)
+    model = load_phase6_model(config, device)
     posting_ids, _image, _text, embeddings, extraction_seconds = extract_joint_embeddings(
         model, loader, device
     )

@@ -1,242 +1,227 @@
-# Shopee Multimodal Product Matching
+# Multimodal Product Deduplication & Entity Resolution
 
-A reproducible research project for duplicate-product retrieval and catalog entity resolution
-from product images and noisy multilingual titles. The dataset is Kaggle's **Shopee — Price
-Match Guarantee** competition release.
+[![Quality checks](https://img.shields.io/github/actions/workflow/status/gauronaldo/Shopee-Price-Match-Guarantee-Competition/ci.yml?branch=main&label=quality%20checks&logo=github)](https://github.com/gauronaldo/Shopee-Price-Match-Guarantee-Competition/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11--3.13-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.7-EE4C2C?logo=pytorch&logoColor=white)
+![OpenCV](https://img.shields.io/badge/OpenCV-4.12-5C3EE8?logo=opencv&logoColor=white)
+![FAISS](https://img.shields.io/badge/FAISS-HNSW-0467DF)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?logo=fastapi&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.48-FF4B4B?logo=streamlit&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Code style](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=261230)
+![Tests](https://img.shields.io/badge/tests-102%20passing-2EA44F)
 
-This is not generic visual similarity: visually similar variants may be different purchasable
-products, while listings with different photos and wording may refer to the same product. The
-identity policy and evaluation assumptions are defined in
+A multimodal retrieval and entity-resolution system for identifying duplicate product listings in
+an e-commerce catalog. It combines visual and textual representations with candidate retrieval,
+pairwise verification, and conservative graph clustering to recover product identities while
+controlling false merges.
+
+Experiments use the Kaggle **Shopee Price Match Guarantee** dataset. Competition data and trained
+artifacts remain outside version control in accordance with dataset access and repository hygiene
+requirements.
+
+## Problem context
+
+Marketplace catalogs rarely provide a clean one-to-one mapping between listings and physical
+products. Multiple sellers can describe the same item using different photos, crops, languages,
+abbreviations, packaging, and promotional text. At the same time, products from one brand or
+product line may appear nearly identical while differing in model number, size, quantity, color,
+or flavor.
+
+The system treats matching as a sequence of related decisions rather than a generic similarity
+search:
+
+1. retrieve a high-recall set of plausible duplicate listings;
+2. verify exact-product identity using evidence from both modalities;
+3. form catalog entities without allowing isolated false-positive edges to trigger large merges.
+
+The exact matching contract and variant policy are documented in
 [`docs/problem_definition.md`](docs/problem_definition.md).
 
-## Current status
+## Competition and dataset
 
-Phases 0–2 are complete. Phase 1 validates the real
-release, decodes and hashes every referenced image, audits metadata and label ambiguity, creates
-a deterministic leakage-safe train/validation/test manifest, and generates an aggregate report
-plus a local inspection gallery. The audit passes all critical gates but retains warnings about
-cross-label duplicates and perceptually similar variants; those warnings are data properties,
-not silently rewritten labels.
+The **Shopee Price Match Guarantee** competition was hosted on Kaggle to identify listings that
+refer to the same product. For each query listing, participants produced a set of matching
+`posting_id` values using the product image, seller-written title, and any representations derived
+from them. The challenge reflects a common catalog problem: product identity is not explicitly
+shared across sellers, and neither image similarity nor title similarity is reliable on its own.
 
-Phase 2 evaluates supplied-pHash, ORB, train-only character TF-IDF, and validation-tuned late
-fusion under one retrieval/pair protocol. Results and failure analysis are recorded in
-[`reports/classical_retrieval.md`](reports/classical_retrieval.md).
+This repository treats the competition as an entity-resolution case study rather than a
+leaderboard-only exercise. The original set-prediction task is decomposed into candidate retrieval,
+pair verification, and graph clustering so that retrieval misses, false matches, and transitive
+cluster errors can be evaluated separately.
 
-Phase 3 is complete. A repository-owned residual image encoder was trained from random
-initialization with conservative OpenCV preprocessing, deterministic product-aware batches,
-supervised contrastive loss, exact cosine evaluation, atomic checkpoints, structured diagnostics,
-and concise terminal progress reporting. The frozen model reached test mAP@20 `0.55674` and
-Recall@20 `0.65941`, clearly improving on supplied pHash while remaining below the
-candidate-assisted ORB pipeline. See
-[`reports/image_encoder.md`](reports/image_encoder.md).
+The provided training metadata contains five fields:
 
-Phase 4 is complete. The train-only, randomly initialized character TextCNN reached
-validation/test mAP@20 `0.75698 / 0.74841` and Recall@20 `0.87414 / 0.86978`. It generalizes
-consistently but remains below character TF-IDF test mAP@20 `0.8564`; this honest gap and the
-categorized failure analysis define the role of each text signal in Phase 5. See
-[`reports/text_encoder.md`](reports/text_encoder.md).
+| Field | Role |
+|---|---|
+| `posting_id` | Unique identifier for one seller listing |
+| `image` | Filename of the associated product image |
+| `image_phash` | Supplied perceptual hash used by the classical image baseline |
+| `title` | Noisy, multilingual seller-written product description |
+| `label_group` | Competition ground-truth product group, used only offline |
 
-Phase 5 is complete. Frozen image and text embeddings are cached once, then a repository-owned
-residual fusion module and symmetric pair head are trained without updating either encoder. Across
-three seeds, validation mAP@20 is `0.88008 ± 0.00132`. The canonical frozen-test result is mAP@20
-`0.86848`, Recall@20 `0.93235`, and pair F1 `0.68429`. It beats custom unimodal systems and TF-IDF
-retrieval on mAP, but remains below the strongest classical fused baseline (`0.8810` test mAP@20).
-See [`reports/multimodal_model.md`](reports/multimodal_model.md).
+| Dataset property | Observed value |
+|---|---:|
+| Listings | 34,250 |
+| Product groups | 11,014 |
+| Unique referenced images | 32,412 |
+| Median / maximum group size | 2 / 51 |
+| Median image dimensions | 700 × 700 px |
+| Median title length | 53 characters |
 
-Phase 6 is complete on validation. Exact train-only mining produced `24,332` deterministic
-cross-label hard-negative pairs after pHash/title false-negative guards and a `50%` variant cap.
-The initial joint fine-tuning pilot regressed and was rejected. Freezing fusion and updating only
-the pair head passed all three seeds: mean validation mAP@20 is `0.87926` (population std.
-`0.00007`), controlled-recall precision improves by `+0.00244` on average, and Recall@20 is
-unchanged. The improvement is real but modest; Phase 6 did not access test. See
-[`reports/hard_negative_mining.md`](reports/hard_negative_mining.md).
+The downloadable competition test set contains only three placeholder listings because the actual
+competition test labels were hidden by Kaggle. For leakage-controlled experimentation, this project
+creates its own deterministic split from the labeled training release:
 
-Phase 7 is complete on validation. Deterministic exact cosine search selected `K=50` as the
-smallest tested candidate budget that exceeds the `0.95` macro-recall target, reaching
-Recall@50 `0.97438`. FAISS HNSW with `efSearch=64` preserves the same Recall@50 and has `0.99851`
-candidate-set agreement with exact search, while reducing measured single-query p50 latency from
-`0.414 ms` to `0.200 ms`. Test remains untouched. See
-[`reports/candidate_retrieval.md`](reports/candidate_retrieval.md).
+| Split | Listings | Product groups |
+|---|---:|---:|
+| Train | 27,391 | 8,817 |
+| Validation | 3,430 | 1,100 |
+| Test | 3,429 | 1,097 |
 
-Phase 8 is complete on validation. The frozen Phase 6 pair head scores the Phase 7 Top-50
-candidates, then reciprocal-neighbour edges and full cross-component support create conservative
-entities without using labels as graph features. The selected policy reaches pairwise precision
-`0.90165`, pairwise F1 `0.48444`, and B-cubed F1 `0.82794`; false-split group rate remains
-`0.30818`, especially for large diverse groups. Test remains untouched. See
-[`reports/entity_resolution.md`](reports/entity_resolution.md).
+Splitting is performed by `label_group` and by super-components connected through exact image
+references, image hashes, or perceptual hashes. As a result, the same labeled product group or
+exact duplicated visual asset cannot appear in more than one split. Vocabulary construction,
+checkpoint selection, thresholds, retrieval settings, and clustering rules use train and
+validation only. Aggregate statistics and known label ambiguities are documented in the
+[`data card`](docs/data_card.md) and
+[`data quality report`](reports/data_quality_and_split.md).
 
-Phase 9 is complete on validation. The SHA-256-verified TorchVision EfficientNet-B1
-`IMAGENET1K_V2` representation reaches mAP@20 `0.73753` and Recall@20 `0.82481`. It clearly
-beats the custom image-only encoder trained from random initialization (`0.53907 / 0.64667`) but
-remains below the custom multimodal joint representation (`0.87023 / 0.93780`). This is a frozen
-comparison with no local fine-tuning and no test access. See
-[`reports/pretrained_benchmark.md`](reports/pretrained_benchmark.md).
+## System overview
 
-Phase 10 final system evaluation is complete. From a clean commit, the frozen Top-50 retrieval,
-pair-head, and conservative graph policy reached held-out mAP@20 `0.85946`, Recall@50 `0.96882`,
-pairwise precision/F1 `0.89591 / 0.47937`, and B-cubed F1 `0.82234`. Validation-to-test changes
-are small, but large entities remain fragmented and the held-out pairwise precision is slightly
-below the validation safety target. No final policy was selected on test. See
-[`reports/final_evaluation.md`](reports/final_evaluation.md),
-[`docs/model_card.md`](docs/model_card.md), and [`docs/architecture.md`](docs/architecture.md).
+```mermaid
+flowchart LR
+    A[Catalog image + title] --> B[Audit and group-disjoint split]
+    B --> C[Custom residual image encoder]
+    B --> D[Custom character TextCNN]
+    C --> E[Image embedding]
+    D --> F[Title embedding]
+    E --> G[Residual multimodal fusion]
+    F --> G
+    G --> H[Joint listing embedding]
+    H --> I[Exact reference / FAISS HNSW Top-K]
+    I --> J[Symmetric pair head]
+    J --> K[Threshold + reciprocal-rank + variant gates]
+    K --> L[Union-find entity resolution]
+    L --> M[Entity ID + confidence + review flag]
+    H -. train-only hard negatives .-> J
+    M --> N[FastAPI + Streamlit demo]
+```
 
-## Setup, checks, and data preparation
+The image encoder, text encoder, fusion module, losses, sampling logic, training loops, pair head,
+retrieval evaluation, and clustering policy are implemented in this repository. The core neural
+track is trained from random initialization; pretrained EfficientNet-B1 is evaluated later as a
+separate benchmark under the same retrieval protocol.
+
+Ground-truth `label_group` is used only for offline splitting, training, evaluation, and analysis.
+It is not loaded into the demo inference contract. See
+[`docs/architecture.md`](docs/architecture.md) for the training, batch, and online flows.
+
+## Results
+
+The held-out system evaluation was run once after checkpoints, thresholds, candidate K, and graph
+rules were frozen on validation.
+
+| System or component | Evaluation split | mAP@20 | Recall@20 | Additional result |
+|---|---|---:|---:|---|
+| Supplied pHash image baseline | Test | 0.3073 | 0.3345 | Classical image reference |
+| Custom residual image encoder | Test | 0.5567 | 0.6594 | Random initialization |
+| Custom character TextCNN | Test | 0.7484 | 0.8698 | TF-IDF remains stronger |
+| Custom multimodal model | Test | 0.8685 | 0.9324 | Pair F1 0.6843 |
+| Classical late fusion | Test | **0.8810** | **0.9349** | Pair F1 **0.7220** |
+| Pretrained EfficientNet-B1 image benchmark | Validation | 0.7375 | 0.8248 | Comparison only; no fine-tuning |
+| Final retrieval + pair + entity system | Test | 0.8595 | 0.9324 | Recall@50 0.9688 |
+
+Final entity-resolution quality:
+
+| Metric | Validation | Test |
+|---|---:|---:|
+| Pairwise precision | 0.9017 | 0.8959 |
+| Pairwise F1 | 0.4844 | 0.4794 |
+| B-cubed precision | 0.9562 | 0.9528 |
+| B-cubed F1 | 0.8279 | 0.8223 |
+
+The results are intentionally not polished into a false “best model” story. Classical late fusion
+remains the strongest retrieval reference, while the custom multimodal track demonstrates learned
+representations, hard-negative pair scoring, approximate retrieval, and entity-level reasoning.
+The conservative graph policy favors precision and reduces catastrophic false merges, at the cost
+of splitting larger duplicate groups.
+
+Full metrics, efficiency measurements, ablations, repeated seeds, and failure analyses are indexed
+in [`reports/README.md`](reports/README.md). The final frozen result is in
+[`reports/final_evaluation.md`](reports/final_evaluation.md).
+
+## Demo
+
+The demo supports:
+
+- image-only candidate retrieval;
+- title-only candidate retrieval;
+- multimodal retrieval, pair scoring, and entity assignment;
+- guided scenarios with three distinct curated products per scenario;
+- open-ended image/title uploads;
+- query-versus-candidate visual comparison and modality evidence;
+- self-match exclusion for catalog-backed guided queries;
+- “no confident match” and manual-review states.
+
+Literal UTF-8 byte escapes found in some source titles, for example `\xe2\x9c\x85`, are decoded
+only for presentation. The frozen text encoder still receives the original title representation
+used during training.
+
+### Local launcher
+
+Prerequisites: the authorized Kaggle data, split manifest, frozen checkpoints, embedding caches,
+and entity assignments must exist locally. Verify everything before opening the UI:
+
+```powershell
+.venv\Scripts\python -m pip install -e ".[dev,retrieval,demo]"
+.venv\Scripts\python -m shopee_match.serving.cli preflight `
+  --config configs\serving\demo.yaml
+.venv\Scripts\python -m shopee_match.serving.cli launch
+```
+
+Open:
+
+- Streamlit UI: `http://127.0.0.1:8501`
+- FastAPI/OpenAPI: `http://127.0.0.1:8000/docs`
+- Health endpoint: `http://127.0.0.1:8000/health`
+
+Press `Ctrl+C` once in the launcher terminal to stop both services.
+
+### Docker Compose
+
+The API and UI are packaged with Docker Compose. The image contains the application and Python
+dependencies; local `data/` and `artifacts/` are mounted read-only and are never copied into the
+image.
+
+Start Docker Desktop with the Linux container engine, then run:
+
+```powershell
+docker compose config
+docker compose up --build
+```
+
+After both services become healthy, open `http://localhost:8501`. API documentation remains at
+`http://localhost:8000/docs`.
+
+```powershell
+docker compose down
+```
+
+The current Compose profile is a portable CPU-oriented demo. It does not configure NVIDIA Container
+Toolkit or claim production deployment readiness. More detail is available in
+[`docs/demo.md`](docs/demo.md).
+
+## Installation and data
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python -m pip install -e ".[dev,retrieval]"
-.venv\Scripts\ruff format --check .
-.venv\Scripts\ruff check .
-.venv\Scripts\mypy src
-.venv\Scripts\python -m pytest
-.venv\Scripts\shopee-smoke --config configs\smoke.yaml
-.venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml
-.venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml
-.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_smoke.yaml
-.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_smoke.yaml
+.venv\Scripts\python -m pip install --upgrade pip
+.venv\Scripts\python -m pip install -e ".[dev,eda,retrieval,pretrained,demo]"
 ```
 
-The full image run reports training progress five times per epoch plus validation, checkpoint,
-and completion stages without continuously redrawing the terminal:
-
-```powershell
-.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_training.yaml
-```
-
-Use `--progress-updates-per-epoch N` to change the frequency, or set it to `0` to disable batch
-progress messages. This display option does not change model training or saved experiment config.
-
-The Phase 4 TextCNN full run uses the pilot-approved architecture and keeps test disabled:
-
-```powershell
-.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_training.yaml
-```
-
-The full-history report can be regenerated from the completed local checkpoint without training
-or model evaluation. Validation failures are exported for local review with separate commands:
-
-```powershell
-.venv\Scripts\shopee-text refresh-report --config configs\experiment\text_embedding_training.yaml
-.venv\Scripts\shopee-text analyze-validation --config configs\experiment\text_embedding_training.yaml
-```
-
-After the text checkpoint, training configuration, training metrics, validation threshold, and
-retrieval protocol are locked, the held-out test command is intentionally single-use:
-
-```powershell
-.venv\Scripts\shopee-text evaluate --config configs\experiment\text_embedding_final_evaluation.yaml
-```
-
-An existing final metrics file or report makes the evaluator refuse a second run.
-
-Phase 5 separates the one-time frozen-embedding preparation from lightweight fusion training:
-
-```powershell
-.venv\Scripts\shopee-multimodal prepare --config configs\experiment\multimodal_embedding_smoke.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_smoke.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_pilot.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_residual_fusion_pilot.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_pair_loss_025_pilot.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_pair_loss_010_pilot.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_training.yaml
-.venv\Scripts\shopee-multimodal refresh-report --config configs\experiment\multimodal_embedding_training.yaml
-.venv\Scripts\shopee-multimodal analyze-validation --config configs\experiment\multimodal_embedding_training.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_seed_2027.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_seed_2028.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_contrastive_only_ablation.yaml
-.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_pair_only_ablation.yaml
-.venv\Scripts\shopee-multimodal evaluate-frozen-test --config configs\experiment\multimodal_embedding_final_evaluation.yaml
-```
-
-`prepare` creates or verifies train/validation caches only. Subsequent fusion runs reuse those
-fingerprinted artifacts and do not recompute the frozen CNN or TextCNN embeddings.
-The frozen-test command is one-time by design and refuses to overwrite an existing metrics file or
-report.
-
-Phase 6 separates immutable mining evidence from fine-tuning. `mine` uses train only, `train` uses
-train plus validation, and `summarize` verifies frozen hashes across the three seeds. The canonical
-manual sequence is:
-
-```powershell
-.venv\Scripts\shopee-hard-negatives mine --config configs\experiment\hard_negative_pair_head_pilot.yaml
-.venv\Scripts\shopee-hard-negatives train --config configs\experiment\hard_negative_pair_head_pilot.yaml
-.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_seed_2027.yaml --progress-updates-per-epoch 2
-.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_seed_2028.yaml --progress-updates-per-epoch 2
-.venv\Scripts\shopee-hard-negatives summarize --config configs\experiment\hard_negative_repeated_seed_summary.yaml
-```
-
-Each versioned output refuses silent overwrite. To repeat a completed experiment, choose a new
-artifact root/report path or deliberately remove only that local ignored run after reviewing it.
-
-Phase 7 extracts one frozen joint embedding per validation listing, verifies exact search first,
-then benchmarks FAISS HNSW and selects `K`/`efSearch` without accessing test:
-
-```powershell
-.venv\Scripts\shopee-retrieval benchmark --config configs\experiment\candidate_retrieval_benchmark.yaml
-```
-
-The command refuses to overwrite completed metrics or the tracked report. Use a distinct artifact
-root and report path for a deliberate rerun.
-
-Phase 8 reuses the frozen validation embeddings and pair head, scores each undirected Top-50 pair
-once, and selects a conservative reciprocal-neighbour clustering policy:
-
-```powershell
-.venv\Scripts\shopee-entity-resolution benchmark `
-  --config configs\experiment\entity_resolution_benchmark.yaml
-```
-
-The command writes ignored scored-pair, assignment, metrics, and failure-review artifacts plus the
-reviewed aggregate report. It refuses to overwrite an existing completed Phase 8 run.
-
-Phase 9 installs the optional TorchVision dependency, acquires the official weight through its
-weight enum, verifies the full SHA-256, and evaluates the frozen image representation:
-
-```powershell
-.venv\Scripts\python -m pip install -e ".[dev,retrieval,pretrained]"
-.venv\Scripts\shopee-pretrained prepare-weights
-.venv\Scripts\shopee-pretrained benchmark `
-  --config configs\experiment\pretrained_image_benchmark.yaml
-```
-
-The benchmark uses the same validation split and exact Top-50 protocol as Phase 7. It does not
-fine-tune EfficientNet or access test, and it refuses to overwrite completed evidence.
-
-The final end-to-end evaluator verifies the recursively frozen validation evidence before any test
-access. `preflight` never loads test rows. `evaluate` requires a clean worktree, writes a one-time
-access marker, and refuses all later runs:
-
-```powershell
-.venv\Scripts\shopee-final preflight `
-  --config configs\experiment\final_system_evaluation.yaml
-.venv\Scripts\shopee-final evaluate `
-  --config configs\experiment\final_system_evaluation.yaml
-```
-
-The completed local run is intentionally blocked from repetition. Do not delete its access marker
-or outputs to tune against the held-out result.
-
-After freezing checkpoint, training-config, training-metrics hashes, and the validation threshold,
-the held-out image test evaluation is run without retraining or test-time selection:
-
-```powershell
-.venv\Scripts\shopee-image evaluate --config configs\experiment\image_embedding_final_evaluation.yaml
-```
-
-Phase 3 final results and caveats are in
-[`reports/image_encoder.md`](reports/image_encoder.md).
-
-For the optional EDA environment, install `-e ".[dev,eda]"` and open
-`notebooks/exploration/catalog_data_exploration.ipynb`. Clear notebook outputs before every
-commit.
-
-On Linux/macOS, replace `.venv\Scripts\` with `.venv/bin/`.
-
-The default pinned PyTorch wheel may be CPU-only. For GPU experiments, install the matching wheel
-from the official PyTorch compute-platform index and verify both `torch.cuda.is_available()` and
-the recorded device before starting the bounded pilot.
-
-The authorized Kaggle release is expected in this local-only layout:
+Expected local-only Kaggle layout:
 
 ```text
 data/raw/
@@ -247,52 +232,87 @@ data/raw/
   sample_submission.csv
 ```
 
-Raw images/CSVs, generated split manifests, full audit JSON, inspection galleries, caches,
-checkpoints, and run artifacts are ignored by Git. The aggregate audit and non-sensitive SVG
-figures are kept under `reports/`. Phase 1 refuses an unexpected CSV checksum or schema, missing
-or corrupt images, duplicate posting IDs, and conflicting immutable outputs.
+The Kaggle public test directory contains only three placeholder examples. This project creates a
+deterministic group-disjoint train/validation/test split from `train.csv` so that each
+`label_group` occurs in exactly one split. Vocabulary, thresholds, retrieval settings, and graph
+rules are selected without test leakage.
 
-## Repository layout
-
-```text
-configs/                         versioned data, model, and experiment inputs
-data/                            ignored raw/derived data and frozen local split manifests
-docs/                            product contract, data/model cards, error analysis
-notebooks/exploration/           bounded diagnostics only
-reports/                         function-grouped reports, index, and lightweight figures
-scripts/                         thin command adapters only
-src/shopee_match/
-  data/                          Phase 1 ingestion, audit, split, reporting
-  features/ models/ losses/      later modeling components
-  training/ retrieval/           training and candidate retrieval
-  clustering/ evaluation/        entity resolution and controlled evaluation
-  serving/                       inactive until the deployment phase
-tests/                           synthetic fixtures, unit and integration tests
-app/                             inactive until the final application phase
+```powershell
+.venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml
 ```
 
-This root file is the project entry point. `reports/README.md` is the only secondary README and acts
-as a navigation index for function-grouped experiment evidence.
+The source CSV checksum and schema are verified before processing. Raw data, generated manifests,
+checkpoints, indexes, caches, and detailed review artifacts are ignored by Git.
 
-## Phase 1 outputs
+## Reproducing the pipeline
 
-- Aggregate report: [`reports/data_quality_and_split.md`](reports/data_quality_and_split.md)
-- Data card: [`docs/data_card.md`](docs/data_card.md)
-- Local manifest: `data/splits/shopee_group_split_v1.jsonl` (ignored)
-- Local manifest summary: `data/splits/shopee_group_split_v1.summary.json` (ignored)
-- Local pair gallery: `reports/figures/generated/data_audit_v1/gallery.html` (ignored)
+The table shows the canonical command for each system function. Completed experiment outputs are
+immutable by design; use a new artifact root for a deliberate rerun instead of overwriting evidence.
 
-The split unit is a leakage super-component: label groups connected by an exact image reference,
-image SHA-256, or exact pHash are kept together. Near-pHash matches are audited but not merged
-automatically because low Hamming distance can represent a legitimate size, volume, color, or
-packaging variant.
+| Function | Command |
+|---|---|
+| Smoke test | `.venv\Scripts\shopee-smoke --config configs\smoke.yaml` |
+| Data audit and split | `.venv\Scripts\shopee-data prepare --config configs\data\shopee.yaml` |
+| Classical baselines | `.venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml` |
+| Custom image training | `.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_training.yaml` |
+| Custom text training | `.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_training.yaml` |
+| Multimodal training | `.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_training.yaml` |
+| Hard-negative training | `.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_seed_2027.yaml` |
+| Candidate retrieval | `.venv\Scripts\shopee-retrieval benchmark --config configs\experiment\candidate_retrieval_benchmark.yaml` |
+| Entity resolution | `.venv\Scripts\shopee-entity-resolution benchmark --config configs\experiment\entity_resolution_benchmark.yaml` |
+| Pretrained comparison | `.venv\Scripts\shopee-pretrained benchmark --config configs\experiment\pretrained_image_benchmark.yaml` |
+| Frozen system preflight | `.venv\Scripts\shopee-final preflight --config configs\experiment\final_system_evaluation.yaml` |
 
-## Scope
+The final test evaluator is guarded against accidental repetition. Its recorded result should not
+be deleted and rerun for test-driven tuning.
 
-The eventual online interface returns Top-K candidate posting IDs, calibrated match confidence,
-image/title evidence, a predicted group or “no confident match,” and a review flag. Batch mode
-returns candidate pairs, pair probabilities, conservative clusters, and review flags.
+## Engineering quality
 
-The project does not claim production readiness, marketplace-policy compliance, or that the
-competition labels are perfect commercial identity ground truth. Raw competition content is not
-redistributed.
+```powershell
+.venv\Scripts\python -m ruff format --check .
+.venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m mypy src\shopee_match
+.venv\Scripts\python -m pytest
+```
+
+The test suite covers leakage-safe splitting, title normalization, image preprocessing, sampling,
+losses, encoder shapes and gradients, exact/FAISS agreement, clustering, frozen evaluation guards,
+API contracts, guided self-exclusion, and the combined launcher.
+
+## Repository structure
+
+```text
+app/                         Streamlit showcase UI
+configs/                     Data, model, experiment, and serving contracts
+data/                        Ignored raw/derived data and local split manifests
+docs/                        Problem definition, architecture, cards, and limitations
+notebooks/exploration/       Bounded EDA notebook
+reports/                     Reviewed metrics and failure-analysis evidence
+src/shopee_match/
+  data/                      Ingestion, audit, and group-disjoint splitting
+  features/ models/ losses/  Classical features and custom neural components
+  training/ retrieval/       Training, mining, and candidate generation
+  clustering/ evaluation/    Entity resolution and controlled evaluation
+  serving/                   Frozen runtime, FastAPI, and launcher
+tests/                       Synthetic fixtures, unit tests, and integration tests
+```
+
+## Documentation
+
+- [Problem definition](docs/problem_definition.md)
+- [Architecture](docs/architecture.md)
+- [Data card](docs/data_card.md)
+- [Model card](docs/model_card.md)
+- [Error analysis](docs/error_analysis.md)
+- [Demo and API](docs/demo.md)
+- [Experiment reports](reports/README.md)
+
+## Limitations
+
+- The dataset contains noisy labels, multilingual seller text, malformed byte escapes, and
+  ambiguous product variants.
+- The strict clustering policy limits false merges but fragments many large product groups.
+- Reported latency is measured on a 3,430-listing validation catalog and must not be extrapolated
+  directly to production-scale catalogs.
+- The demo uses a validation catalog for demonstration and is not a production service.
+- Competition data remains subject to Kaggle/Shopee access and redistribution terms.

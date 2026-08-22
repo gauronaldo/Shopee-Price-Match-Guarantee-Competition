@@ -29,7 +29,7 @@ from shopee_match.errors import DataValidationError, OutputConflictError
 from shopee_match.evaluation.protocol import EvaluationSplit, load_named_split
 from shopee_match.hashing import canonical_text_sha256, sha256_file
 from shopee_match.reproducibility import seed_everything
-from shopee_match.retrieval.benchmark import _load_phase6_model
+from shopee_match.retrieval.benchmark import load_phase6_model
 from shopee_match.retrieval.vector_index import ExactCosineIndex, search_result_to_ranking
 from shopee_match.training.multimodal_trainer import _git_state, _resolve_device
 
@@ -325,7 +325,7 @@ def run_entity_resolution_benchmark(config_path: Path) -> dict[str, object]:
         block_size=phase7.exact.block_size,
     )
     ranking = search_result_to_ranking(posting_ids, posting_ids, indices, scores)
-    model = _load_phase6_model(phase7, device)
+    model = load_phase6_model(phase7, device)
     LOGGER.info("Phase 8 stage 2/4: scoring unique pairs from Top-%d candidates", candidate_k)
     scoring_started = time.perf_counter()
     pairs = score_candidate_pairs(
