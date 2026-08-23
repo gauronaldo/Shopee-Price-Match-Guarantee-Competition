@@ -60,6 +60,19 @@ def test_metrics_reject_non_deterministic_ranking() -> None:
         retrieval_metrics(ranking, labels, (1,), 2)
 
 
+def test_metrics_reject_query_as_its_own_candidate() -> None:
+    ranking, labels = hand_checkable_ranking()
+    ranking["a"] = [ScoredCandidate("a", 1.0), ScoredCandidate("b", 0.9)]
+
+    with pytest.raises(ValueError, match="Invalid candidates"):
+        retrieval_metrics(ranking, labels, (1,), 2)
+
+
+def test_metrics_reject_singleton_instead_of_defaulting_recall_to_one() -> None:
+    with pytest.raises(ValueError, match="has no positive"):
+        retrieval_metrics({"only": []}, {"only": "singleton"}, (1,), 1)
+
+
 def test_precision_at_minimum_recall_uses_global_retrieved_pairs() -> None:
     labels = {"a": "x", "b": "x", "c": "y", "d": "y"}
     ranking = {

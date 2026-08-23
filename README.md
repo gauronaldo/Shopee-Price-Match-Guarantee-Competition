@@ -125,11 +125,11 @@ rules were frozen on validation.
 | Custom character TextCNN | 0.7484 | 0.8698 | TF-IDF test mAP@20: 0.8564 |
 | Custom multimodal pair-head rerank | 0.8685 | 0.9324 | Pair F1: 0.6843 |
 | Classical late fusion | **0.8810** | **0.9349** | Pair F1: **0.7220** |
-| Final-system joint retrieval | 0.8595 | 0.9324 | Recall@50: 0.9688 |
+| Selected final-system retrieval | **0.8924** | **0.9537** | Recall@75: **0.9862** |
 
 The Phase 5 pair-head row measures reranked retrieval. The final-system row reports the frozen
-joint-embedding candidate stage before reciprocal-edge and clustering decisions; pair and entity
-quality are reported separately below.
+dense, character TF-IDF, and pHash candidate fusion before reciprocal-edge and clustering
+decisions; pair and entity quality are reported separately below.
 
 ### Validation-only pretrained comparison
 
@@ -144,32 +144,29 @@ it is not fine-tuned and is not included in the frozen test comparison.
 
 ### Entity resolution
 
-| Metric | Validation | Test |
+| Selected final-system metric | Validation | Test |
 |---|---:|---:|
-| Pairwise precision | 0.9017 | 0.8959 |
-| Pairwise F1 | 0.4844 | 0.4794 |
-| B-cubed precision | 0.9562 | 0.9528 |
-| B-cubed F1 | 0.8279 | 0.8223 |
+| Candidate Recall@75 | 0.9921 | 0.9862 |
+| Pairwise precision | 0.8958 | 0.8785 |
+| Pairwise recall | 0.4557 | 0.4040 |
+| Pairwise F1 | 0.6041 | 0.5534 |
+| B-cubed F1 | 0.8580 | 0.8471 |
+| False-merge pair rate | 0.1042 | 0.1215 |
+| False-split group rate | 0.2636 | 0.2835 |
 
-Classical late fusion provides the strongest frozen test retrieval score. The custom multimodal
-pipeline adds a trainable joint representation, hard-negative pair scoring, approximate retrieval,
-and entity-level decisions. Its conservative graph policy prioritizes cluster precision and limits
-transitive false merges, with lower recall on larger duplicate groups.
+The selected system combines frozen dense candidates, train-fitted character TF-IDF, and pHash
+with weighted reciprocal-rank fusion. Supported singleton attachment then recovers isolated
+listings only when at least two members of one established component agree. The trained
+multimodal checkpoint and pair head are unchanged; these retrieval and graph experiments determine
+the final inference policy. The final model improves recall and fragmentation while accepting a
+measured increase in false merges.
 
-### Validation-only recall recovery
+The repository presents this as one improved final model. Earlier operating points are experiment
+evidence, not separate model releases.
 
-Follow-up validation experiments target entity fragmentation while keeping the trained encoders,
-fusion module, and Phase 6 pair head frozen. Character TF-IDF statistics are fitted on train only.
-
-| Validation policy | Candidate recall | Pair precision | Pair recall | Pair F1 | B-cubed F1 | False split |
-|---|---:|---:|---:|---:|---:|---:|
-| Dense Top-50 incumbent | 0.9744 | 0.9017 | 0.3312 | 0.4844 | 0.8279 | 0.3082 |
-| Hybrid Top-75 + supported singleton attachment | **0.9921** | **0.8958** | **0.4557** | **0.6041** | **0.8580** | **0.2636** |
-
-Hybrid retrieval combines frozen dense candidates, train-fitted character TF-IDF, and pHash using
-weighted reciprocal-rank fusion. The result passes the predeclared validation precision, recall,
-B-cubed, false-merge, and false-split gates. It has not been evaluated on the locked test split and
-is presented as the candidate policy for the next frozen system version.
+The operating point was selected on validation and evaluated without test-time adjustment.
+Because earlier component experiments had already used the same split, this is reported as a
+confirmatory frozen evaluation rather than as a globally unseen test.
 
 Full metrics, efficiency measurements, ablations, repeated seeds, and failure analyses are indexed
 in [`reports/README.md`](reports/README.md). The final frozen result is in

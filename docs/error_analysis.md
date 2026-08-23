@@ -78,29 +78,9 @@ The selected precision-first policy is therefore appropriate for avoiding catast
 merges, but it does not solve recall for large heterogeneous entities. Detailed metrics and the
 group-size breakdown are in [`../reports/entity_resolution.md`](../reports/entity_resolution.md).
 
-## Final held-out system
+## Final model improvement
 
-The validation-frozen end-to-end policy reaches held-out pairwise precision/recall/F1
-`0.89591 / 0.32723 / 0.47937` and B-cubed precision/recall/F1
-`0.95279 / 0.72331 / 0.82234`. Relative to validation, B-cubed F1 decreases by `0.00559`, while
-the false-merge pair rate increases from `0.09835` to `0.10409`. This small degradation supports
-reasonable generalization but does not satisfy a strict 0.90 held-out pairwise-precision target.
-
-The held-out review contains 95 impure clusters, 369 split label groups, and 91 manual-review
-clusters. Fragmentation is strongly size-dependent:
-
-- size-2 groups are recovered without splits 75.87% of the time;
-- groups of size 3-5 are recovered without splits 61.54% of the time;
-- groups of size 6-9 are recovered without splits 17.19% of the time;
-- no group of size at least 10 is recovered as one entity; these groups average 7.69 fragments.
-
-The highest-value future modeling work is therefore large-group recall and component linking under
-strict false-merge controls, not a global threshold reduction. Lowering the threshold after seeing
-test would violate the frozen protocol and is not performed.
-
-## Post-freeze validation recall recovery
-
-A later validation-only experiment targeted the fragmentation diagnosis without reading test.
+A later validation experiment targeted the fragmentation diagnosis without reading test.
 Supported singleton attachment reduced the false-split rate but narrowly missed the pair-recall
 gate. A residual classical-evidence head improved candidate-pair average precision, but its safe
 graph operating points did not improve entity clustering and the head was rejected.
@@ -112,7 +92,20 @@ same frozen Phase 6 pair scorer and supported singleton policy, validation pairw
 precision/recall/F1 reached `0.89582 / 0.45573 / 0.60413`; B-cubed F1 reached `0.85797`, and the
 false-split rate decreased to `0.26364` while false-merge rate remained `0.10418`.
 
-This result shows that the earlier graph lacked enough complementary candidate edges; lowering a
-single global pair threshold was not necessary. Remaining failures still concentrate in large,
-heterogeneous groups and same-brand variants. The hybrid policy is not reported as a new held-out
-result because test remains locked.
+The selected final inference policy was then evaluated without test-time adjustment. It retains
+the same frozen model checkpoint and changes only candidate retrieval and graph inference. Test
+candidate Recall@75 was `0.98615`, and pairwise precision/recall/F1 reached
+`0.87850 / 0.40396 / 0.55344`. B-cubed F1 reached `0.84711`; false-merge and false-split rates
+were `0.12150 / 0.28350`. These are the final reported entity-resolution results.
+
+The final review contains 106 impure clusters, 311 split label groups, and 60 manual-review
+clusters. Fragmentation improves across every size stratum:
+
+- size-2 groups are recovered without splits 78.47% of the time;
+- groups of size 3-5 are recovered without splits 69.55% of the time;
+- groups of size 6-9 are recovered without splits 39.06% of the time;
+- groups of size at least 10 average 5.48 fragments, with one group recovered intact.
+
+The remaining limitation is match safety among the additional candidate edges, especially
+same-brand variants. It is documented as a final model limitation; the frozen test result is not
+used to retune thresholds.

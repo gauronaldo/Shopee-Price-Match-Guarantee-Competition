@@ -34,3 +34,32 @@ def test_reciprocal_rank_fusion_rejects_misaligned_queries() -> None:
             rrf_constant=60,
             top_k=1,
         )
+
+
+def test_reciprocal_rank_fusion_excludes_self_and_caps_unique_candidates() -> None:
+    result = reciprocal_rank_fusion(
+        {
+            "dense": {
+                "q": [
+                    ScoredCandidate("q", 1.0),
+                    ScoredCandidate("a", 0.9),
+                    ScoredCandidate("a", 0.8),
+                    ScoredCandidate("b", 0.7),
+                ]
+            },
+            "sparse": {
+                "q": [
+                    ScoredCandidate("a", 0.9),
+                    ScoredCandidate("c", 0.8),
+                    ScoredCandidate("c", 0.7),
+                ]
+            },
+        },
+        weights={"dense": 1.0, "sparse": 1.0},
+        rrf_constant=60,
+        top_k=2,
+    )
+
+    candidates = [row.posting_id for row in result["q"]]
+    assert "q" not in candidates
+    assert len(candidates) == len(set(candidates)) == 2

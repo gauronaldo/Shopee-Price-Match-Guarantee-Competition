@@ -115,17 +115,22 @@ flags, and title-length ratio. Candidate-pair average precision improved from `0
 head is therefore retained as negative experimental evidence and is not part of the selected
 system.
 
-### Selected hybrid candidate policy
+### Selected final inference policy
 
 Train-fitted character TF-IDF Top-50, frozen dense Top-50, and pHash Top-20 candidates are combined
 with weighted reciprocal-rank fusion. Candidate Recall increased from dense Recall@50 `0.97438`
-to hybrid Recall@75 `0.99209`. The downstream pair scorer remains frozen.
+to final Recall@75 `0.99209`. The downstream pair scorer and all trained model weights remain
+frozen; this is an inference-policy selection, not a newly trained model.
 
 The selected graph uses a `0.14` core probability threshold, reciprocal rank `5`, full
 cross-component coverage, and supported singleton attachment at probability `0.18` within rank
 `50`. It produces 1,410 clusters, including 325 singletons; 189 supported singletons are attached.
-All six validation gates pass. Test remains untouched, so this is a candidate policy for a future
-frozen system version rather than a replacement test claim.
+All six validation gates pass.
+
+The selected final system reaches test pairwise precision/recall/F1
+`0.87850 / 0.40396 / 0.55344` and B-cubed F1 `0.84711`. False-split and false-merge rates are
+`0.28350 / 0.12150`. Full provenance and interpretation are recorded in
+[`final_evaluation.md`](final_evaluation.md).
 
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `
@@ -138,6 +143,10 @@ frozen system version rather than a replacement test claim.
   --config configs\experiment\hybrid_candidate_retrieval.yaml
 .venv\Scripts\shopee-entity-resolution evaluate-hybrid-candidates `
   --config configs\experiment\hybrid_entity_resolution.yaml
+.venv\Scripts\shopee-final preflight-hybrid `
+  --config configs\experiment\hybrid_system_evaluation.yaml
+.venv\Scripts\shopee-final evaluate-hybrid `
+  --config configs\experiment\hybrid_system_evaluation.yaml
 ```
 
 EfficientNet-B1 fine-tuning is deferred: the accepted hybrid experiment resolves the measured

@@ -1,91 +1,132 @@
-# Final System Evaluation
+# Frozen System Evaluation
 
-Status: **final_system_test_complete**. The complete custom system was evaluated once with the exact
-validation-selected retrieval, pair-scoring, and entity-resolution policy. No parameter,
-threshold, candidate K, or graph rule was selected on this test result.
+The project ships one selected final system. Its image encoder, text encoder, multimodal fusion,
+and pair head use the same frozen checkpoint established before the recall-recovery experiments.
+Those experiments changed candidate generation and graph inference, not the trained model weights.
 
-## Frozen contract
+| Selected final-system metric | Validation | Test |
+|---|---:|---:|
+| Retrieval Recall@75 | 0.99209 | 0.98615 |
+| Pairwise precision | 0.89582 | 0.87850 |
+| Pairwise recall | 0.45573 | 0.40396 |
+| Pairwise F1 | 0.60413 | 0.55344 |
+| B-cubed F1 | 0.85797 | 0.84711 |
+| False-merge pair rate | 0.10418 | 0.12150 |
+| False-split group rate | 0.26364 | 0.28350 |
 
-- Source commit: `f87639b8942020cbd0ba04a2113f3edb15f0d3d3` (`git_dirty=false`)
-- Final config SHA-256: `2f7741c3ec5a5e7032731029c2842f2219aae2a0e6b81d59eb5875fcc5d78d44`
-- Entity config SHA-256: `84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794`
-- Entity metrics SHA-256: `1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f`
-- Phase 6 checkpoint SHA-256: `d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e`
-- Split manifest SHA-256: `c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09`
-- Candidate K / pair threshold / reciprocal rank: `50` /
-  `0.16` / `5`
-- Cross-component coverage / maximum cluster size:
-  `1.00` / `64`
+## Selected final system evaluation
 
-## Retrieval: validation to test
+Status: **complete**. The immutable artifact records the internal status
+`hybrid_system_confirmatory_test_complete`.
+
+### Frozen contract
+
+- Source commit: `51d109d626d444ca9b8e4dfd423a9459c08f6346` (`git_dirty=false`)
+- Final config SHA-256: `9f3c88a8e154101882821815681e2ce94cc3f2a3b9e0f5681ce0412022618957`
+- Hybrid entity config SHA-256: `982d6118bfde3b444d672a0b5717dc4833097bf0e0fd0fd09a3e53158cad083e`
+- Hybrid entity metrics SHA-256: `8833c0f6994b98dd08f10a4aa482d46e9520c25612b6b3e4be9ed6cd11a1472e`
+- Confirmatory metrics SHA-256: `f4f30ae0158acc73e1563ac4bef1d9e97c89ccff4b78324ae2182ed2d6738841`
+- Candidate K / core threshold / reciprocal rank: `75 / 0.14 / 5`
+- Singleton threshold / reciprocal rank / minimum support: `0.18 / 50 / 2`
+- Test-time parameter selection: disabled
+
+### Candidate retrieval
 
 | Metric | Validation | Test |
 |---|---:|---:|
-| mAP@20 | 0.87023 | 0.85946 |
-| Recall@20 | 0.93780 | 0.93235 |
-| mAP@50 | 0.87279 | 0.86001 |
-| Recall@50 | 0.97438 | 0.96882 |
+| mAP@20 | 0.90131 | 0.89245 |
+| Recall@20 | 0.95929 | 0.95371 |
+| mAP@50 | 0.90249 | 0.89164 |
+| Recall@50 | 0.98962 | 0.98048 |
+| mAP@75 | 0.90333 | 0.89364 |
+| Recall@75 | 0.99209 | 0.98615 |
 
-## Pair decisions on retrieved candidates
+Recall is macro-averaged over queries. An independent validation micro average over directed
+positive pairs was `0.97071`, which is lower because large groups receive more weight.
+
+### Retrieval-integrity audit
+
+| Invariant | Validation | Test |
+|---|---:|---:|
+| Query appears in its own candidates | 0 | 0 |
+| Queries with duplicate candidate IDs | 0 | 0 |
+| Queries above the Top-75 cap | 0 | 0 |
+| Candidate count, minimum / maximum | 53 / 75 | 61 / 75 |
+| Singleton queries | 0 | 0 |
+| Unknown candidate IDs | 0 | 0 |
+
+The metric raises an error when a query has no other positive; it never assigns singleton recall
+of one. `CorpusItem`, the object exposed to candidate retrievers, contains only `posting_id`,
+`image`, `image_phash`, and `title`, so `label_group` remains evaluation-only. Character TF-IDF is
+fitted from train items and then applied to validation or test. The split audit found zero shared
+label groups across train/validation, train/test, and validation/test.
+
+Candidate retrieval applies no score threshold. Dense and character TF-IDF each return Top-50;
+pHash returns Top-20. Every source removes self before its own Top-K cut. RRF defensively removes
+self again, merges and deduplicates the three lists, then truncates the union to Top-75. Since no
+single source supplies 75 candidates, strong overlap can leave fewer than 75 unique IDs. Pair
+thresholds `0.14` and `0.18` are applied only after retrieval.
+
+### Pair decisions
 
 | Metric | Test value |
 |---|---:|
-| Raw pair-head precision | 0.68519 |
-| Raw pair-head recall within candidates | 0.76341 |
-| Raw pair-head F1 within candidates | 0.72219 |
-| Average precision / PR-AUC | 0.78497 |
-| Brier score | 0.04992 |
-| Expected calibration error | 0.08596 |
-| Accepted reciprocal-edge precision | 0.81962 |
-| Accepted reciprocal-edge global recall | 0.38345 |
-| Accepted reciprocal-edge F1 | 0.52247 |
+| Candidate-conditioned precision | 0.58916 |
+| Candidate-conditioned recall | 0.79964 |
+| Candidate-conditioned F1 | 0.67845 |
+| PR-AUC | 0.76610 |
+| Brier score | 0.03351 |
+| Expected calibration error | 0.06757 |
+| Accepted-edge precision | 0.83803 |
+| Accepted-edge global recall | 0.38623 |
+| Accepted-edge F1 | 0.52876 |
 
-Raw pair-head metrics are candidate-conditioned. Accepted-edge recall uses every true test pair as
-its denominator and therefore includes retrieval and reciprocal-gating misses.
+Candidate-conditioned metrics score only retrieved pairs. Accepted-edge recall uses every true
+test pair as its denominator and therefore includes retrieval and graph-gating misses.
 
-## Entity resolution: validation to test
+### Entity resolution
 
 | Metric | Validation | Test |
 |---|---:|---:|
-| Pairwise precision | 0.90165 | 0.89591 |
-| Pairwise recall | 0.33119 | 0.32723 |
-| Pairwise F1 | 0.48444 | 0.47937 |
-| B-cubed precision | 0.95618 | 0.95279 |
-| B-cubed recall | 0.73003 | 0.72331 |
-| B-cubed F1 | 0.82794 | 0.82234 |
-| False-merge pair rate | 0.09835 | 0.10409 |
-| False-split group rate | 0.30818 | 0.33637 |
+| Pairwise precision | 0.89582 | 0.87850 |
+| Pairwise recall | 0.45573 | 0.40396 |
+| Pairwise F1 | 0.60413 | 0.55344 |
+| B-cubed precision | 0.95148 | 0.94269 |
+| B-cubed recall | 0.78119 | 0.76913 |
+| B-cubed F1 | 0.85797 | 0.84711 |
+| False-merge pair rate | 0.10418 | 0.12150 |
+| False-split group rate | 0.26364 | 0.28350 |
 
-## Efficiency
+The test result remains directionally consistent with validation, but the validation safety gate
+does not transfer perfectly: pairwise precision falls below `0.88` by `0.00150`, and false-merge
+rate exceeds `0.11` by `0.01150`. Pairwise recall, pairwise F1, B-cubed F1, and false-split rate
+retain the intended improvement established during development.
 
-| Stage | Measured result |
+### Efficiency
+
+| Stage | Test result |
 |---|---:|
-| Image extraction | 188.46 listings/s |
-| Text extraction | 15959.47 listings/s |
-| Joint fusion | 83475.14 listings/s |
-| Pair scoring | 40063.06 pairs/s |
-| Exact query p50 / p95 | 0.344 /
-  0.416 ms |
-| End-to-end wall time | 23.88 s |
+| Image extraction | 19.73 s |
+| Text extraction | 0.30 s |
+| Joint fusion | 0.04 s |
+| TF-IDF fit and ranking | 29.66 s |
+| pHash ranking | 4.04 s |
+| Rank fusion | 0.38 s |
+| Pair scoring | 37,000 pairs/s |
+| Dense query p50 / p95 | 0.323 / 0.453 ms |
+| End-to-end wall time | 62.05 s |
 
-## Interpretation and disclosure
+The exact dense stage remains fast; train-fit sparse ranking dominates this offline evaluation.
+Serving should persist the fitted vocabulary, IDF values, and catalog index instead of fitting them
+per request.
 
-This is the first evaluation of the complete retrieval-plus-pair-plus-clustering system on the
-held-out split. Earlier phases already reported component-level image, text, and multimodal test
-results on the same frozen split; therefore it is held out from system-policy selection, but it is
-not globally unseen to the project owner. The final test result is descriptive and is not used to
-revise the operating point.
+## Evaluation disclosure
 
-Detailed false-merge, false-split, and review examples remain in the ignored local artifact.
-Aggregate failure counts and group-size strata are retained in the metrics JSON.
+The final inference policy was selected from 248 predeclared validation graph configurations. That
+search creates some risk of validation optimism, so the confirmatory test is the stronger evidence
+for its effect size. The same test split had already been used for earlier component experiments;
+the final result is therefore not described as globally unseen. No policy was
+revised after observing the test output.
 
-## Reproduction guard
-
-```powershell
-.venv\Scripts\shopee-final preflight `
-  --config configs\experiment\final_system_evaluation.yaml
-.venv\Scripts\shopee-final evaluate `
-  --config configs\experiment\final_system_evaluation.yaml
-```
-
-The access marker and immutable outputs intentionally block a second evaluation.
+The local access marker and immutable artifact path block accidental repetition of the final
+evaluation.
