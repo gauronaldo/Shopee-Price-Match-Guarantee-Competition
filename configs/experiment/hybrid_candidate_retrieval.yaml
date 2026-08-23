@@ -1,0 +1,31 @@
+config_version: hybrid_candidate_retrieval.v1
+seed: 2026
+source:
+  phase7_config: configs/experiment/candidate_retrieval_benchmark.yaml
+  phase7_config_sha256: 5120674d95a6ed9030c38e7f04feb6236050d777fa63e177f6b2efda86a78303
+  phase7_metrics: artifacts/candidate_retrieval/validation/metrics.json
+  phase7_metrics_sha256: 8f8a0447434f0bc162991604dd37c38e0c8f0599ed89a111d82483d3e5dd68eb
+  embedding_cache: artifacts/candidate_retrieval/validation/embeddings.npz
+  embedding_cache_sha256: bde491d37222e69a8fe549cf4eba83c37ecad97f34272f3016cb6f356eaf34ae
+data:
+  fit_split: train
+  evaluation_split: validation
+  evaluate_test: false
+tfidf:
+  ngram_range: [2, 5]
+  max_features: 50000
+  candidate_k: 50
+fusion:
+  dense_candidate_k: 50
+  phash_candidate_k: 20
+  rrf_constant: 60
+  dense_weight: 1.0
+  tfidf_weight: 1.0
+  phash_weight: 0.5
+  evaluation_k_values: [20, 50, 75, 100, 120]
+  target_recall: 0.99
+artifacts:
+  root: artifacts/candidate_retrieval/hybrid_validation
+  ranking: artifacts/candidate_retrieval/hybrid_validation/ranking.jsonl
+  metrics: artifacts/candidate_retrieval/hybrid_validation/metrics.json
+  report: artifacts/candidate_retrieval/hybrid_validation/report.md

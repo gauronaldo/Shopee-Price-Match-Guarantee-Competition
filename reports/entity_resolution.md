@@ -79,3 +79,66 @@ also remain plausible label ambiguities and are documented rather than relabeled
 .venv\Scripts\shopee-entity-resolution benchmark `
   --config configs\experiment\entity_resolution_benchmark.yaml
 ```
+
+## Validation recall-recovery experiments
+
+The original frozen result above exposed a recall bottleneck: pairwise precision was high, but
+large product groups were fragmented. Follow-up experiments retained the same group-disjoint
+validation split, frozen Phase 6 pair scorer, and predeclared safety gates:
+
+- pairwise precision at least `0.88`;
+- pairwise recall at least `0.40` and pairwise F1 at least `0.55`;
+- B-cubed F1 at least `0.84`;
+- false-merge pair rate at most `0.11`;
+- false-split group rate at most `0.30`.
+
+| Validation policy | Pair P | Pair R | Pair F1 | B-cubed F1 | False merge | False split | Gate |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Dense incumbent | 0.90165 | 0.33119 | 0.48444 | 0.82794 | 0.09835 | 0.30818 | fail |
+| Supported singleton attachment | 0.89317 | 0.39144 | 0.54433 | 0.84616 | 0.10683 | 0.28091 | fail |
+| Residual pair-evidence head | 0.92476 | 0.38122 | 0.53989 | 0.78442 | 0.07524 | 0.55000 | fail |
+| Hybrid candidates + singleton attachment | **0.89582** | **0.45573** | **0.60413** | **0.85797** | **0.10418** | **0.26364** | **pass** |
+
+### Supported singleton attachment
+
+The graph first builds conservative core components. A second pass may attach a singleton only
+when at least two distinct members of one established component support it. Core membership is
+snapshotted before attachment, so a newly attached listing cannot bootstrap a transitive chain.
+This reduced false splits but narrowly missed the pair-recall and pair-F1 gates.
+
+### Pair-evidence ablation
+
+An 11-parameter residual head combined the frozen Phase 6 pair probability with joint cosine,
+pHash, train-fitted character TF-IDF, token overlap, digit/unit consistency, exact-title/pHash
+flags, and title-length ratio. Candidate-pair average precision improved from `0.78044` to
+`0.82450`, but no calibrated graph policy converted that gain into safe clustering quality. The
+head is therefore retained as negative experimental evidence and is not part of the selected
+system.
+
+### Selected hybrid candidate policy
+
+Train-fitted character TF-IDF Top-50, frozen dense Top-50, and pHash Top-20 candidates are combined
+with weighted reciprocal-rank fusion. Candidate Recall increased from dense Recall@50 `0.97438`
+to hybrid Recall@75 `0.99209`. The downstream pair scorer remains frozen.
+
+The selected graph uses a `0.14` core probability threshold, reciprocal rank `5`, full
+cross-component coverage, and supported singleton attachment at probability `0.18` within rank
+`50`. It produces 1,410 clusters, including 325 singletons; 189 supported singletons are attached.
+All six validation gates pass. Test remains untouched, so this is a candidate policy for a future
+frozen system version rather than a replacement test claim.
+
+```powershell
+.venv\Scripts\shopee-entity-resolution recover-recall `
+  --config configs\experiment\entity_recall_recovery.yaml
+.venv\Scripts\shopee-entity-resolution train-pair-evidence `
+  --config configs\experiment\pair_evidence_training.yaml
+.venv\Scripts\shopee-entity-resolution select-pair-evidence-graph `
+  --config configs\experiment\pair_evidence_graph_selection.yaml
+.venv\Scripts\shopee-retrieval hybrid `
+  --config configs\experiment\hybrid_candidate_retrieval.yaml
+.venv\Scripts\shopee-entity-resolution evaluate-hybrid-candidates `
+  --config configs\experiment\hybrid_entity_resolution.yaml
+```
+
+EfficientNet-B1 fine-tuning is deferred: the accepted hybrid experiment resolves the measured
+validation bottleneck without reopening encoder training or adding that compute cost.

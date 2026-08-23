@@ -53,6 +53,11 @@ class GraphDiagnostics:
     accepted_merges: int
     size_rejections: int
     consistency_rejections: int
+    singleton_attachment_attempts: int
+    singleton_attachments: int
+    singleton_attachment_ambiguous: int
+    singleton_attachment_insufficient_support: int
+    singleton_attachment_size_rejections: int
     clusters: int
     singleton_clusters: int
     manual_review_clusters: int
@@ -202,6 +207,101 @@ def _cross_component_coverage(
     return min(left_covered / len(left_members), right_covered / len(right_members))
 
 
+def _attach_supported_singletons(
+    union_find: _UnionFind,
+    posting_ids: tuple[str, ...],
+    eligible: list[ScoredPair],
+    accepted: list[ScoredPair],
+    *,
+    minimum_support: int,
+    target_margin: float,
+    maximum_cluster_size: int,
+) -> dict[str, int]:
+    """Attach a core singleton only when distinct members support one established component.
+
+    Component membership is snapshotted before attachment. Consequently, newly attached
+    singletons cannot provide evidence for later attachments and two singleton chains cannot
+    bootstrap a cluster without support from an established core component.
+    """
+    core_root_by_node = {index: union_find.find(index) for index in range(len(posting_ids))}
+    core_members = {root: frozenset(members) for root, members in union_find.members.items()}
+    singleton_nodes = sorted(
+        (next(iter(members)) for members in core_members.values() if len(members) == 1),
+        key=lambda index: posting_ids[index],
+    )
+    support_by_singleton: dict[int, dict[int, list[ScoredPair]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for pair in eligible:
+        left_root = core_root_by_node[pair.left_index]
+        right_root = core_root_by_node[pair.right_index]
+        if left_root == right_root:
+            continue
+        if len(core_members[left_root]) == 1 and len(core_members[right_root]) > 1:
+            support_by_singleton[pair.left_index][right_root].append(pair)
+        if len(core_members[right_root]) == 1 and len(core_members[left_root]) > 1:
+            support_by_singleton[pair.right_index][left_root].append(pair)
+
+    counters = {
+        "attempts": 0,
+        "attachments": 0,
+        "ambiguous": 0,
+        "insufficient_support": 0,
+        "size_rejections": 0,
+    }
+    for singleton in singleton_nodes:
+        target_evidence = support_by_singleton.get(singleton)
+        if not target_evidence:
+            continue
+        counters["attempts"] += 1
+        candidates: list[tuple[int, float, float, str, int, list[ScoredPair]]] = []
+        for target_root, evidence in target_evidence.items():
+            ordered = sorted(
+                evidence,
+                key=lambda pair: (
+                    -pair.pair_probability,
+                    -pair.cosine_similarity,
+                    pair.left_posting_id,
+                    pair.right_posting_id,
+                ),
+            )
+            if len(ordered) < minimum_support:
+                continue
+            required = ordered[:minimum_support]
+            target_key = min(posting_ids[index] for index in core_members[target_root])
+            candidates.append(
+                (
+                    len(ordered),
+                    float(np.mean([pair.pair_probability for pair in required])),
+                    min(pair.pair_probability for pair in required),
+                    target_key,
+                    target_root,
+                    required,
+                )
+            )
+        if not candidates:
+            counters["insufficient_support"] += 1
+            continue
+        candidates.sort(key=lambda row: (-row[0], -row[1], -row[2], row[3]))
+        best = candidates[0]
+        if (
+            len(candidates) > 1
+            and candidates[1][0] == best[0]
+            and best[1] - candidates[1][1] < target_margin
+        ):
+            counters["ambiguous"] += 1
+            continue
+        current_target_root = union_find.find(best[4])
+        if 1 + len(union_find.members[current_target_root]) > maximum_cluster_size:
+            counters["size_rejections"] += 1
+            continue
+        union_find.union(singleton, current_target_root)
+        # The weakest required support edge is the conservative confidence of this merge.
+        accepted.append(best[5][-1])
+        counters["attachments"] += 1
+    return counters
+
+
 def build_conservative_clusters(
     posting_ids: tuple[str, ...],
     pairs: list[ScoredPair],
@@ -212,6 +312,11 @@ def build_conservative_clusters(
     variant_conflict_override_probability: float,
     maximum_cluster_size: int,
     manual_review_margin: float,
+    singleton_attachment: bool = False,
+    singleton_probability_threshold: float | None = None,
+    singleton_reciprocal_rank: int | None = None,
+    singleton_minimum_support: int = 2,
+    singleton_target_margin: float = 0.0,
 ) -> tuple[list[ClusterAssignment], GraphDiagnostics]:
     """Build connected components while blocking weak transitive component bridges."""
     eligible, counters = eligible_pairs(
@@ -244,6 +349,34 @@ def build_conservative_clusters(
             continue
         union_find.union(left_root, right_root)
         accepted.append(pair)
+
+    attachment_counters = {
+        "attempts": 0,
+        "attachments": 0,
+        "ambiguous": 0,
+        "insufficient_support": 0,
+        "size_rejections": 0,
+    }
+    if singleton_attachment:
+        if singleton_probability_threshold is None or singleton_reciprocal_rank is None:
+            raise ValueError("singleton attachment requires a probability threshold and rank")
+        if singleton_minimum_support < 2:
+            raise ValueError("singleton attachment requires at least two independent supports")
+        attachment_eligible, _ = eligible_pairs(
+            pairs,
+            pair_probability_threshold=singleton_probability_threshold,
+            reciprocal_rank=singleton_reciprocal_rank,
+            variant_conflict_override_probability=variant_conflict_override_probability,
+        )
+        attachment_counters = _attach_supported_singletons(
+            union_find,
+            posting_ids,
+            attachment_eligible,
+            accepted,
+            minimum_support=singleton_minimum_support,
+            target_margin=singleton_target_margin,
+            maximum_cluster_size=maximum_cluster_size,
+        )
 
     components = sorted(
         union_find.members.values(),
@@ -291,6 +424,11 @@ def build_conservative_clusters(
         accepted_merges=len(accepted),
         size_rejections=size_rejections,
         consistency_rejections=consistency_rejections,
+        singleton_attachment_attempts=attachment_counters["attempts"],
+        singleton_attachments=attachment_counters["attachments"],
+        singleton_attachment_ambiguous=attachment_counters["ambiguous"],
+        singleton_attachment_insufficient_support=attachment_counters["insufficient_support"],
+        singleton_attachment_size_rejections=attachment_counters["size_rejections"],
         clusters=len(components),
         singleton_clusters=sum(len(component) == 1 for component in components),
         manual_review_clusters=manual_review_clusters,

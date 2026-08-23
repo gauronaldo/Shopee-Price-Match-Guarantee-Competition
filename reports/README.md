@@ -12,8 +12,8 @@ report instead of being published as separate files.
 | Custom text encoder | [Text encoder](text_encoder.md) | Design, smoke/pilot/full training, TF-IDF comparison, frozen test, and failures |
 | Multimodal model | [Multimodal model](multimodal_model.md) | Fusion pilots, loss ablations, seeds 2026-2028, frozen test, and failures |
 | Hard-negative mining | [Hard-negative mining](hard_negative_mining.md) | Mining audit, rejected pilot, accepted pair-head method, and seeds 2026-2028 |
-| Candidate generation | [Candidate retrieval](candidate_retrieval.md) | Exact/FAISS selection, efficiency, agreement, and retrieval failures |
-| Entity resolution | [Entity resolution](entity_resolution.md) | Pair scoring, reciprocal graph selection, clustering metrics, and failures |
+| Candidate generation | [Candidate retrieval](candidate_retrieval.md) | Exact/FAISS selection, hybrid sparse-dense retrieval, efficiency, agreement, and failures |
+| Entity resolution | [Entity resolution](entity_resolution.md) | Pair scoring, reciprocal graph selection, recall-recovery experiments, clustering metrics, and failures |
 | Pretrained comparison | [Pretrained benchmark](pretrained_benchmark.md) | Frozen EfficientNet-B1 quality, efficiency, domain gap, and custom-model comparison |
 | Final system | [Final evaluation](final_evaluation.md) | Frozen test retrieval, pair calibration, clustering, efficiency, and disclosure |
 

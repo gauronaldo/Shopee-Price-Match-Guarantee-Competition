@@ -74,3 +74,28 @@ the Phase 6 pair head or make match/no-match decisions.
   remeasured before claiming behavior at production catalog scale.
 - Timings are hardware- and environment-specific. Quality gates, serialized round-trip checks, and
   exact agreement are the portable parts of this benchmark.
+
+## Hybrid recall-recovery benchmark
+
+A post-freeze validation experiment combines dense Top-50, train-fitted character TF-IDF Top-50,
+and pHash Top-20 rankings with weighted reciprocal-rank fusion. It targets complementary retrieval
+misses rather than replacing the learned representation.
+
+| Hybrid K | Recall@K | Hit rate@K | mAP@K |
+|---:|---:|---:|---:|
+| 20 | 0.95929 | 0.99184 | 0.90131 |
+| 50 | 0.98962 | 0.99650 | 0.90249 |
+| 75 | **0.99209** | **0.99708** | **0.90333** |
+| 100 | 0.99239 | 0.99708 | 0.90338 |
+| 120 | 0.99239 | 0.99708 | 0.90338 |
+
+Top-75 is the smallest configured budget that reaches the predeclared `0.99` candidate-recall
+target. The marginal gain after 75 is only `0.00031`, so the larger budgets are not selected. When
+passed through the frozen pair scorer and conservative graph, this candidate policy also passes
+the downstream entity-resolution gates documented in
+[`entity_resolution.md`](entity_resolution.md). Test remains untouched.
+
+```powershell
+.venv\Scripts\shopee-retrieval hybrid `
+  --config configs\experiment\hybrid_candidate_retrieval.yaml
+```

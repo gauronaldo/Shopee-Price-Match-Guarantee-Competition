@@ -77,6 +77,82 @@ def test_reciprocal_and_variant_gates_are_label_blind() -> None:
     assert diagnostics.variant_conflict_rejected == 1
 
 
+def test_supported_singleton_attaches_to_established_component() -> None:
+    posting_ids = ("p1", "p2", "p3")
+    pairs = [_pair(1, 2, 0.99), _pair(1, 3, 0.84), _pair(2, 3, 0.82)]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=1.0,
+        variant_conflict_override_probability=0.95,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        singleton_attachment=True,
+        singleton_probability_threshold=0.8,
+        singleton_reciprocal_rank=5,
+        singleton_minimum_support=2,
+        singleton_target_margin=0.02,
+    )
+    assert len({row.entity_id for row in assignments}) == 1
+    assert diagnostics.singleton_attachment_attempts == 1
+    assert diagnostics.singleton_attachments == 1
+
+
+def test_single_support_cannot_attach_singleton() -> None:
+    posting_ids = ("p1", "p2", "p3")
+    pairs = [_pair(1, 2, 0.99), _pair(1, 3, 0.84)]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=1.0,
+        variant_conflict_override_probability=0.95,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        singleton_attachment=True,
+        singleton_probability_threshold=0.8,
+        singleton_reciprocal_rank=5,
+        singleton_minimum_support=2,
+    )
+    entities = {row.posting_id: row.entity_id for row in assignments}
+    assert entities["p1"] == entities["p2"]
+    assert entities["p1"] != entities["p3"]
+    assert diagnostics.singleton_attachments == 0
+    assert diagnostics.singleton_attachment_insufficient_support == 1
+
+
+def test_attached_singleton_cannot_bootstrap_later_attachment() -> None:
+    posting_ids = ("p1", "p2", "p3", "p4")
+    pairs = [
+        _pair(1, 2, 0.99),
+        _pair(1, 3, 0.86),
+        _pair(2, 3, 0.85),
+        _pair(1, 4, 0.84),
+        _pair(3, 4, 0.83),
+    ]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=1.0,
+        variant_conflict_override_probability=0.95,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        singleton_attachment=True,
+        singleton_probability_threshold=0.8,
+        singleton_reciprocal_rank=5,
+        singleton_minimum_support=2,
+    )
+    entities = {row.posting_id: row.entity_id for row in assignments}
+    assert entities["p1"] == entities["p2"] == entities["p3"]
+    assert entities["p4"] != entities["p1"]
+    assert diagnostics.singleton_attachments == 1
+
+
 def test_clustering_metrics_match_hand_computed_perfect_partition() -> None:
     assignments = [
         ClusterAssignment("p1", "e1", 2, 0.9, False),

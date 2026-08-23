@@ -1,0 +1,32 @@
+config_version: pair_evidence.training.v1
+seed: 2026
+source:
+  recovery_config: configs/experiment/entity_recall_recovery.yaml
+  recovery_config_sha256: 7ba647daab02a04dd9d534cdb4c9eb358dc954e27444afd212562a8d07951a2f
+data:
+  fit_split: train
+  tune_split: validation
+  evaluate_test: false
+training:
+  device: cuda
+  epochs: 20
+  batch_size: 4096
+  learning_rate: 0.01
+  weight_decay: 0.001
+  early_stopping_patience: 5
+  hard_positive_fraction: 0.30
+  hard_positive_weight: 2.0
+  hard_negative_weight: 1.5
+  negative_to_positive_ratio: 1.0
+  deterministic: true
+tfidf:
+  ngram_range: [2, 5]
+  max_features: 50000
+artifacts:
+  root: artifacts/entity_resolution/pair_evidence_validation
+  checkpoint: artifacts/entity_resolution/pair_evidence_validation/best.pt
+  rescored_pairs: artifacts/entity_resolution/pair_evidence_validation/scored_pairs.jsonl
+  assignments: artifacts/entity_resolution/pair_evidence_validation/entity_assignments.csv
+  metrics: artifacts/entity_resolution/pair_evidence_validation/metrics.json
+  review: artifacts/entity_resolution/pair_evidence_validation/failure_review.json
+  report: artifacts/entity_resolution/pair_evidence_validation/report.md

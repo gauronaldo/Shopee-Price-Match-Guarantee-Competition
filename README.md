@@ -156,6 +156,21 @@ pipeline adds a trainable joint representation, hard-negative pair scoring, appr
 and entity-level decisions. Its conservative graph policy prioritizes cluster precision and limits
 transitive false merges, with lower recall on larger duplicate groups.
 
+### Validation-only recall recovery
+
+Follow-up validation experiments target entity fragmentation while keeping the trained encoders,
+fusion module, and Phase 6 pair head frozen. Character TF-IDF statistics are fitted on train only.
+
+| Validation policy | Candidate recall | Pair precision | Pair recall | Pair F1 | B-cubed F1 | False split |
+|---|---:|---:|---:|---:|---:|---:|
+| Dense Top-50 incumbent | 0.9744 | 0.9017 | 0.3312 | 0.4844 | 0.8279 | 0.3082 |
+| Hybrid Top-75 + supported singleton attachment | **0.9921** | **0.8958** | **0.4557** | **0.6041** | **0.8580** | **0.2636** |
+
+Hybrid retrieval combines frozen dense candidates, train-fitted character TF-IDF, and pHash using
+weighted reciprocal-rank fusion. The result passes the predeclared validation precision, recall,
+B-cubed, false-merge, and false-split gates. It has not been evaluated on the locked test split and
+is presented as the candidate policy for the next frozen system version.
+
 Full metrics, efficiency measurements, ablations, repeated seeds, and failure analyses are indexed
 in [`reports/README.md`](reports/README.md). The final frozen result is in
 [`reports/final_evaluation.md`](reports/final_evaluation.md).
@@ -268,6 +283,9 @@ immutable by design; use a new artifact root for a deliberate rerun instead of o
 | Hard-negative training | `.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_pilot.yaml` |
 | Candidate retrieval | `.venv\Scripts\shopee-retrieval benchmark --config configs\experiment\candidate_retrieval_benchmark.yaml` |
 | Entity resolution | `.venv\Scripts\shopee-entity-resolution benchmark --config configs\experiment\entity_resolution_benchmark.yaml` |
+| Recall-recovery graph | `.venv\Scripts\shopee-entity-resolution recover-recall --config configs\experiment\entity_recall_recovery.yaml` |
+| Hybrid candidate retrieval | `.venv\Scripts\shopee-retrieval hybrid --config configs\experiment\hybrid_candidate_retrieval.yaml` |
+| Hybrid entity evaluation | `.venv\Scripts\shopee-entity-resolution evaluate-hybrid-candidates --config configs\experiment\hybrid_entity_resolution.yaml` |
 | Pretrained weight preparation | `.venv\Scripts\shopee-pretrained prepare-weights` |
 | Pretrained comparison | `.venv\Scripts\shopee-pretrained benchmark --config configs\experiment\pretrained_image_benchmark.yaml` |
 | Frozen system preflight | `.venv\Scripts\shopee-final preflight --config configs\experiment\final_system_evaluation.yaml` |

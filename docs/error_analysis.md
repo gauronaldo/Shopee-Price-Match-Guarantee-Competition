@@ -97,3 +97,22 @@ clusters. Fragmentation is strongly size-dependent:
 The highest-value future modeling work is therefore large-group recall and component linking under
 strict false-merge controls, not a global threshold reduction. Lowering the threshold after seeing
 test would violate the frozen protocol and is not performed.
+
+## Post-freeze validation recall recovery
+
+A later validation-only experiment targeted the fragmentation diagnosis without reading test.
+Supported singleton attachment reduced the false-split rate but narrowly missed the pair-recall
+gate. A residual classical-evidence head improved candidate-pair average precision, but its safe
+graph operating points did not improve entity clustering and the head was rejected.
+
+The successful intervention was candidate generation. Weighted reciprocal-rank fusion combines
+frozen dense neighbours with train-fitted character TF-IDF and pHash neighbours. Validation
+candidate Recall increased from `0.97438` at dense Top-50 to `0.99209` at hybrid Top-75. With the
+same frozen Phase 6 pair scorer and supported singleton policy, validation pairwise
+precision/recall/F1 reached `0.89582 / 0.45573 / 0.60413`; B-cubed F1 reached `0.85797`, and the
+false-split rate decreased to `0.26364` while false-merge rate remained `0.10418`.
+
+This result shows that the earlier graph lacked enough complementary candidate edges; lowering a
+single global pair threshold was not necessary. Remaining failures still concentrate in large,
+heterogeneous groups and same-brand variants. The hybrid policy is not reported as a new held-out
+result because test remains locked.

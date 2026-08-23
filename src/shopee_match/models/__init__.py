@@ -6,12 +6,14 @@ from shopee_match.models.multimodal_fusion import (
     MultimodalFusionSpec,
     balanced_pair_indices,
 )
+from shopee_match.models.pair_evidence import ResidualPairEvidenceHead
 from shopee_match.models.text_encoder import ScratchTextCNN, TextEncoderSpec
 
 __all__ = [
     "ImageEncoderSpec",
     "LearnedMultimodalFusion",
     "MultimodalFusionSpec",
+    "ResidualPairEvidenceHead",
     "ScratchResidualImageEncoder",
     "ScratchTextCNN",
     "TextEncoderSpec",

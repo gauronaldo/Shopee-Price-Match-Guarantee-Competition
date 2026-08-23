@@ -1,0 +1,65 @@
+config_version: entity_resolution.recall_recovery.v1
+seed: 2026
+source:
+  entity_config: configs/experiment/entity_resolution_benchmark.yaml
+  entity_config_sha256: 84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794
+  entity_metrics: artifacts/entity_resolution/validation/metrics.json
+  entity_metrics_sha256: 1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f
+  scored_pairs: artifacts/entity_resolution/validation/scored_pairs.jsonl
+  scored_pairs_sha256: 162fe357837831feecc4d145cbb4851e9cbb006f7450d82fe5f6544211bcb87a
+data:
+  split: validation
+  evaluate_test: false
+selection:
+  pair_probability_thresholds: [0.14, 0.16, 0.18, 0.2]
+  reciprocal_rank_values: [5, 10]
+  cross_component_coverage_values: [1.0]
+  singleton_attachment_policies:
+    - {enabled: false}
+    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
+  acceptance:
+    minimum_pairwise_precision: 0.88
+    minimum_pairwise_recall: 0.4
+    minimum_pairwise_f1: 0.55
+    minimum_b_cubed_f1: 0.84
+    maximum_false_merge_pair_rate: 0.11
+    maximum_false_split_group_rate: 0.3
+  variant_conflict_override_probability: 0.15
+  maximum_cluster_size: 64
+  manual_review_margin: 0.02
+  failure_example_limit: 30
+artifacts:
+  root: artifacts/entity_resolution/recall_recovery_validation
+  assignments: artifacts/entity_resolution/recall_recovery_validation/entity_assignments.csv
+  metrics: artifacts/entity_resolution/recall_recovery_validation/metrics.json
+  review: artifacts/entity_resolution/recall_recovery_validation/failure_review.json
+  report: artifacts/entity_resolution/recall_recovery_validation/report.md

@@ -1,0 +1,58 @@
+config_version: pair_evidence.graph_selection.v1
+seed: 2026
+source:
+  evidence_config: configs/experiment/pair_evidence_training.yaml
+  evidence_config_sha256: 0c1f824dd7b5aeb79d96df6d5ad2912e210d9b27fc10e41a6f73b2a449484f39
+  evidence_metrics: artifacts/entity_resolution/pair_evidence_validation/metrics.json
+  evidence_metrics_sha256: 93349ae45ec54a699e87b79ae159dc0f9497a35b855e872894b46440d35db988
+  checkpoint: artifacts/entity_resolution/pair_evidence_validation/best.pt
+  checkpoint_sha256: 1fadc301ee657f7f9e68b69088c6c689df0c9f1860247d88f5618c7c3774cf80
+  scored_pairs: artifacts/entity_resolution/pair_evidence_validation/scored_pairs.jsonl
+  scored_pairs_sha256: 893618ee4a9e8e7dc2ce242488d2ddbc2da97eac44064136c79de146f88077b8
+data:
+  split: validation
+  evaluate_test: false
+  retrain_model: false
+selection:
+  pair_probability_thresholds: [0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]
+  reciprocal_rank_values: [5, 10, 20]
+  cross_component_coverage_values: [1.0]
+  singleton_attachment_policies:
+    - {enabled: false}
+    - {enabled: true, probability_threshold: 0.4, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.4, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.4, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.4, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.5, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.5, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.5, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.5, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.6, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.6, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.6, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.6, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.7, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.7, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.7, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.7, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.8, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.8, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.8, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
+    - {enabled: true, probability_threshold: 0.8, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
+  acceptance:
+    minimum_pairwise_precision: 0.88
+    minimum_pairwise_recall: 0.4
+    minimum_pairwise_f1: 0.55
+    minimum_b_cubed_f1: 0.84
+    maximum_false_merge_pair_rate: 0.11
+    maximum_false_split_group_rate: 0.3
+  variant_conflict_override_probability: 0.8
+  maximum_cluster_size: 64
+  manual_review_margin: 0.02
+  failure_example_limit: 30
+artifacts:
+  root: artifacts/entity_resolution/pair_evidence_graph_validation
+  assignments: artifacts/entity_resolution/pair_evidence_graph_validation/entity_assignments.csv
+  metrics: artifacts/entity_resolution/pair_evidence_graph_validation/metrics.json
+  review: artifacts/entity_resolution/pair_evidence_graph_validation/failure_review.json
+  report: artifacts/entity_resolution/pair_evidence_graph_validation/report.md
