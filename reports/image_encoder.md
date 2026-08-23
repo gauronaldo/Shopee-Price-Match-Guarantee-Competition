@@ -2,8 +2,8 @@
 
 ## Outcome
 
-Phase 3 implements and evaluates an image-only residual encoder trained from random
-initialization. The frozen model reaches validation/test mAP@20 of `0.53907 / 0.55674` and
+This experiment evaluates an image-only residual encoder trained from random initialization. The
+frozen model reaches validation/test mAP@20 of `0.53907 / 0.55674` and
 Recall@20 of `0.64667 / 0.65941`. It clearly improves on supplied pHash, but remains below the
 candidate-assisted ORB pipeline. No title, pHash, ORB score, or pretrained weight enters the model.
 
@@ -86,7 +86,7 @@ Validation mAP@20 is `0.83327` when an exact-pHash positive exists and `0.43893`
 The main image-only weakness is therefore visually different listings of the same product, plus
 global-layout shortcuts that confuse commercially distinct variants.
 
-## Efficiency and frozen evidence
+## Efficiency
 
 | Measurement | Validation | Test |
 |---|---:|---:|
@@ -94,9 +94,5 @@ global-layout shortcuts that confuse commercially distinct variants.
 | Exact ranking p50 | 0.442 ms/query | 0.450 ms/query |
 | Exact ranking p95 | 0.656 ms/query | 0.717 ms/query |
 
-- Checkpoint SHA-256: `6ea26b493d643b148cbcc48006231637b266491a0a026d7fdbd22284f7100e07`
-- Canonical training-config SHA-256: `93286c4c66cd68a0d72c2f5894ac6a8347208892267c269ba59bc3f46fee3bd1`
-- Training-metrics SHA-256: `3b389c5dd6cb58548249931fa77b1aa6b5821d540f07f9d99294e8725cee2a6a`
-
-The checkpoint, threshold, and exact Top-20 protocol were frozen before the single test
-evaluation. Phase 3 is closed.
+Configuration: `configs/experiment/image_embedding_training.yaml`. The checkpoint, threshold, and
+exact Top-20 protocol were frozen before the test evaluation.

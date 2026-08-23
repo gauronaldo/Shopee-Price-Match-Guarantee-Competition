@@ -2,10 +2,10 @@
 
 ## Outcome
 
-Phase 4 implements a train-only character TextCNN initialized randomly. It reaches validation/test
-mAP@20 of `0.75698 / 0.74841` and Recall@20 of `0.87414 / 0.86978`. The learned encoder is stable
-and useful for multimodal fusion, but character TF-IDF remains the stronger standalone title
-retriever.
+This experiment evaluates a train-only character TextCNN initialized randomly. It reaches
+validation/test mAP@20 of `0.75698 / 0.74841` and Recall@20 of `0.87414 / 0.86978`. The learned
+encoder is stable and useful for multimodal fusion, but character TF-IDF remains the stronger
+standalone title retriever.
 
 ## System design
 
@@ -90,13 +90,10 @@ The bounded validation review contains 40 Top-1 false matches and 40 complete To
 These results justify keeping digits, units, quantities, and model conflicts visible to later pair
 scoring and using image evidence when titles are short or semantically inconsistent.
 
-## Efficiency and frozen evidence
+## Efficiency
 
 - Validation/test embedding throughput: `16,609.75 / 10,741.39` listings/s.
 - Test exact-ranking p50/p95: `0.343 / 0.425 ms/query`.
-- Checkpoint SHA-256: `cbb77e4d76c1909c24b0e30654eacde2a0f752bb5d2ba795d45b01ec1189f7c1`
-- Canonical training-config SHA-256: `7fac21a3c2a45fdfa358da3353ec053aa96edea1554eea3da80abacba16de844`
-- Training-metrics SHA-256: `e92bd3704d09e6e3ae36e89c2d219c69e7b3d7daa6ad70e856ae0e0e73095030`
 
-The checkpoint, threshold, vocabulary, and Top-20 protocol were frozen before the single test
-evaluation. Phase 4 is closed.
+Configuration: `configs/experiment/text_embedding_training.yaml`. The checkpoint, threshold,
+vocabulary, and Top-20 protocol were frozen before the test evaluation.

@@ -1,17 +1,15 @@
 # Pretrained Representation Benchmark
 
-Phase 9 status: **phase9_complete_validation_only**. This benchmark uses TorchVision EfficientNet-B1
-`IMAGENET1K_V2` as a frozen image encoder. It performs no local training or fine-tuning and does
-not access test.
+This validation-only benchmark uses TorchVision EfficientNet-B1 `IMAGENET1K_V2` as a frozen image
+encoder. It performs no local training or fine-tuning and does not access test.
 
 ## Protocol
 
-- Split: validation, group-disjoint manifest inherited from Phases 1-8
+- Split: validation, using the established group-disjoint manifest
 - Retrieval: deterministic exact cosine over the full validation corpus
-- Candidate budget: Top-50, identical to Phase 7
+- Candidate budget: Top-50, identical to the custom candidate-retrieval benchmark
 - Feature: 1,280-dimensional normalized penultimate EfficientNet-B1 representation
 - Official preprocessing: resize 255, center crop 240, ImageNet mean/std normalization
-- Weight SHA-256: `c27df63ce6eb17ef8bcea58922fd3a254cba910c720f41ee89d64d99fb7a4ddf`
 
 ## Quality comparison
 
@@ -30,10 +28,9 @@ not access test.
 
 This is the modality-matched efficiency comparison. Both rows use the same validation listings and
 exact-cosine protocol. The EfficientNet weight file is not a training checkpoint from this project.
-Its local training cost is zero, but the external ImageNet pretraining cost is unknown and must not
-be interpreted as free compute. The custom multimodal system is omitted from this table because its
-Phase 7 extraction benchmark used cached encoder outputs rather than end-to-end image/title
-decoding.
+Its local training cost is zero; the external ImageNet pretraining cost is not measured. The custom
+multimodal system is omitted from this table because its candidate-extraction benchmark used cached
+encoder outputs rather than end-to-end image/title decoding.
 
 ## Recall by true group size
 
@@ -67,11 +64,10 @@ because it also uses title information.
 
 ImageNet features can recognize shapes and semantic categories, but exact-product matching often
 depends on packaging text, quantity, color, or model number. A pretrained image model is therefore
-not expected to replace the multimodal pipeline automatically. Weak results are retained as a
-measured domain-gap finding rather than tuned on test.
+not expected to replace the multimodal pipeline automatically. The result indicates a measurable
+domain gap, and no test-time tuning is performed.
 
 Model and transform contract: [official TorchVision EfficientNet-B1 documentation](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.efficientnet_b1.html).
-Bounded top-1 errors and zero-recall examples remain in the ignored review artifact.
 
 ## Reproduction
 

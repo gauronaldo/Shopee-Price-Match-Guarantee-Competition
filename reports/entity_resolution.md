@@ -1,16 +1,15 @@
 # Entity Resolution Benchmark
 
-Phase 8 status: **phase8_complete_validation_only**. Thresholds and graph rules are selected on validation only;
-test remains untouched. Ground-truth labels are used for selection and analysis, never as graph
-features or edge-construction inputs.
+This report consolidates validation-only graph development and the selected final inference
+policy. Ground-truth labels are used for selection and analysis, never as graph features or
+edge-construction inputs.
 
 ## Frozen inputs
 
 - Listings: `3,430` validation listings
 - Candidate budget: Top-`50` exact cosine neighbours
-- Pair scorer: accepted Phase 6 symmetric pair head
+- Pair scorer: selected symmetric pair head
 - Candidate Recall@50 ceiling: `0.97438`
-- Test accessed: `false`
 
 ## Selected graph policy
 
@@ -65,8 +64,7 @@ The reciprocal-neighbour rule removes one-sided retrieval coincidences; the cros
 coverage rule blocks a single bridge from joining two established components unless enough members
 support the merge. Variant-conflicting titles require a higher pair probability.
 
-This is a validation-selected operating point, not a final test claim. Detailed false-merge,
-false-split, and manual-review examples remain in the ignored Phase 8 review artifact.
+This is a validation-selected operating point, not a final test claim.
 
 Manual inspection shows two dominant categories: same-brand or same-package variants can still
 form false-merge bridges, while large groups with diverse images and titles are fragmented by the
@@ -84,7 +82,7 @@ also remain plausible label ambiguities and are documented rather than relabeled
 
 The original frozen result above exposed a recall bottleneck: pairwise precision was high, but
 large product groups were fragmented. Follow-up experiments retained the same group-disjoint
-validation split, frozen Phase 6 pair scorer, and predeclared safety gates:
+validation split, frozen pair scorer, and predeclared safety gates:
 
 - pairwise precision at least `0.88`;
 - pairwise recall at least `0.40` and pairwise F1 at least `0.55`;
@@ -97,7 +95,7 @@ validation split, frozen Phase 6 pair scorer, and predeclared safety gates:
 | Dense incumbent | 0.90165 | 0.33119 | 0.48444 | 0.82794 | 0.09835 | 0.30818 | fail |
 | Supported singleton attachment | 0.89317 | 0.39144 | 0.54433 | 0.84616 | 0.10683 | 0.28091 | fail |
 | Residual pair-evidence head | 0.92476 | 0.38122 | 0.53989 | 0.78442 | 0.07524 | 0.55000 | fail |
-| Hybrid candidates + singleton attachment | **0.89582** | **0.45573** | **0.60413** | **0.85797** | **0.10418** | **0.26364** | **pass** |
+| Multi-source candidates + singleton attachment | **0.89582** | **0.45573** | **0.60413** | **0.85797** | **0.10418** | **0.26364** | **pass** |
 
 ### Supported singleton attachment
 
@@ -108,12 +106,11 @@ This reduced false splits but narrowly missed the pair-recall and pair-F1 gates.
 
 ### Pair-evidence ablation
 
-An 11-parameter residual head combined the frozen Phase 6 pair probability with joint cosine,
+An 11-parameter residual head combined the frozen pair probability with joint cosine,
 pHash, train-fitted character TF-IDF, token overlap, digit/unit consistency, exact-title/pHash
 flags, and title-length ratio. Candidate-pair average precision improved from `0.78044` to
 `0.82450`, but no calibrated graph policy converted that gain into safe clustering quality. The
-head is therefore retained as negative experimental evidence and is not part of the selected
-system.
+head is therefore documented as an unsuccessful ablation and is not part of the selected system.
 
 ### Selected final inference policy
 
@@ -129,7 +126,7 @@ All six validation gates pass.
 
 The selected final system reaches test pairwise precision/recall/F1
 `0.87850 / 0.40396 / 0.55344` and B-cubed F1 `0.84711`. False-split and false-merge rates are
-`0.28350 / 0.12150`. Full provenance and interpretation are recorded in
+`0.28350 / 0.12150`. Full evaluation details and interpretation are recorded in
 [`final_evaluation.md`](final_evaluation.md).
 
 ```powershell
@@ -149,5 +146,5 @@ The selected final system reaches test pairwise precision/recall/F1
   --config configs\experiment\hybrid_system_evaluation.yaml
 ```
 
-EfficientNet-B1 fine-tuning is deferred: the accepted hybrid experiment resolves the measured
-validation bottleneck without reopening encoder training or adding that compute cost.
+EfficientNet-B1 fine-tuning is deferred because the selected multi-source retrieval policy resolves
+the measured validation bottleneck without reopening encoder training or adding that compute cost.

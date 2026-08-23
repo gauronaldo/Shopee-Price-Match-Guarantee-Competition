@@ -5,11 +5,9 @@ corresponding split as its candidate pool and always excludes the query itself.
 TF-IDF vocabulary and IDF are fit on train only. Fusion weight and pair
 thresholds are selected on validation, then frozen for the final test evaluation.
 
-## Provenance
+## Evaluation protocol
 
-- Config: `classical_retrieval.benchmark.v1` (`07de33b57fb97e9147eb955e895efa8eae5f096d14ceca237d898d00e8307d64`)
-- Split manifest SHA-256: `c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09`
-- Git commit / dirty: `38bec4ac6a5870716edf0e0993407b6acc4984a8` / `True`
+- Configuration: `configs/experiment/classical_retrieval_benchmark.yaml`
 - Seed: `2026`
 - Environment: Python `3.12.13`, OpenCV `4.12.0`, NumPy `2.2.6`
 
@@ -34,17 +32,16 @@ Peak process working set: **518.1 MiB**.
 
 ## Sampled failure analysis
 
-Manual review of the ignored deterministic example file found semantically unrelated
-pHash neighbors, title matches that omit identity-critical model/variant details, and
-ORB matches driven by shared visual structure. Several high-scoring cross-label title
-pairs also look plausibly identical, consistent with the Phase 1 label-fragmentation
-warning. These cases remain evaluation errors; labels are not silently rewritten.
+Manual review found semantically unrelated pHash neighbors, title matches that omit
+identity-critical model/variant details, and ORB matches driven by shared visual structure.
+Several high-scoring cross-label title pairs also look plausibly identical, consistent with the
+data-audit label-fragmentation warning. These cases remain evaluation errors; labels are not
+silently rewritten.
 
-## Interpretation guardrails
+## Interpretation
 
 - The supplied pHash is an image-appearance signal, not proof of product identity.
 - ORB reranks the label-blind union of pHash and TF-IDF candidates; its
   retrieval ceiling is therefore limited by that candidate union.
 - Test labels were used only after validation selected the fusion weight and
   thresholds.
-- Local success/failure examples are saved under the ignored artifact directory for manual review and are not redistributed.

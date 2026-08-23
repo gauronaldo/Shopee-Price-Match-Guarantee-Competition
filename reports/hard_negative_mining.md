@@ -2,14 +2,14 @@
 
 ## Outcome
 
-Phase 6 mines deceptively similar different-product pairs from train only, then fine-tunes the
-symmetric pair head while keeping the fusion embedding frozen. The accepted method passes all
-three deterministic seeds: controlled-recall precision improves modestly, mAP@20 does not regress,
-variant-conflict errors decrease, and Recall@20 stays fixed.
+Hard-negative mining retrieves deceptively similar different-product pairs from train only, then
+fine-tunes the symmetric pair head while keeping the fusion embedding frozen. The accepted method
+passes all three deterministic seeds: controlled-recall precision improves modestly, mAP@20 does
+not regress, variant-conflict errors decrease, and Recall@20 stays fixed.
 
 ## Mining contract and result
 
-The frozen Phase 5 model retrieves 100 exact neighbours for every train listing. Labels are used
+The frozen multimodal model retrieves 100 exact neighbours for every train listing. Labels are used
 only after retrieval to keep cross-label pairs. Same-pHash and exactly normalized cross-label
 titles are excluded as possible false negatives or fragmented labels; symmetric duplicates are
 collapsed.
@@ -33,7 +33,7 @@ collapsed.
 | Exact normalized title across labels | 416 |
 | Variant candidates removed by 50% share cap | 29,144 |
 
-Test data is not loaded during mining or Phase 6 selection.
+Test data is not loaded during mining or checkpoint selection.
 
 ## Pilot decision
 
@@ -48,7 +48,7 @@ diagnostic rather than an optimized term.
 
 ## Repeated-seed validation
 
-Frozen Phase 5 reference: mAP@20 `0.87903`, controlled-recall precision `0.74557`, Recall@20
+Frozen multimodal reference: mAP@20 `0.87903`, controlled-recall precision `0.74557`, Recall@20
 `0.93780`, and 280 false Top-1 variant conflicts.
 
 | Seed | Best epoch | mAP@20 | mAP delta | Controlled precision | Precision delta | Variant errors | Variant delta | Gate |
@@ -63,22 +63,17 @@ Frozen Phase 5 reference: mAP@20 `0.87903`, controlled-recall precision `0.74557
 | Controlled-precision delta | +0.00244 | 0.00033 |
 | Variant Top-1 delta | -3.00 | not applicable |
 
-Recall@20 is `0.93780` for the reference and every selected Phase 6 run because candidate
+Recall@20 is `0.93780` for the reference and every selected hard-negative run because candidate
 embeddings are frozen. All three runs select epoch 1 and then lose validation mAP while training
 loss continues to fall, supporting early stopping.
 
-## Canonical seed and provenance
+## Selected run
 
 Seed 2026 remains canonical because it was pre-declared, not because it has the largest score.
 
-- Phase 5 source checkpoint SHA-256: `95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4`
-- Phase 5 source config SHA-256: `279c96794c207fb2e62e4638cdae315dc4ffd4a2b85ecf039f41861e7412377c`
-- Phase 6 config SHA-256: `12b8b7e97815b8cd710f3a3a6160ca3263d36453face15627b2ecc17ccab94fa`
-- Phase 6 checkpoint SHA-256: `d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e`
-- Phase 6 metrics SHA-256: `7bff1b804b0a611e1a5380540e54f3b6955da3c4b4ad42ff5d7aff2442e898ee`
-- Mined manifest SHA-256: `ad716c1c7a4d5e1aa31cbd668c98b3d1c6f42117d865d2bc2aa5bf995e19d2d2`
+- Training configuration: `configs/experiment/hard_negative_pair_head_pilot.yaml`
+- Repeated-seed summary: `configs/experiment/hard_negative_repeated_seed_summary.yaml`
 
 Hard negatives cannot create missing candidates. They teach the pair classifier to demote
-look-alike non-matches at a controlled recall level. The improvement is consistent but small and
-must not be presented as a large model gain. Phase 6 is closed on validation; test remains
-untouched.
+look-alike non-matches at a controlled recall level. The measured improvement is consistent but
+small. Mining and checkpoint selection use train and validation only.

@@ -2,9 +2,9 @@
 
 ## Outcome
 
-Phase 7 status: **phase7_complete_validation_only**. The benchmark uses only validation to select candidate K and FAISS
-`efSearch`; held-out test data is not evaluated. Exact cosine search is the quality reference, and
-FAISS HNSW is accepted only if it preserves recall and candidate-set agreement.
+This benchmark uses validation to select candidate K and FAISS `efSearch`. Exact cosine search is
+the quality reference, and FAISS HNSW is accepted only if it preserves recall and candidate-set
+agreement.
 
 ## Exact candidate ceiling
 
@@ -56,16 +56,15 @@ FAISS HNSW is accepted only if it preserves recall and candidate-set agreement.
 | Some but not all group members retrieved | 203 |
 | Complete group retrieved | 3188 |
 
-The local failure-review JSON contains bounded title-rich examples and approximate disagreements;
-it remains ignored because it is generated evidence. Aggregate group-size, title-length, and
-exact-positive-pHash strata are stored in metrics.
+The benchmark reviews a bounded set of title-rich failures and approximate-search disagreements.
+Aggregate group-size, title-length, and exact-positive-pHash strata are stored in metrics.
 
 ## Interpretation
 
-Recall@K is the Phase 7 primary metric because a match omitted here cannot be recovered by the pair
-classifier in Phase 8. Hit rate is less strict: it needs only one duplicate, while macro Recall@K
+Recall@K is the primary candidate-retrieval metric because a match omitted here cannot be recovered
+by the pair classifier. Hit rate is less strict: it needs only one duplicate, while macro Recall@K
 rewards retrieving the full product group. HNSW changes candidate generation only; it does not apply
-the Phase 6 pair head or make match/no-match decisions.
+the pair head or make match/no-match decisions.
 
 ## Limitations
 
@@ -75,13 +74,13 @@ the Phase 6 pair head or make match/no-match decisions.
 - Timings are hardware- and environment-specific. Quality gates, serialized round-trip checks, and
   exact agreement are the portable parts of this benchmark.
 
-## Hybrid recall-recovery benchmark
+## Multi-source recall-recovery benchmark
 
-A post-freeze validation experiment combines dense Top-50, train-fitted character TF-IDF Top-50,
+An internal validation experiment combines dense Top-50, train-fitted character TF-IDF Top-50,
 and pHash Top-20 rankings with weighted reciprocal-rank fusion. It targets complementary retrieval
 misses rather than replacing the learned representation.
 
-| Hybrid K | Recall@K | Hit rate@K | mAP@K |
+| Candidate K | Recall@K | Hit rate@K | mAP@K |
 |---:|---:|---:|---:|
 | 20 | 0.95929 | 0.99184 | 0.90131 |
 | 50 | 0.98962 | 0.99650 | 0.90249 |
@@ -93,7 +92,8 @@ Top-75 is the smallest configured budget that reaches the predeclared `0.99` can
 target. The marginal gain after 75 is only `0.00031`, so the larger budgets are not selected. When
 passed through the frozen pair scorer and conservative graph, this candidate policy also passes
 the downstream entity-resolution gates documented in
-[`entity_resolution.md`](entity_resolution.md). Test remains untouched.
+[`entity_resolution.md`](entity_resolution.md). It is incorporated into the selected final model;
+the frozen test result is documented in [`final_evaluation.md`](final_evaluation.md).
 
 ```powershell
 .venv\Scripts\shopee-retrieval hybrid `

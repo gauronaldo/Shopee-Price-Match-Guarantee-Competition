@@ -14,23 +14,16 @@ Those experiments changed candidate generation and graph inference, not the trai
 | False-merge pair rate | 0.10418 | 0.12150 |
 | False-split group rate | 0.26364 | 0.28350 |
 
-## Selected final system evaluation
+## Frozen evaluation protocol
 
-Status: **complete**. The immutable artifact records the internal status
-`hybrid_system_confirmatory_test_complete`.
-
-### Frozen contract
-
-- Source commit: `51d109d626d444ca9b8e4dfd423a9459c08f6346` (`git_dirty=false`)
-- Final config SHA-256: `9f3c88a8e154101882821815681e2ce94cc3f2a3b9e0f5681ce0412022618957`
-- Hybrid entity config SHA-256: `982d6118bfde3b444d672a0b5717dc4833097bf0e0fd0fd09a3e53158cad083e`
-- Hybrid entity metrics SHA-256: `8833c0f6994b98dd08f10a4aa482d46e9520c25612b6b3e4be9ed6cd11a1472e`
-- Confirmatory metrics SHA-256: `f4f30ae0158acc73e1563ac4bef1d9e97c89ccff4b78324ae2182ed2d6738841`
+- Configuration: `configs/experiment/hybrid_system_evaluation.yaml`
 - Candidate K / core threshold / reciprocal rank: `75 / 0.14 / 5`
 - Singleton threshold / reciprocal rank / minimum support: `0.18 / 50 / 2`
-- Test-time parameter selection: disabled
+- Policy selected on validation; no test-time parameter tuning.
 
-### Candidate retrieval
+Detailed run metadata remains in the frozen configuration and metrics artifact.
+
+## Candidate retrieval
 
 | Metric | Validation | Test |
 |---|---:|---:|
@@ -44,7 +37,7 @@ Status: **complete**. The immutable artifact records the internal status
 Recall is macro-averaged over queries. An independent validation micro average over directed
 positive pairs was `0.97071`, which is lower because large groups receive more weight.
 
-### Retrieval-integrity audit
+## Retrieval-integrity audit
 
 | Invariant | Validation | Test |
 |---|---:|---:|
@@ -67,7 +60,7 @@ self again, merges and deduplicates the three lists, then truncates the union to
 single source supplies 75 candidates, strong overlap can leave fewer than 75 unique IDs. Pair
 thresholds `0.14` and `0.18` are applied only after retrieval.
 
-### Pair decisions
+## Pair decisions
 
 | Metric | Test value |
 |---|---:|
@@ -84,7 +77,7 @@ thresholds `0.14` and `0.18` are applied only after retrieval.
 Candidate-conditioned metrics score only retrieved pairs. Accepted-edge recall uses every true
 test pair as its denominator and therefore includes retrieval and graph-gating misses.
 
-### Entity resolution
+## Entity resolution
 
 | Metric | Validation | Test |
 |---|---:|---:|
@@ -102,7 +95,7 @@ does not transfer perfectly: pairwise precision falls below `0.88` by `0.00150`,
 rate exceeds `0.11` by `0.01150`. Pairwise recall, pairwise F1, B-cubed F1, and false-split rate
 retain the intended improvement established during development.
 
-### Efficiency
+## Efficiency
 
 | Stage | Test result |
 |---|---:|
@@ -120,13 +113,10 @@ The exact dense stage remains fast; train-fit sparse ranking dominates this offl
 Serving should persist the fitted vocabulary, IDF values, and catalog index instead of fitting them
 per request.
 
-## Evaluation disclosure
+## Protocol considerations
 
 The final inference policy was selected from 248 predeclared validation graph configurations. That
 search creates some risk of validation optimism, so the confirmatory test is the stronger evidence
 for its effect size. The same test split had already been used for earlier component experiments;
 the final result is therefore not described as globally unseen. No policy was
 revised after observing the test output.
-
-The local access marker and immutable artifact path block accidental repetition of the final
-evaluation.

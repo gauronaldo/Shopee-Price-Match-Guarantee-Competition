@@ -2,10 +2,10 @@
 
 ## Outcome
 
-Phase 5 combines frozen custom image and text embeddings with a score-preserving residual fusion
-module and symmetric pair head. The canonical frozen-test result is mAP@20 `0.86848`, Recall@20
-`0.93235`, and pair F1 `0.68429`. It beats either custom modality and classical TF-IDF retrieval on
-mAP, but remains below the strongest classical fused pipeline.
+The multimodal model combines frozen custom image and text embeddings with a score-preserving
+residual fusion module and symmetric pair head. The canonical frozen-test result is mAP@20
+`0.86848`, Recall@20 `0.93235`, and pair F1 `0.68429`. It beats either custom modality and
+classical TF-IDF retrieval on mAP, but remains below the strongest classical fused pipeline.
 
 Only the fusion projection and pair head are trained; both encoders remain frozen and were
 originally trained from random initialization. Cached embeddings exclude test during training.
@@ -103,13 +103,10 @@ fusion reaches mAP `0.8810`, Recall `0.9349`, and pair F1 `0.7220`.
 The pair head improves average ranking but can regress already-correct simple-fusion queries.
 Digit, quantity, size, volume, and model-number conflicts directly motivate hard-negative mining.
 
-## Efficiency and frozen evidence
+## Efficiency
 
 - Test image/text/fusion throughput: `174.86 / 14,345.76 / 77,691.86` listings/s.
 - Test exact-ranking p50/p95: `0.366 / 0.614 ms/query`.
-- Checkpoint SHA-256: `95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4`
-- Canonical training-config SHA-256: `279c96794c207fb2e62e4638cdae315dc4ffd4a2b85ecf039f41861e7412377c`
-- Training-metrics SHA-256: `da4d681cf0fb656905748a85c88f1285016ae4aee690826fdcd809521de4a313`
 
-The checkpoint, simple-fusion weight, threshold, and Top-20 protocol were frozen before the
-single test evaluation. Phase 5 is closed.
+Configuration: `configs/experiment/multimodal_embedding_training.yaml`. The checkpoint,
+simple-fusion weight, threshold, and Top-20 protocol were frozen before the test evaluation.

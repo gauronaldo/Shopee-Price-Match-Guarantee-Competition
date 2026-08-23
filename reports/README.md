@@ -12,10 +12,10 @@ report instead of being published as separate files.
 | Custom text encoder | [Text encoder](text_encoder.md) | Design, smoke/pilot/full training, TF-IDF comparison, frozen test, and failures |
 | Multimodal model | [Multimodal model](multimodal_model.md) | Fusion pilots, loss ablations, seeds 2026-2028, frozen test, and failures |
 | Hard-negative mining | [Hard-negative mining](hard_negative_mining.md) | Mining audit, rejected pilot, accepted pair-head method, and seeds 2026-2028 |
-| Candidate generation | [Candidate retrieval](candidate_retrieval.md) | Exact/FAISS selection, hybrid sparse-dense retrieval, efficiency, agreement, and failures |
+| Candidate generation | [Candidate retrieval](candidate_retrieval.md) | Exact/FAISS selection, multi-source retrieval, efficiency, agreement, and failures |
 | Entity resolution | [Entity resolution](entity_resolution.md) | Pair scoring, reciprocal graph selection, recall-recovery experiments, clustering metrics, and failures |
 | Pretrained comparison | [Pretrained benchmark](pretrained_benchmark.md) | Frozen EfficientNet-B1 quality, efficiency, domain gap, and custom-model comparison |
-| Final system | [Final evaluation](final_evaluation.md) | Frozen test retrieval, pair calibration, clustering, efficiency, and disclosure |
+| Final system | [Final evaluation](final_evaluation.md) | Frozen test retrieval, pair calibration, clustering, efficiency, and protocol limitations |
 
 ## Evidence policy
 
@@ -23,9 +23,9 @@ report instead of being published as separate files.
 - Full epoch histories, checkpoints, indexes, embeddings, detailed metrics, and sampled review
   records remain under the ignored `artifacts/` tree.
 - Frozen experiment configs retain historical report-output paths because those paths contribute
-  to their SHA-256 provenance. If an older command regenerates a superseded root-level Markdown
-  file, `.gitignore` keeps it local.
+  to reproducibility. If an older command regenerates a superseded root-level Markdown file,
+  `.gitignore` keeps it local.
 - Figures and aggregate tables remain in `figures/` and `tables/`.
 
-This layout reduces dozens of overlapping Markdown files to ten functional reports without
-combining unrelated experiments or hiding weak results.
+This layout reduces dozens of overlapping Markdown files to ten functional reports while
+preserving the experiment and decision trail for each system component.
