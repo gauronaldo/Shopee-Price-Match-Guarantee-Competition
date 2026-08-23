@@ -20,6 +20,17 @@ Experiments use the Kaggle **Shopee Price Match Guarantee** dataset. Competition
 artifacts remain outside version control in accordance with dataset access and repository hygiene
 requirements.
 
+## Project highlights
+
+- Leakage-safe train/validation/test splitting by product group and duplicated visual assets.
+- Classical pHash, ORB, character TF-IDF, and late-fusion references alongside custom image,
+  text, and multimodal PyTorch models trained from random initialization.
+- Train-only hard-negative mining, FAISS HNSW candidate retrieval, calibrated pair scoring, and
+  consistency-aware graph clustering.
+- Frozen test evaluation across retrieval, pair classification, clustering, calibration, and
+  efficiency metrics.
+- A 102-test quality suite plus FastAPI, Streamlit, and Docker Compose inference paths.
+
 ## Problem context
 
 Marketplace catalogs rarely provide a clean one-to-one mapping between listings and physical
@@ -46,10 +57,9 @@ refer to the same product. For each query listing, participants produced a set o
 from them. The challenge reflects a common catalog problem: product identity is not explicitly
 shared across sellers, and neither image similarity nor title similarity is reliable on its own.
 
-This repository treats the competition as an entity-resolution case study rather than a
-leaderboard-only exercise. The original set-prediction task is decomposed into candidate retrieval,
-pair verification, and graph clustering so that retrieval misses, false matches, and transitive
-cluster errors can be evaluated separately.
+The competition task is extended into an entity-resolution system with separate candidate
+retrieval, pair verification, and graph-clustering stages. This decomposition makes retrieval
+misses, pair-scoring errors, and transitive cluster failures independently measurable.
 
 The provided training metadata contains five fields:
 
@@ -106,17 +116,33 @@ It is not loaded into the demo inference contract. See
 The held-out system evaluation was run once after checkpoints, thresholds, candidate K, and graph
 rules were frozen on validation.
 
-| System or component | Evaluation split | mAP@20 | Recall@20 | Additional result |
-|---|---|---:|---:|---|
-| Supplied pHash image baseline | Test | 0.3073 | 0.3345 | Classical image reference |
-| Custom residual image encoder | Test | 0.5567 | 0.6594 | Random initialization |
-| Custom character TextCNN | Test | 0.7484 | 0.8698 | TF-IDF remains stronger |
-| Custom multimodal model | Test | 0.8685 | 0.9324 | Pair F1 0.6843 |
-| Classical late fusion | Test | **0.8810** | **0.9349** | Pair F1 **0.7220** |
-| Pretrained EfficientNet-B1 image benchmark | Validation | 0.7375 | 0.8248 | Comparison only; no fine-tuning |
-| Final retrieval + pair + entity system | Test | 0.8595 | 0.9324 | Recall@50 0.9688 |
+### Frozen test retrieval
 
-Final entity-resolution quality:
+| System or component | mAP@20 | Recall@20 | Additional result |
+|---|---:|---:|---|
+| Supplied pHash image baseline | 0.3073 | 0.3345 | Classical image reference |
+| Custom residual image encoder | 0.5567 | 0.6594 | Random initialization |
+| Custom character TextCNN | 0.7484 | 0.8698 | TF-IDF test mAP@20: 0.8564 |
+| Custom multimodal pair-head rerank | 0.8685 | 0.9324 | Pair F1: 0.6843 |
+| Classical late fusion | **0.8810** | **0.9349** | Pair F1: **0.7220** |
+| Final-system joint retrieval | 0.8595 | 0.9324 | Recall@50: 0.9688 |
+
+The Phase 5 pair-head row measures reranked retrieval. The final-system row reports the frozen
+joint-embedding candidate stage before reciprocal-edge and clustering decisions; pair and entity
+quality are reported separately below.
+
+### Validation-only pretrained comparison
+
+| Representation | Modalities | Initialization | mAP@20 | Recall@20 |
+|---|---|---|---:|---:|
+| Custom residual CNN | Image | Random | 0.5391 | 0.6467 |
+| EfficientNet-B1 V2 | Image | ImageNet-1K pretrained, frozen | 0.7375 | 0.8248 |
+| Custom multimodal joint embedding | Image + title | Random | **0.8702** | **0.9378** |
+
+EfficientNet-B1 is evaluated on validation under the same exact-cosine image-retrieval protocol;
+it is not fine-tuned and is not included in the frozen test comparison.
+
+### Entity resolution
 
 | Metric | Validation | Test |
 |---|---:|---:|
@@ -125,11 +151,10 @@ Final entity-resolution quality:
 | B-cubed precision | 0.9562 | 0.9528 |
 | B-cubed F1 | 0.8279 | 0.8223 |
 
-The results are intentionally not polished into a false “best model” story. Classical late fusion
-remains the strongest retrieval reference, while the custom multimodal track demonstrates learned
-representations, hard-negative pair scoring, approximate retrieval, and entity-level reasoning.
-The conservative graph policy favors precision and reduces catastrophic false merges, at the cost
-of splitting larger duplicate groups.
+Classical late fusion provides the strongest frozen test retrieval score. The custom multimodal
+pipeline adds a trainable joint representation, hard-negative pair scoring, approximate retrieval,
+and entity-level decisions. Its conservative graph policy prioritizes cluster precision and limits
+transitive false merges, with lower recall on larger duplicate groups.
 
 Full metrics, efficiency measurements, ablations, repeated seeds, and failure analyses are indexed
 in [`reports/README.md`](reports/README.md). The final frozen result is in
@@ -154,11 +179,11 @@ used during training.
 
 ### Local launcher
 
-Prerequisites: the authorized Kaggle data, split manifest, frozen checkpoints, embedding caches,
-and entity assignments must exist locally. Verify everything before opening the UI:
+Complete [Installation and data](#installation-and-data), then restore the frozen checkpoints,
+embedding caches, and entity assignments referenced by `configs/serving/demo.yaml`. Verify the
+runtime contract before opening the UI:
 
 ```powershell
-.venv\Scripts\python -m pip install -e ".[dev,retrieval,demo]"
 .venv\Scripts\python -m shopee_match.serving.cli preflight `
   --config configs\serving\demo.yaml
 .venv\Scripts\python -m shopee_match.serving.cli launch
@@ -192,8 +217,8 @@ After both services become healthy, open `http://localhost:8501`. API documentat
 docker compose down
 ```
 
-The current Compose profile is a portable CPU-oriented demo. It does not configure NVIDIA Container
-Toolkit or claim production deployment readiness. More detail is available in
+The Compose profile defaults to CPU inference. GPU containers require NVIDIA Container Toolkit
+and an explicit device configuration. Runtime behavior and API contracts are documented in
 [`docs/demo.md`](docs/demo.md).
 
 ## Installation and data
@@ -240,14 +265,15 @@ immutable by design; use a new artifact root for a deliberate rerun instead of o
 | Custom image training | `.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_training.yaml` |
 | Custom text training | `.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_training.yaml` |
 | Multimodal training | `.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_training.yaml` |
-| Hard-negative training | `.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_seed_2027.yaml` |
+| Hard-negative training | `.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_pilot.yaml` |
 | Candidate retrieval | `.venv\Scripts\shopee-retrieval benchmark --config configs\experiment\candidate_retrieval_benchmark.yaml` |
 | Entity resolution | `.venv\Scripts\shopee-entity-resolution benchmark --config configs\experiment\entity_resolution_benchmark.yaml` |
+| Pretrained weight preparation | `.venv\Scripts\shopee-pretrained prepare-weights` |
 | Pretrained comparison | `.venv\Scripts\shopee-pretrained benchmark --config configs\experiment\pretrained_image_benchmark.yaml` |
 | Frozen system preflight | `.venv\Scripts\shopee-final preflight --config configs\experiment\final_system_evaluation.yaml` |
 
-The final test evaluator is guarded against accidental repetition. Its recorded result should not
-be deleted and rerun for test-driven tuning.
+An access marker protects the single-use final test protocol. Use the preflight command to verify
+the recorded evaluation rather than deleting its outputs and selecting settings from another run.
 
 ## Engineering quality
 
@@ -265,7 +291,7 @@ API contracts, guided self-exclusion, and the combined launcher.
 ## Repository structure
 
 ```text
-app/                         Streamlit showcase UI
+app/                         Streamlit demo UI
 configs/                     Data, model, experiment, and serving contracts
 data/                        Ignored raw/derived data and local split manifests
 docs/                        Problem definition, architecture, cards, and limitations
@@ -295,7 +321,8 @@ tests/                       Synthetic fixtures, unit tests, and integration tes
 - The dataset contains noisy labels, multilingual seller text, malformed byte escapes, and
   ambiguous product variants.
 - The strict clustering policy limits false merges but fragments many large product groups.
-- Reported latency is measured on a 3,430-listing validation catalog and must not be extrapolated
-  directly to production-scale catalogs.
-- The demo uses a validation catalog for demonstration and is not a production service.
+- Reported latency covers a 3,430-listing validation catalog; production-scale behavior requires
+  measurement on a substantially larger index and representative request load.
+- The demo searches a fixed validation catalog and omits persistent ingestion, authentication,
+  rate limiting, monitoring, and artifact distribution.
 - Competition data remains subject to Kaggle/Shopee access and redistribution terms.
