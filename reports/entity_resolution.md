@@ -151,6 +151,13 @@ member, support from at least two target members, no digit/unit variant conflict
 least `0.14`, and reciprocal rank at most `20`. It remains within the established precision and
 false-merge safety limits.
 
+The pairwise metrics above are standard clustering metrics over every pair assigned to the same
+predicted cluster; they are not direct-edge metrics. Component recovery adds 712 same-cluster
+pairs on validation: 629 true and 83 false, for recovery-induced pair precision `0.88343`. The 34
+component merges only make two additional true groups completely unsplit. Other affected groups
+remain partially fragmented, explaining why pairwise recall rises much more than the binary
+group-level false-split rate improves.
+
 The exploratory target required a false-split rate at most `0.26000`; the run reaches `0.26182`, so
 it is recorded as a promising validation result rather than replacing the frozen final policy.
 Relaxing source coverage to two of three members raises F1 slightly to `0.66830` but exceeds the
@@ -179,6 +186,47 @@ gate. It gained recall by making pair probabilities broadly more permissive, cau
 component merges rather than learning a better precision–recall boundary. The checkpoint is
 rejected and does not replace the component-recovery policy. This result also shows why pair-level
 holdout F1 alone is insufficient for selecting an entity-resolution system.
+
+### Component-recovery confirmatory test
+
+After a clean validation rerun at commit `fee6e58`, the exact validation-selected policy was locked
+and applied once to the predecessor system's immutable Top-75 test candidate pairs. Candidate
+generation and pair scores were reused unchanged, `label_group` was available only to the metric
+functions, and no test-time selection was permitted.
+
+| Test metric | Frozen predecessor | Component recovery | Delta |
+|---|---:|---:|---:|
+| Pairwise precision | **0.87850** | 0.85505 | -0.02345 |
+| Pairwise recall | 0.40396 | **0.43283** | +0.02886 |
+| Pairwise F1 | 0.55344 | **0.57473** | +0.02129 |
+| B-cubed F1 | 0.84711 | **0.85097** | +0.00387 |
+| False-merge pair rate | **0.12150** | 0.14495 | +0.02345 |
+| False-split group rate | 0.28350 | **0.27621** | -0.00729 |
+
+The test run makes 28 component merges and adds 400 same-cluster pairs: 249 true and 151 false.
+Recovery-induced pair precision falls from `0.88343` on validation to `0.62250` on test. Although
+recall, F1, B-cubed F1, and false splits improve, the precision and false-merge degradation fails
+the catalog-safety objective. Component recovery is therefore retained as a documented ablation
+and does not replace the frozen predecessor policy.
+
+### Development protocol v2
+
+Further recall work starts from a new group-disjoint protocol rather than tuning against the
+historical test result. The original test membership is copied unchanged into an unavailable
+`historical_test` role. All remaining leakage super-components are deterministically reassigned:
+
+| Protocol role | Listings | Label groups | Usage |
+|---|---:|---:|---|
+| Train | 24,649 | 7,939 | Fit all v2 model parameters and train-only statistics |
+| Development | 3,086 | 986 | Select architecture, thresholds, and graph policy |
+| Confirmation | 3,086 | 992 | One-time evaluation after development is frozen |
+| Historical test | 3,429 | 1,097 | Preserve prior evidence; unavailable for v2 selection |
+
+Integrity checks report zero `label_group` overlap, zero leakage-super-component overlap, and an
+exact match between old test IDs and the preserved historical-test IDs. Because the old encoders
+were trained with a different group assignment, they cannot be presented as leakage-free v2
+models. Any v2 learned representation or verifier must be trained under this new manifest before
+confirmation is accessed.
 
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `

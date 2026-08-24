@@ -1,0 +1,14 @@
+config_version: entity_resolution.development_protocol.v2
+source:
+  manifest: data/splits/shopee_group_split_v1.jsonl
+  manifest_sha256: c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09
+  preserved_split: test
+allocation:
+  seed: 2041
+  train_fraction: 0.80
+  development_fraction: 0.10
+  confirmation_fraction: 0.10
+artifacts:
+  manifest: data/splits/shopee_development_v2.jsonl
+  modeling_manifest: data/splits/shopee_development_v2_modeling.jsonl
+  summary: data/splits/shopee_development_v2.summary.json
