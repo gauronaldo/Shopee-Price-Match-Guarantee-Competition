@@ -22,6 +22,7 @@ from shopee_match.clustering.graph import ClusterAssignment, ScoredPair, build_c
 from shopee_match.clustering.metrics import clustering_metrics, group_size_strata
 from shopee_match.clustering.recovery_config import (
     EntityRecallRecoveryConfig,
+    FragmentAttachmentPolicy,
     RecoveryAcceptanceConfig,
     SingletonAttachmentPolicy,
     load_entity_recall_recovery_config,
@@ -125,6 +126,21 @@ def _policy_payload(policy: SingletonAttachmentPolicy) -> dict[str, object]:
     }
 
 
+def _fragment_policy_payload(policy: FragmentAttachmentPolicy) -> dict[str, object]:
+    return {
+        "enabled": policy.enabled,
+        "probability_threshold": policy.probability_threshold,
+        "reciprocal_rank": policy.reciprocal_rank,
+        "maximum_source_size": policy.maximum_source_size,
+        "minimum_target_size": policy.minimum_target_size,
+        "minimum_support": policy.minimum_support,
+        "minimum_source_coverage": policy.minimum_source_coverage,
+        "minimum_target_support": policy.minimum_target_support,
+        "target_margin": policy.target_margin,
+        "reject_variant_conflicts": policy.reject_variant_conflicts,
+    }
+
+
 def _gate_payload(
     cluster: dict[str, Any], acceptance: RecoveryAcceptanceConfig
 ) -> tuple[bool, bool, dict[str, bool]]:
@@ -157,6 +173,7 @@ def _selection_key(trial: dict[str, Any]) -> tuple[float, ...]:
         float(pairwise["f1"]),
         -float(cluster["false_split_group_rate"]),
         float(pairwise["precision"]),
+        -float(trial["fragment_attachment"]["enabled"]),
         -float(trial["singleton_attachment"]["enabled"]),
     )
 
@@ -168,6 +185,7 @@ def _render_report(run: dict[str, Any]) -> str:
     pairwise = cluster["pairwise"]
     b3 = cluster["b_cubed"]
     policy = selected["singleton_attachment"]
+    fragment_policy = selected["fragment_attachment"]
     graph = selected["graph"]
     target_rows = "\n".join(
         f"| {name} | `{str(value).lower()}` |"
@@ -208,6 +226,14 @@ access test data or retrain a model.
 - Independent supporting members: `{policy["minimum_support"]}`
 - Ambiguous-target score margin: `{policy["target_margin"]}`
 - Successful singleton attachments: `{graph["singleton_attachments"]}`
+- Fragment attachment enabled: `{str(fragment_policy["enabled"]).lower()}`
+- Fragment probability threshold / rank: `{fragment_policy["probability_threshold"]}` /
+  `{fragment_policy["reciprocal_rank"]}`
+- Maximum fragment size / minimum target size:
+  `{fragment_policy["maximum_source_size"]}` / `{fragment_policy["minimum_target_size"]}`
+- Fragment source coverage / target support:
+  `{fragment_policy["minimum_source_coverage"]}` / `{fragment_policy["minimum_target_support"]}`
+- Successful fragment attachments: `{graph["fragment_attachments"]}`
 
 The second pass can attach an isolated listing only to a cluster that already contains at least
 two listings and only when distinct members provide independent evidence. Membership is frozen
@@ -246,60 +272,85 @@ def sweep_recovery_policies(
         * len(config.selection.reciprocal_rank_values)
         * len(config.selection.cross_component_coverage_values)
         * len(config.selection.singleton_attachment_policies)
+        * len(config.selection.fragment_attachment_policies)
     )
     completed = 0
     for threshold in config.selection.pair_probability_thresholds:
         for rank in config.selection.reciprocal_rank_values:
             for coverage in config.selection.cross_component_coverage_values:
                 for policy in config.selection.singleton_attachment_policies:
-                    assignments, diagnostics = build_conservative_clusters(
-                        posting_ids,
-                        pairs,
-                        pair_probability_threshold=threshold,
-                        reciprocal_rank=rank,
-                        cross_component_minimum_coverage=coverage,
-                        variant_conflict_override_probability=(
-                            config.selection.variant_conflict_override_probability
-                        ),
-                        maximum_cluster_size=config.selection.maximum_cluster_size,
-                        manual_review_margin=config.selection.manual_review_margin,
-                        singleton_attachment=policy.enabled,
-                        singleton_probability_threshold=policy.probability_threshold,
-                        singleton_reciprocal_rank=policy.reciprocal_rank,
-                        singleton_minimum_support=policy.minimum_support,
-                        singleton_target_margin=policy.target_margin,
-                    )
-                    cluster = clustering_metrics(assignments, label_by_id)
-                    safety, target, checks = _gate_payload(cluster, config.selection.acceptance)
-                    trial: dict[str, Any] = {
-                        "pair_probability_threshold": threshold,
-                        "reciprocal_rank": rank,
-                        "cross_component_minimum_coverage": coverage,
-                        "singleton_attachment": _policy_payload(policy),
-                        "passes_safety_gate": safety,
-                        "passes_quality_target": target,
-                        "acceptance_checks": checks,
-                        "clustering": cluster,
-                        "graph": asdict(diagnostics),
-                    }
-                    trials.append(trial)
-                    if selected_trial is None or _selection_key(trial) > _selection_key(
-                        selected_trial
-                    ):
-                        selected_trial = trial
-                        selected_assignments = assignments
-                    completed += 1
-                    if completed % 20 == 0 or completed == total_trials:
-                        LOGGER.info(
-                            "Recall-recovery sweep: %d/%d policies", completed, total_trials
+                    for fragment_policy in config.selection.fragment_attachment_policies:
+                        assignments, diagnostics = build_conservative_clusters(
+                            posting_ids,
+                            pairs,
+                            pair_probability_threshold=threshold,
+                            reciprocal_rank=rank,
+                            cross_component_minimum_coverage=coverage,
+                            variant_conflict_override_probability=(
+                                config.selection.variant_conflict_override_probability
+                            ),
+                            maximum_cluster_size=config.selection.maximum_cluster_size,
+                            manual_review_margin=config.selection.manual_review_margin,
+                            singleton_attachment=policy.enabled,
+                            singleton_probability_threshold=policy.probability_threshold,
+                            singleton_reciprocal_rank=policy.reciprocal_rank,
+                            singleton_minimum_support=policy.minimum_support,
+                            singleton_target_margin=policy.target_margin,
+                            fragment_attachment=fragment_policy.enabled,
+                            fragment_probability_threshold=(
+                                fragment_policy.probability_threshold
+                            ),
+                            fragment_reciprocal_rank=fragment_policy.reciprocal_rank,
+                            fragment_maximum_source_size=(
+                                fragment_policy.maximum_source_size
+                            ),
+                            fragment_minimum_target_size=fragment_policy.minimum_target_size,
+                            fragment_minimum_support=fragment_policy.minimum_support,
+                            fragment_minimum_source_coverage=(
+                                fragment_policy.minimum_source_coverage
+                            ),
+                            fragment_minimum_target_support=(
+                                fragment_policy.minimum_target_support
+                            ),
+                            fragment_target_margin=fragment_policy.target_margin,
+                            fragment_reject_variant_conflicts=(
+                                fragment_policy.reject_variant_conflicts
+                            ),
                         )
+                        cluster = clustering_metrics(assignments, label_by_id)
+                        safety, target, checks = _gate_payload(
+                            cluster, config.selection.acceptance
+                        )
+                        trial: dict[str, Any] = {
+                            "pair_probability_threshold": threshold,
+                            "reciprocal_rank": rank,
+                            "cross_component_minimum_coverage": coverage,
+                            "singleton_attachment": _policy_payload(policy),
+                            "fragment_attachment": _fragment_policy_payload(fragment_policy),
+                            "passes_safety_gate": safety,
+                            "passes_quality_target": target,
+                            "acceptance_checks": checks,
+                            "clustering": cluster,
+                            "graph": asdict(diagnostics),
+                        }
+                        trials.append(trial)
+                        if selected_trial is None or _selection_key(trial) > _selection_key(
+                            selected_trial
+                        ):
+                            selected_trial = trial
+                            selected_assignments = assignments
+                        completed += 1
+                        if completed % 20 == 0 or completed == total_trials:
+                            LOGGER.info(
+                                "Recall-recovery sweep: %d/%d policies", completed, total_trials
+                            )
     if selected_trial is None or selected_assignments is None:
         raise DataValidationError("Recall-recovery selection grid produced no trials")
     return trials, selected_trial, selected_assignments
 
 
 def run_entity_recall_recovery(config_path: Path) -> dict[str, object]:
-    """Sweep conservative core and singleton policies on frozen validation pair scores."""
+    """Sweep conservative core and component-recovery policies on validation pair scores."""
     config = load_entity_recall_recovery_config(config_path)
     existing = [
         str(path)

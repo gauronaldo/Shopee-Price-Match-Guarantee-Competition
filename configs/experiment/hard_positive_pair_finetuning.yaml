@@ -1,0 +1,43 @@
+config_version: pair_head.hard_positive_finetuning.v1
+seed: 2026
+source:
+  candidate_config: configs/experiment/candidate_retrieval_benchmark.yaml
+  candidate_config_sha256: 5120674d95a6ed9030c38e7f04feb6236050d777fa63e177f6b2efda86a78303
+  hybrid_entity_config: configs/experiment/hybrid_entity_resolution.yaml
+  hybrid_entity_config_sha256: 982d6118bfde3b444d672a0b5717dc4833097bf0e0fd0fd09a3e53158cad083e
+  recovery_config: configs/experiment/entity_fragment_recovery.yaml
+  recovery_config_sha256: cf3869e60d30e0db110370e5102887eaa6e97edee74fa011f19fc9005e5c2ff7
+data:
+  source_split: train
+  holdout_fraction: 0.15
+  split_seed: 2030
+  evaluate_test: false
+mining:
+  hard_positive_limit: 20000
+  hard_negative_limit: 20000
+  require_different_phash: true
+  scoring_batch_size: 8192
+training:
+  device: cuda
+  epochs: 8
+  batches_per_epoch: 100
+  batch_size: 256
+  learning_rate: 0.00003
+  weight_decay: 0.0001
+  gradient_clip_norm: 5.0
+  early_stopping_patience: 3
+  hard_positive_fraction: 0.25
+  hard_negative_fraction: 0.25
+  random_positive_fraction: 0.25
+  random_negative_fraction: 0.25
+evaluation:
+  holdout_candidate_k: 50
+  minimum_holdout_precision: 0.88
+  minimum_validation_precision: 0.88
+  maximum_validation_false_merge_rate: 0.11
+  minimum_validation_f1_delta: 0.001
+artifacts:
+  root: artifacts/hard_positive_pair_head/training
+  checkpoint: artifacts/hard_positive_pair_head/training/best.pt
+  metrics: artifacts/hard_positive_pair_head/training/metrics.json
+  report: artifacts/hard_positive_pair_head/training/report.md

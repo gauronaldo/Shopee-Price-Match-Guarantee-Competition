@@ -1,0 +1,25 @@
+config_version: hybrid_entity_resolution.v1
+seed: 2026
+source:
+  hybrid_config: configs/experiment/hybrid_candidate_retrieval.yaml
+  hybrid_config_sha256: 80e365fc58eeffcc2f5708f0c0bb2ca376b4786516b1d5032058cad54dca8ea9
+  hybrid_metrics: artifacts/candidate_retrieval/hybrid_validation/metrics.json
+  hybrid_metrics_sha256: 2bb5a3ad3c7f55efc7f2b35b60b835136ea967bba66a587bc7f4412a5843feb7
+  hybrid_ranking: artifacts/candidate_retrieval/hybrid_validation/ranking.jsonl
+  hybrid_ranking_sha256: ae0d6917f86537bd1585fa45843382fcd6a002e4d82c448d47eb091f01e909f8
+  recovery_config: configs/experiment/entity_fragment_recovery.yaml
+  recovery_config_sha256: cf3869e60d30e0db110370e5102887eaa6e97edee74fa011f19fc9005e5c2ff7
+data:
+  split: validation
+  evaluate_test: false
+  retrain_model: false
+pair_scoring:
+  device: cuda
+  batch_size: 8192
+artifacts:
+  root: artifacts/entity_resolution/component_recovery_validation_benchmark
+  scored_pairs: artifacts/entity_resolution/component_recovery_validation_benchmark/scored_pairs.jsonl
+  assignments: artifacts/entity_resolution/component_recovery_validation_benchmark/entity_assignments.csv
+  metrics: artifacts/entity_resolution/component_recovery_validation_benchmark/metrics.json
+  review: artifacts/entity_resolution/component_recovery_validation_benchmark/failure_review.json
+  report: artifacts/entity_resolution/component_recovery_validation_benchmark/report.md

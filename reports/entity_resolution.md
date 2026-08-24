@@ -129,6 +129,57 @@ The selected final system reaches test pairwise precision/recall/F1
 `0.28350 / 0.12150`. Full evaluation details and interpretation are recorded in
 [`final_evaluation.md`](final_evaluation.md).
 
+## Component-recovery experiment
+
+A follow-up validation-only experiment keeps the encoders, fusion module, pair head, candidate
+ranking, core graph, and supported-singleton policy frozen. It adds one label-blind pass that can
+attach a component of two or three listings to a larger component when multiple distinct members
+support the same target. Component membership is snapshotted before the pass, preventing newly
+attached fragments from creating transitive evidence.
+
+| Validation metric | Selected final policy | Component recovery | Delta |
+|---|---:|---:|---:|
+| Pairwise precision | 0.89582 | 0.89405 | -0.00177 |
+| Pairwise recall | 0.45573 | **0.53048** | **+0.07475** |
+| Pairwise F1 | 0.60413 | **0.66587** | **+0.06174** |
+| B-cubed F1 | 0.85797 | **0.86953** | **+0.01156** |
+| False-merge pair rate | 0.10418 | 0.10595 | +0.00177 |
+| False-split group rate | 0.26364 | 0.26182 | -0.00182 |
+
+The selected recovery policy attaches 34 fragments. It requires full support from every source
+member, support from at least two target members, no digit/unit variant conflict, probability at
+least `0.14`, and reciprocal rank at most `20`. It remains within the established precision and
+false-merge safety limits.
+
+The exploratory target required a false-split rate at most `0.26000`; the run reaches `0.26182`, so
+it is recorded as a promising validation result rather than replacing the frozen final policy.
+Relaxing source coverage to two of three members raises F1 slightly to `0.66830` but exceeds the
+false-merge limit, so that alternative is rejected.
+
+Most remaining false splits are singleton patterns. Directly linking singleton pairs at broader
+thresholds produced only `0.67–0.75` validation precision, which is too risky for automatic merge.
+
+### Hard-positive pair-head ablation
+
+The follow-up training experiment carved a fresh 15% group-disjoint holdout from the original
+train partition. It froze the image encoder, text encoder, and fusion module, then fine-tuned only
+the symmetric pair head using 20,000 low-scoring true pairs, 17,310 mined hard negatives, random
+positives, and random negatives. Test data was disabled.
+
+| Metric | Before | Fine-tuned pair head | Delta |
+|---|---:|---:|---:|
+| Train-holdout pair F1 at precision ≥ 0.88 | 0.76697 | 0.76924 | +0.00227 |
+| Validation graph pairwise precision | 0.89405 | 0.73727 | -0.15678 |
+| Validation graph pairwise recall | 0.53048 | 0.58491 | +0.05443 |
+| Validation graph pairwise F1 | 0.66587 | 0.65231 | -0.01356 |
+| Validation graph false-merge rate | 0.10595 | 0.26273 | +0.15678 |
+
+The checkpoint passed its internal train-holdout selection but failed every graph-level acceptance
+gate. It gained recall by making pair probabilities broadly more permissive, causing unsafe
+component merges rather than learning a better precision–recall boundary. The checkpoint is
+rejected and does not replace the component-recovery policy. This result also shows why pair-level
+holdout F1 alone is insufficient for selecting an entity-resolution system.
+
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `
   --config configs\experiment\entity_recall_recovery.yaml
@@ -144,6 +195,10 @@ The selected final system reaches test pairwise precision/recall/F1
   --config configs\experiment\hybrid_system_evaluation.yaml
 .venv\Scripts\shopee-final evaluate-hybrid `
   --config configs\experiment\hybrid_system_evaluation.yaml
+.venv\Scripts\shopee-entity-resolution evaluate-hybrid-candidates `
+  --config configs\experiment\entity_fragment_recovery_benchmark.yaml
+.venv\Scripts\python -m shopee_match.training.hard_negative_cli train-hard-positive `
+  --config configs\experiment\hard_positive_pair_finetuning.yaml
 ```
 
 EfficientNet-B1 fine-tuning is deferred because the selected multi-source retrieval policy resolves

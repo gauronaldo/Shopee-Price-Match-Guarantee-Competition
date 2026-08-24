@@ -33,6 +33,22 @@ class SingletonAttachmentPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class FragmentAttachmentPolicy:
+    """One label-blind second-pass small-component attachment policy."""
+
+    enabled: bool
+    probability_threshold: float | None
+    reciprocal_rank: int | None
+    maximum_source_size: int
+    minimum_target_size: int
+    minimum_support: int
+    minimum_source_coverage: float
+    minimum_target_support: int
+    target_margin: float
+    reject_variant_conflicts: bool
+
+
+@dataclass(frozen=True, slots=True)
 class RecoveryAcceptanceConfig:
     minimum_pairwise_precision: float
     minimum_pairwise_recall: float
@@ -48,6 +64,7 @@ class RecoverySelectionConfig:
     reciprocal_rank_values: tuple[int, ...]
     cross_component_coverage_values: tuple[float, ...]
     singleton_attachment_policies: tuple[SingletonAttachmentPolicy, ...]
+    fragment_attachment_policies: tuple[FragmentAttachmentPolicy, ...]
     acceptance: RecoveryAcceptanceConfig
     variant_conflict_override_probability: float
     maximum_cluster_size: int
@@ -180,6 +197,148 @@ def _load_attachment_policies(
     return tuple(policies)
 
 
+def _load_fragment_attachment_policies(
+    value: Any, *, candidate_k: int
+) -> tuple[FragmentAttachmentPolicy, ...]:
+    rows = _typed(value, list, "selection.fragment_attachment_policies")
+    policies: list[FragmentAttachmentPolicy] = []
+    identities: set[tuple[object, ...]] = set()
+    for index, value_row in enumerate(rows):
+        location = f"selection.fragment_attachment_policies[{index}]"
+        row = _mapping(value_row, location)
+        enabled = _typed(row.get("enabled"), bool, f"{location}.enabled")
+        if not enabled:
+            _only_keys(row, {"enabled"}, location)
+            policy = FragmentAttachmentPolicy(
+                False, None, None, 3, 3, 2, 1.0, 2, 0.0, True
+            )
+        else:
+            keys = {
+                "enabled",
+                "probability_threshold",
+                "reciprocal_rank",
+                "maximum_source_size",
+                "minimum_target_size",
+                "minimum_support",
+                "minimum_source_coverage",
+                "minimum_target_support",
+                "target_margin",
+                "reject_variant_conflicts",
+            }
+            _only_keys(row, keys, location)
+            rank = _positive_int(row["reciprocal_rank"], f"{location}.reciprocal_rank")
+            maximum_source_size = _positive_int(
+                row["maximum_source_size"], f"{location}.maximum_source_size"
+            )
+            minimum_target_size = _positive_int(
+                row["minimum_target_size"], f"{location}.minimum_target_size"
+            )
+            minimum_support = _positive_int(
+                row["minimum_support"], f"{location}.minimum_support"
+            )
+            minimum_target_support = _positive_int(
+                row["minimum_target_support"], f"{location}.minimum_target_support"
+            )
+            source_coverage = _fraction(
+                row["minimum_source_coverage"], f"{location}.minimum_source_coverage"
+            )
+            if rank > candidate_k:
+                raise ConfigurationError(f"{location}.reciprocal_rank cannot exceed candidate K")
+            if maximum_source_size < 2 or minimum_target_size < 2:
+                raise ConfigurationError(f"{location} component sizes must be at least two")
+            if minimum_support < 2 or minimum_target_support < 2:
+                raise ConfigurationError(f"{location} requires at least two independent supports")
+            if source_coverage <= 0.0:
+                raise ConfigurationError(f"{location}.minimum_source_coverage must be positive")
+            policy = FragmentAttachmentPolicy(
+                True,
+                _fraction(row["probability_threshold"], f"{location}.probability_threshold"),
+                rank,
+                maximum_source_size,
+                minimum_target_size,
+                minimum_support,
+                source_coverage,
+                minimum_target_support,
+                _fraction(row["target_margin"], f"{location}.target_margin"),
+                _typed(
+                    row["reject_variant_conflicts"],
+                    bool,
+                    f"{location}.reject_variant_conflicts",
+                ),
+            )
+        identity = (
+            policy.enabled,
+            policy.probability_threshold,
+            policy.reciprocal_rank,
+            policy.maximum_source_size,
+            policy.minimum_target_size,
+            policy.minimum_support,
+            policy.minimum_source_coverage,
+            policy.minimum_target_support,
+            policy.target_margin,
+            policy.reject_variant_conflicts,
+        )
+        if identity in identities:
+            raise ConfigurationError("fragment attachment policies must be unique")
+        identities.add(identity)
+        policies.append(policy)
+    if not policies or not any(not policy.enabled for policy in policies):
+        raise ConfigurationError("fragment attachment policies must include a disabled control")
+    return tuple(policies)
+
+
+def _expand_fragment_attachment_grid(
+    selection: dict[str, Any], *, candidate_k: int
+) -> tuple[FragmentAttachmentPolicy, ...]:
+    thresholds = _fraction_sequence(
+        selection["fragment_probability_thresholds"],
+        "selection.fragment_probability_thresholds",
+    )
+    rank_rows = _typed(
+        selection["fragment_reciprocal_rank_values"],
+        list,
+        "selection.fragment_reciprocal_rank_values",
+    )
+    ranks = tuple(
+        _positive_int(value, f"selection.fragment_reciprocal_rank_values[{index}]")
+        for index, value in enumerate(rank_rows)
+    )
+    if not ranks or tuple(sorted(set(ranks))) != ranks or max(ranks) > candidate_k:
+        raise ConfigurationError(
+            "fragment reciprocal ranks must be sorted, unique, and at most candidate K"
+        )
+    template_rows = _typed(
+        selection["fragment_attachment_templates"],
+        list,
+        "selection.fragment_attachment_templates",
+    )
+    template_keys = {
+        "maximum_source_size",
+        "minimum_target_size",
+        "minimum_support",
+        "minimum_source_coverage",
+        "minimum_target_support",
+        "target_margin",
+        "reject_variant_conflicts",
+    }
+    policies: list[dict[str, Any]] = [{"enabled": False}]
+    for index, value_row in enumerate(template_rows):
+        location = f"selection.fragment_attachment_templates[{index}]"
+        template = _mapping(value_row, location)
+        _only_keys(template, template_keys, location)
+        for threshold in thresholds:
+            for rank in ranks:
+                policies.append(
+                    {
+                        "enabled": True,
+                        "probability_threshold": threshold,
+                        "reciprocal_rank": rank,
+                        **template,
+                    }
+                )
+    return _load_fragment_attachment_policies(policies, candidate_k=candidate_k)
+
+
 def load_entity_recall_recovery_config(path: Path) -> EntityRecallRecoveryConfig:
     """Load frozen entity-resolution evidence and a validation-only recovery grid."""
     root = _read_yaml(path, "entity recall-recovery config")
@@ -188,7 +347,11 @@ def load_entity_recall_recovery_config(path: Path) -> EntityRecallRecoveryConfig
         {"config_version", "seed", "source", "data", "selection", "artifacts"},
         "config",
     )
-    if root["config_version"] != "entity_resolution.recall_recovery.v1":
+    config_version = root["config_version"]
+    if config_version not in {
+        "entity_resolution.recall_recovery.v1",
+        "entity_resolution.recall_recovery.v2",
+    }:
         raise ConfigurationError("Unsupported entity recall-recovery config_version")
     seed = _nonnegative_int(root["seed"], "seed")
 
@@ -242,9 +405,7 @@ def load_entity_recall_recovery_config(path: Path) -> EntityRecallRecoveryConfig
         raise ConfigurationError("Entity recall recovery may use validation only")
 
     selection_raw = _mapping(root["selection"], "selection")
-    _only_keys(
-        selection_raw,
-        {
+    selection_keys = {
             "pair_probability_thresholds",
             "reciprocal_rank_values",
             "cross_component_coverage_values",
@@ -254,10 +415,25 @@ def load_entity_recall_recovery_config(path: Path) -> EntityRecallRecoveryConfig
             "maximum_cluster_size",
             "manual_review_margin",
             "failure_example_limit",
-        },
-        "selection",
+        }
+    if config_version == "entity_resolution.recall_recovery.v2":
+        selection_keys.update(
+            {
+                "candidate_k",
+                "fragment_probability_thresholds",
+                "fragment_reciprocal_rank_values",
+                "fragment_attachment_templates",
+            }
+        )
+    _only_keys(selection_raw, selection_keys, "selection")
+    source_candidate_k = int(experiment.source.metrics["selection"]["candidate_k"])
+    candidate_k = (
+        _positive_int(selection_raw["candidate_k"], "selection.candidate_k")
+        if config_version == "entity_resolution.recall_recovery.v2"
+        else source_candidate_k
     )
-    candidate_k = int(experiment.source.metrics["selection"]["candidate_k"])
+    if candidate_k < source_candidate_k:
+        raise ConfigurationError("selection.candidate_k cannot be below the source candidate K")
     ranks_raw = _typed(
         selection_raw["reciprocal_rank_values"],
         list,
@@ -304,6 +480,11 @@ def load_entity_recall_recovery_config(path: Path) -> EntityRecallRecoveryConfig
         ),
         singleton_attachment_policies=_load_attachment_policies(
             selection_raw["singleton_attachment_policies"], candidate_k=candidate_k
+        ),
+        fragment_attachment_policies=(
+            _expand_fragment_attachment_grid(selection_raw, candidate_k=candidate_k)
+            if config_version == "entity_resolution.recall_recovery.v2"
+            else (FragmentAttachmentPolicy(False, None, None, 3, 3, 2, 1.0, 2, 0.0, True),)
         ),
         acceptance=acceptance,
         variant_conflict_override_probability=variant_override,

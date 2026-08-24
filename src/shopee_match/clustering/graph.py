@@ -58,6 +58,12 @@ class GraphDiagnostics:
     singleton_attachment_ambiguous: int
     singleton_attachment_insufficient_support: int
     singleton_attachment_size_rejections: int
+    fragment_attachment_attempts: int
+    fragment_attachments: int
+    fragment_attachment_ambiguous: int
+    fragment_attachment_insufficient_support: int
+    fragment_attachment_size_rejections: int
+    fragment_attachment_variant_conflict_rejections: int
     clusters: int
     singleton_clusters: int
     manual_review_clusters: int
@@ -302,6 +308,145 @@ def _attach_supported_singletons(
     return counters
 
 
+def _attach_supported_fragments(
+    union_find: _UnionFind,
+    posting_ids: tuple[str, ...],
+    eligible: list[ScoredPair],
+    accepted: list[ScoredPair],
+    *,
+    maximum_source_size: int,
+    minimum_target_size: int,
+    minimum_support: int,
+    minimum_source_coverage: float,
+    minimum_target_support: int,
+    target_margin: float,
+    maximum_cluster_size: int,
+    reject_variant_conflicts: bool,
+) -> dict[str, int]:
+    """Attach a small frozen component to a larger component with multi-node support.
+
+    All component membership and cross-component evidence are snapshotted before this pass.
+    Attached fragments therefore cannot create evidence for later attachments. A component that
+    has already been attached as a source is also prevented from acting as an intermediate target.
+    """
+    root_by_node = {index: union_find.find(index) for index in range(len(posting_ids))}
+    frozen_members = {root: frozenset(members) for root, members in union_find.members.items()}
+    evidence_by_source: dict[int, dict[int, list[ScoredPair]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    variant_conflict_rejections = 0
+    for pair in eligible:
+        left_root = root_by_node[pair.left_index]
+        right_root = root_by_node[pair.right_index]
+        if left_root == right_root:
+            continue
+        left_size = len(frozen_members[left_root])
+        right_size = len(frozen_members[right_root])
+        left_key = min(posting_ids[index] for index in frozen_members[left_root])
+        right_key = min(posting_ids[index] for index in frozen_members[right_root])
+        if (
+            1 < left_size <= maximum_source_size
+            and right_size >= minimum_target_size
+            and (left_size < right_size or (left_size == right_size and left_key < right_key))
+        ):
+            source_root, target_root = left_root, right_root
+        elif (
+            1 < right_size <= maximum_source_size
+            and left_size >= minimum_target_size
+            and (right_size < left_size or (right_size == left_size and right_key < left_key))
+        ):
+            source_root, target_root = right_root, left_root
+        else:
+            continue
+        if reject_variant_conflicts and pair.variant_conflict:
+            variant_conflict_rejections += 1
+            continue
+        evidence_by_source[source_root][target_root].append(pair)
+
+    counters = {
+        "attempts": 0,
+        "attachments": 0,
+        "ambiguous": 0,
+        "insufficient_support": 0,
+        "size_rejections": 0,
+        "variant_conflict_rejections": variant_conflict_rejections,
+    }
+    attached_source_roots: set[int] = set()
+    source_roots = sorted(
+        evidence_by_source,
+        key=lambda root: (
+            len(frozen_members[root]),
+            min(posting_ids[index] for index in frozen_members[root]),
+        ),
+    )
+    for source_root in source_roots:
+        current_source_root = union_find.find(source_root)
+        if len(union_find.members[current_source_root]) != len(frozen_members[source_root]):
+            continue
+        counters["attempts"] += 1
+        candidates: list[tuple[float, int, int, float, float, str, int, list[ScoredPair]]] = []
+        for target_root, evidence in evidence_by_source[source_root].items():
+            if target_root in attached_source_roots:
+                continue
+            source_nodes: set[int] = set()
+            target_nodes: set[int] = set()
+            for pair in evidence:
+                if pair.left_index in frozen_members[source_root]:
+                    source_nodes.add(pair.left_index)
+                    target_nodes.add(pair.right_index)
+                else:
+                    source_nodes.add(pair.right_index)
+                    target_nodes.add(pair.left_index)
+            source_coverage = len(source_nodes) / len(frozen_members[source_root])
+            if (
+                len(evidence) < minimum_support
+                or source_coverage < minimum_source_coverage
+                or len(target_nodes) < minimum_target_support
+            ):
+                continue
+            ordered = sorted(
+                evidence,
+                key=lambda pair: (
+                    -pair.pair_probability,
+                    -pair.cosine_similarity,
+                    pair.left_posting_id,
+                    pair.right_posting_id,
+                ),
+            )
+            target_key = min(posting_ids[index] for index in frozen_members[target_root])
+            candidates.append(
+                (
+                    source_coverage,
+                    len(target_nodes),
+                    len(ordered),
+                    float(np.mean([pair.pair_probability for pair in ordered])),
+                    min(pair.pair_probability for pair in ordered),
+                    target_key,
+                    target_root,
+                    ordered,
+                )
+            )
+        if not candidates:
+            counters["insufficient_support"] += 1
+            continue
+        candidates.sort(key=lambda row: (-row[0], -row[1], -row[2], -row[3], -row[4], row[5]))
+        best = candidates[0]
+        if len(candidates) > 1 and best[3] - candidates[1][3] < target_margin:
+            counters["ambiguous"] += 1
+            continue
+        current_target_root = union_find.find(best[6])
+        if len(union_find.members[current_source_root]) + len(
+            union_find.members[current_target_root]
+        ) > maximum_cluster_size:
+            counters["size_rejections"] += 1
+            continue
+        union_find.union(current_source_root, current_target_root)
+        accepted.append(min(best[7], key=lambda pair: pair.pair_probability))
+        attached_source_roots.add(source_root)
+        counters["attachments"] += 1
+    return counters
+
+
 def build_conservative_clusters(
     posting_ids: tuple[str, ...],
     pairs: list[ScoredPair],
@@ -317,6 +462,16 @@ def build_conservative_clusters(
     singleton_reciprocal_rank: int | None = None,
     singleton_minimum_support: int = 2,
     singleton_target_margin: float = 0.0,
+    fragment_attachment: bool = False,
+    fragment_probability_threshold: float | None = None,
+    fragment_reciprocal_rank: int | None = None,
+    fragment_maximum_source_size: int = 3,
+    fragment_minimum_target_size: int = 3,
+    fragment_minimum_support: int = 2,
+    fragment_minimum_source_coverage: float = 1.0,
+    fragment_minimum_target_support: int = 2,
+    fragment_target_margin: float = 0.0,
+    fragment_reject_variant_conflicts: bool = True,
 ) -> tuple[list[ClusterAssignment], GraphDiagnostics]:
     """Build connected components while blocking weak transitive component bridges."""
     eligible, counters = eligible_pairs(
@@ -378,6 +533,46 @@ def build_conservative_clusters(
             maximum_cluster_size=maximum_cluster_size,
         )
 
+    fragment_counters = {
+        "attempts": 0,
+        "attachments": 0,
+        "ambiguous": 0,
+        "insufficient_support": 0,
+        "size_rejections": 0,
+        "variant_conflict_rejections": 0,
+    }
+    if fragment_attachment:
+        if fragment_probability_threshold is None or fragment_reciprocal_rank is None:
+            raise ValueError("fragment attachment requires a probability threshold and rank")
+        if fragment_maximum_source_size < 2:
+            raise ValueError("fragment maximum source size must be at least two")
+        if fragment_minimum_target_size < 2:
+            raise ValueError("fragment minimum target size must be at least two")
+        if fragment_minimum_support < 2 or fragment_minimum_target_support < 2:
+            raise ValueError("fragment attachment requires at least two independent supports")
+        if not 0.0 < fragment_minimum_source_coverage <= 1.0:
+            raise ValueError("fragment source coverage must be inside (0, 1]")
+        fragment_eligible, _ = eligible_pairs(
+            pairs,
+            pair_probability_threshold=fragment_probability_threshold,
+            reciprocal_rank=fragment_reciprocal_rank,
+            variant_conflict_override_probability=variant_conflict_override_probability,
+        )
+        fragment_counters = _attach_supported_fragments(
+            union_find,
+            posting_ids,
+            fragment_eligible,
+            accepted,
+            maximum_source_size=fragment_maximum_source_size,
+            minimum_target_size=fragment_minimum_target_size,
+            minimum_support=fragment_minimum_support,
+            minimum_source_coverage=fragment_minimum_source_coverage,
+            minimum_target_support=fragment_minimum_target_support,
+            target_margin=fragment_target_margin,
+            maximum_cluster_size=maximum_cluster_size,
+            reject_variant_conflicts=fragment_reject_variant_conflicts,
+        )
+
     components = sorted(
         union_find.members.values(),
         key=lambda members: min(posting_ids[index] for index in members),
@@ -429,6 +624,14 @@ def build_conservative_clusters(
         singleton_attachment_ambiguous=attachment_counters["ambiguous"],
         singleton_attachment_insufficient_support=attachment_counters["insufficient_support"],
         singleton_attachment_size_rejections=attachment_counters["size_rejections"],
+        fragment_attachment_attempts=fragment_counters["attempts"],
+        fragment_attachments=fragment_counters["attachments"],
+        fragment_attachment_ambiguous=fragment_counters["ambiguous"],
+        fragment_attachment_insufficient_support=fragment_counters["insufficient_support"],
+        fragment_attachment_size_rejections=fragment_counters["size_rejections"],
+        fragment_attachment_variant_conflict_rejections=fragment_counters[
+            "variant_conflict_rejections"
+        ],
         clusters=len(components),
         singleton_clusters=sum(len(component) == 1 for component in components),
         manual_review_clusters=manual_review_clusters,

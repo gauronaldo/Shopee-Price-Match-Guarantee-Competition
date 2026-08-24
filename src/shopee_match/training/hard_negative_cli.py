@@ -13,6 +13,7 @@ from shopee_match.logging import configure_logging
 from shopee_match.training.hard_negative_analyzer import summarize_hard_negative_runs
 from shopee_match.training.hard_negative_miner import mine_hard_negatives
 from shopee_match.training.hard_negative_trainer import run_hard_negative_experiment
+from shopee_match.training.hard_positive_trainer import run_hard_positive_experiment
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +27,10 @@ def _nonnegative_int(value: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="shopee-hard-negatives")
-    parser.add_argument("command", choices=("mine", "train", "all", "summarize"))
+    parser.add_argument(
+        "command",
+        choices=("mine", "train", "all", "summarize", "train-hard-positive"),
+    )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
         "--progress-updates-per-epoch",
@@ -55,8 +59,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 progress_updates_per_epoch=args.progress_updates_per_epoch,
             )
             result = {"status": training["status"], "mining": mining, "training": training}
-        else:
+        elif args.command == "summarize":
             result = summarize_hard_negative_runs(args.config)
+        else:
+            result = run_hard_positive_experiment(args.config)
     except (ShopeeMatchError, OSError, ValueError, RuntimeError) as exc:
         LOGGER.error("%s", exc)
         return 2

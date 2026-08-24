@@ -22,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--config", type=Path, required=True)
     recover = subparsers.add_parser(
         "recover-recall",
-        help="sweep singleton recovery policies on frozen validation pair scores",
+        help="sweep component-recovery policies on frozen validation pair scores",
     )
     recover.add_argument("--config", type=Path, required=True)
     evidence = subparsers.add_parser(

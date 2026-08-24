@@ -1,0 +1,47 @@
+config_version: entity_resolution.recall_recovery.v2
+seed: 2026
+source:
+  entity_config: configs/experiment/entity_resolution_benchmark.yaml
+  entity_config_sha256: 84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794
+  entity_metrics: artifacts/entity_resolution/validation/metrics.json
+  entity_metrics_sha256: 1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f
+  scored_pairs: artifacts/entity_resolution/validation/scored_pairs.jsonl
+  scored_pairs_sha256: 162fe357837831feecc4d145cbb4851e9cbb006f7450d82fe5f6544211bcb87a
+data:
+  split: validation
+  evaluate_test: false
+selection:
+  candidate_k: 75
+  pair_probability_thresholds: [0.14]
+  reciprocal_rank_values: [5]
+  cross_component_coverage_values: [1.0]
+  singleton_attachment_policies:
+    - {enabled: false}
+    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
+  fragment_probability_thresholds: [0.14, 0.16, 0.18, 0.2]
+  fragment_reciprocal_rank_values: [20, 50, 75]
+  fragment_attachment_templates:
+    - {maximum_source_size: 2, minimum_target_size: 3, minimum_support: 2, minimum_source_coverage: 1.0, minimum_target_support: 2, target_margin: 0.02, reject_variant_conflicts: true}
+    - {maximum_source_size: 3, minimum_target_size: 4, minimum_support: 3, minimum_source_coverage: 1.0, minimum_target_support: 2, target_margin: 0.02, reject_variant_conflicts: true}
+    - {maximum_source_size: 2, minimum_target_size: 2, minimum_support: 2, minimum_source_coverage: 1.0, minimum_target_support: 2, target_margin: 0.02, reject_variant_conflicts: true}
+    - {maximum_source_size: 3, minimum_target_size: 3, minimum_support: 3, minimum_source_coverage: 1.0, minimum_target_support: 3, target_margin: 0.02, reject_variant_conflicts: true}
+    - {maximum_source_size: 3, minimum_target_size: 3, minimum_support: 2, minimum_source_coverage: 0.67, minimum_target_support: 2, target_margin: 0.02, reject_variant_conflicts: true}
+    - {maximum_source_size: 3, minimum_target_size: 4, minimum_support: 2, minimum_source_coverage: 0.67, minimum_target_support: 2, target_margin: 0.02, reject_variant_conflicts: true}
+  acceptance:
+    minimum_pairwise_precision: 0.88
+    minimum_pairwise_recall: 0.46
+    minimum_pairwise_f1: 0.61
+    minimum_b_cubed_f1: 0.85
+    maximum_false_merge_pair_rate: 0.11
+    maximum_false_split_group_rate: 0.26
+  variant_conflict_override_probability: 0.15
+  maximum_cluster_size: 64
+  manual_review_margin: 0.02
+  failure_example_limit: 30
+artifacts:
+  root: artifacts/entity_resolution/fragment_recovery_dense_validation
+  assignments: artifacts/entity_resolution/fragment_recovery_dense_validation/entity_assignments.csv
+  metrics: artifacts/entity_resolution/fragment_recovery_dense_validation/metrics.json
+  review: artifacts/entity_resolution/fragment_recovery_dense_validation/failure_review.json
+  report: artifacts/entity_resolution/fragment_recovery_dense_validation/report.md
+

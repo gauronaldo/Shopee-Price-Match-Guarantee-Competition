@@ -153,6 +153,137 @@ def test_attached_singleton_cannot_bootstrap_later_attachment() -> None:
     assert diagnostics.singleton_attachments == 1
 
 
+def test_supported_fragment_attaches_to_larger_component() -> None:
+    posting_ids = ("p1", "p2", "p3", "p4", "p5")
+    pairs = [
+        _pair(1, 2, 0.99),
+        _pair(2, 3, 0.98),
+        _pair(4, 5, 0.97),
+        _pair(1, 4, 0.86),
+        _pair(2, 5, 0.84),
+    ]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=0.0,
+        variant_conflict_override_probability=0.95,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        fragment_attachment=True,
+        fragment_probability_threshold=0.8,
+        fragment_reciprocal_rank=5,
+        fragment_maximum_source_size=2,
+        fragment_minimum_target_size=3,
+        fragment_minimum_support=2,
+        fragment_minimum_source_coverage=1.0,
+        fragment_minimum_target_support=2,
+        fragment_target_margin=0.02,
+    )
+    assert len({row.entity_id for row in assignments}) == 1
+    assert diagnostics.fragment_attachment_attempts == 1
+    assert diagnostics.fragment_attachments == 1
+
+
+def test_fragment_requires_evidence_from_each_source_member() -> None:
+    posting_ids = ("p1", "p2", "p3", "p4", "p5")
+    pairs = [
+        _pair(1, 2, 0.99),
+        _pair(2, 3, 0.98),
+        _pair(4, 5, 0.97),
+        _pair(1, 4, 0.86),
+        _pair(2, 4, 0.84),
+    ]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=0.0,
+        variant_conflict_override_probability=0.95,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        fragment_attachment=True,
+        fragment_probability_threshold=0.8,
+        fragment_reciprocal_rank=5,
+        fragment_maximum_source_size=2,
+        fragment_minimum_target_size=3,
+        fragment_minimum_support=2,
+        fragment_minimum_source_coverage=1.0,
+        fragment_minimum_target_support=2,
+    )
+    entities = {row.posting_id: row.entity_id for row in assignments}
+    assert entities["p1"] == entities["p2"] == entities["p3"]
+    assert entities["p4"] == entities["p5"]
+    assert entities["p1"] != entities["p4"]
+    assert diagnostics.fragment_attachments == 0
+    assert diagnostics.fragment_attachment_insufficient_support == 1
+
+
+def test_fragment_variant_conflicts_can_be_rejected() -> None:
+    posting_ids = ("p1", "p2", "p3", "p4", "p5")
+    pairs = [
+        _pair(1, 2, 0.99),
+        _pair(2, 3, 0.98),
+        _pair(4, 5, 0.97),
+        _pair(1, 4, 0.86, variant_conflict=True),
+        _pair(2, 5, 0.84),
+    ]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=0.0,
+        variant_conflict_override_probability=0.8,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        fragment_attachment=True,
+        fragment_probability_threshold=0.8,
+        fragment_reciprocal_rank=5,
+        fragment_maximum_source_size=2,
+        fragment_minimum_target_size=3,
+        fragment_minimum_support=2,
+        fragment_minimum_source_coverage=1.0,
+        fragment_minimum_target_support=2,
+        fragment_reject_variant_conflicts=True,
+    )
+    assert len({row.entity_id for row in assignments}) == 2
+    assert diagnostics.fragment_attachments == 0
+    assert diagnostics.fragment_attachment_variant_conflict_rejections == 1
+
+
+def test_equal_size_fragments_require_full_support_on_both_sides() -> None:
+    posting_ids = ("p1", "p2", "p3", "p4")
+    pairs = [
+        _pair(1, 2, 0.99),
+        _pair(3, 4, 0.98),
+        _pair(1, 3, 0.86),
+        _pair(2, 4, 0.84),
+    ]
+    assignments, diagnostics = build_conservative_clusters(
+        posting_ids,
+        pairs,
+        pair_probability_threshold=0.9,
+        reciprocal_rank=5,
+        cross_component_minimum_coverage=0.0,
+        variant_conflict_override_probability=0.95,
+        maximum_cluster_size=10,
+        manual_review_margin=0.02,
+        fragment_attachment=True,
+        fragment_probability_threshold=0.8,
+        fragment_reciprocal_rank=5,
+        fragment_maximum_source_size=2,
+        fragment_minimum_target_size=2,
+        fragment_minimum_support=2,
+        fragment_minimum_source_coverage=1.0,
+        fragment_minimum_target_support=2,
+    )
+    assert len({row.entity_id for row in assignments}) == 1
+    assert diagnostics.fragment_attachments == 1
+
+
 def test_clustering_metrics_match_hand_computed_perfect_partition() -> None:
     assignments = [
         ClusterAssignment("p1", "e1", 2, 0.9, False),
