@@ -162,10 +162,26 @@ def test_clustering_metrics_match_hand_computed_perfect_partition() -> None:
     ]
     labels = {"p1": "a", "p2": "a", "p3": "b", "p4": "b"}
     metrics = clustering_metrics(assignments, labels)
+    assert metrics["mean_sample_f1"] == pytest.approx(1.0)
     assert metrics["pairwise"]["f1"] == pytest.approx(1.0)
     assert metrics["b_cubed"]["f1"] == pytest.approx(1.0)
     assert metrics["false_merge_pair_rate"] == pytest.approx(0.0)
     assert metrics["false_split_group_rate"] == pytest.approx(0.0)
+
+
+def test_mean_sample_f1_averages_each_listing_match_set() -> None:
+    assignments = [
+        ClusterAssignment("p1", "e1", 3, 0.9, False),
+        ClusterAssignment("p2", "e1", 3, 0.9, False),
+        ClusterAssignment("p3", "e1", 3, 0.9, False),
+        ClusterAssignment("p4", "e2", 1, 0.9, False),
+    ]
+    labels = {"p1": "a", "p2": "a", "p3": "b", "p4": "b"}
+
+    metrics = clustering_metrics(assignments, labels)
+
+    assert metrics["mean_sample_f1"] == pytest.approx(2 / 3)
+    assert metrics["mean_sample_f1"] != pytest.approx(metrics["b_cubed"]["f1"])
 
 
 def test_edge_metrics_use_all_true_pairs_as_recall_denominator() -> None:

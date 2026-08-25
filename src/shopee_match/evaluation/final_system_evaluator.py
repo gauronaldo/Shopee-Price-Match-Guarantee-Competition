@@ -179,6 +179,8 @@ def _render_report(run: dict[str, Any]) -> str:
     )
     clustering_rows = "\n".join(
         (
+            f"| Mean sample-wise F1 | {validation_cluster['mean_sample_f1']:.5f} | "
+            f"{cluster['mean_sample_f1']:.5f} |",
             f"| Pairwise precision | {validation_cluster['pairwise']['precision']:.5f} | "
             f"{pairwise['precision']:.5f} |",
             f"| Pairwise recall | {validation_cluster['pairwise']['recall']:.5f} | "

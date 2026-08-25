@@ -157,7 +157,7 @@ def candidate_pair_classification_metrics(
 def clustering_metrics(
     assignments: list[ClusterAssignment], label_by_id: dict[str, str]
 ) -> dict[str, Any]:
-    """Return pairwise, B-cubed, false-merge, false-split, and size metrics."""
+    """Return sample-wise, pairwise, B-cubed, error-rate, and size metrics."""
     entity_by_id = {row.posting_id: row.entity_id for row in assignments}
     if set(entity_by_id) != set(label_by_id):
         raise ValueError("assignments must contain every labeled posting exactly once")
@@ -186,12 +186,16 @@ def clustering_metrics(
 
     b3_precision_values: list[float] = []
     b3_recall_values: list[float] = []
+    sample_f1_values: list[float] = []
     for posting_id in sorted(label_by_id):
         predicted_members = predicted[entity_by_id[posting_id]]
         true_members = truth[label_by_id[posting_id]]
         overlap = len(set(predicted_members) & set(true_members))
-        b3_precision_values.append(overlap / len(predicted_members))
-        b3_recall_values.append(overlap / len(true_members))
+        sample_precision = overlap / len(predicted_members)
+        sample_recall = overlap / len(true_members)
+        b3_precision_values.append(sample_precision)
+        b3_recall_values.append(sample_recall)
+        sample_f1_values.append(_f1(sample_precision, sample_recall))
     b3_precision = sum(b3_precision_values) / len(b3_precision_values)
     b3_recall = sum(b3_recall_values) / len(b3_recall_values)
 
@@ -201,6 +205,7 @@ def clustering_metrics(
     cluster_sizes = [len(members) for members in predicted.values()]
     review_entities = {row.entity_id for row in assignments if row.manual_review}
     return {
+        "mean_sample_f1": sum(sample_f1_values) / len(sample_f1_values),
         "pairwise": {
             "precision": pair_precision,
             "recall": pair_recall,

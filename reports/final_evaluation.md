@@ -1,11 +1,12 @@
 # Frozen System Evaluation
 
 The project ships one selected final system. Its image encoder, text encoder, multimodal fusion,
-and pair head use the same frozen checkpoint established before the recall-recovery experiments.
-Those experiments changed candidate generation and graph inference, not the trained model weights.
+and pair head use one frozen checkpoint. Candidate generation, pair scoring, and graph inference
+are fixed by the final configuration.
 
 | Selected final-system metric | Validation | Test |
 |---|---:|---:|
+| Mean sample-wise F1 | 0.81457 | 0.79591 |
 | Retrieval Recall@75 | 0.99209 | 0.98615 |
 | Pairwise precision | 0.89582 | 0.87850 |
 | Pairwise recall | 0.45573 | 0.40396 |
@@ -81,6 +82,7 @@ test pair as its denominator and therefore includes retrieval and graph-gating m
 
 | Metric | Validation | Test |
 |---|---:|---:|
+| Mean sample-wise F1 | 0.81457 | 0.79591 |
 | Pairwise precision | 0.89582 | 0.87850 |
 | Pairwise recall | 0.45573 | 0.40396 |
 | Pairwise F1 | 0.60413 | 0.55344 |

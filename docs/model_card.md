@@ -2,7 +2,7 @@
 
 ## Model details
 
-- System version: `final.system_evaluation.v1`.
+- System version: `hybrid.system_evaluation.v1`.
 - Task: exact-product candidate retrieval, pair scoring, and duplicate-entity clustering.
 - Inputs: one product image and one noisy multilingual product title per listing.
 - Outputs: Top-K candidates, pair probabilities and modality evidence, predicted entity IDs,
@@ -20,10 +20,13 @@ with a train-only vocabulary and normalized 256-dimensional embedding. A residua
 fusion module maps image/text evidence to a normalized 512-dimensional listing embedding. A
 symmetric pair head scores `[z1*z2, |z1-z2|]` so pair order cannot change the prediction.
 
-Exact Top-50 cosine retrieval creates candidates. The pair head scores each unique candidate pair.
-Reciprocal Top-5 edges above probability `0.16` enter a conservative union-find graph only when
-full cross-component support is present. Clusters over 64 members are blocked, and low-confidence
-clusters receive manual-review flags.
+Dense Top-50 cosine retrieval, train-fitted character TF-IDF Top-50, and pHash Top-20 candidates
+are combined with weighted reciprocal-rank fusion and truncated at Top-75. The pair head scores
+each unique candidate pair. Reciprocal Top-5 edges above probability `0.14` enter a conservative
+union-find graph only when full cross-component support is present. A second pass can attach a
+singleton at probability `0.18` when at least two members of the same component support it within
+rank 50. Clusters over 64 members are blocked, and low-confidence clusters receive manual-review
+flags.
 
 See [`architecture.md`](architecture.md) for training and inference diagrams.
 
@@ -45,22 +48,22 @@ See [`architecture.md`](architecture.md) for training and inference diagrams.
 
 | Metric | Validation | Held-out test |
 |---|---:|---:|
-| Retrieval mAP@20 | 0.87023 | 0.85946 |
-| Retrieval Recall@20 | 0.93780 | 0.93235 |
-| Retrieval mAP@50 | 0.87279 | 0.86001 |
-| Retrieval Recall@50 | 0.97438 | 0.96882 |
-| Cluster pairwise precision | 0.90165 | 0.89591 |
-| Cluster pairwise recall | 0.33119 | 0.32723 |
-| Cluster pairwise F1 | 0.48444 | 0.47937 |
-| B-cubed precision | 0.95618 | 0.95279 |
-| B-cubed recall | 0.73003 | 0.72331 |
-| B-cubed F1 | 0.82794 | 0.82234 |
-| False-merge pair rate | 0.09835 | 0.10409 |
-| False-split group rate | 0.30818 | 0.33637 |
+| Mean sample-wise F1 | 0.81457 | 0.79591 |
+| Retrieval mAP@20 | 0.90131 | 0.89245 |
+| Retrieval Recall@20 | 0.95929 | 0.95371 |
+| Retrieval Recall@75 | 0.99209 | 0.98615 |
+| Cluster pairwise precision | 0.89582 | 0.87850 |
+| Cluster pairwise recall | 0.45573 | 0.40396 |
+| Cluster pairwise F1 | 0.60413 | 0.55344 |
+| B-cubed precision | 0.95148 | 0.94269 |
+| B-cubed recall | 0.78119 | 0.76913 |
+| B-cubed F1 | 0.85797 | 0.84711 |
+| False-merge pair rate | 0.10418 | 0.12150 |
+| False-split group rate | 0.26364 | 0.28350 |
 
-On test candidate pairs, the raw pair head reaches average precision/PR-AUC `0.78497`, Brier score
-`0.04992`, and expected calibration error `0.08596`. At the frozen graph operating point,
-accepted-edge precision/recall/F1 are `0.81962 / 0.38345 / 0.52247` when every true test pair is
+On test candidate pairs, the raw pair head reaches average precision/PR-AUC `0.76610`, Brier score
+`0.03351`, and expected calibration error `0.06757`. At the frozen graph operating point,
+accepted-edge precision/recall/F1 are `0.83803 / 0.38623 / 0.52876` when every true test pair is
 included in the recall denominator.
 
 ## Efficiency
@@ -69,12 +72,13 @@ Measured on the local CUDA environment and 3,429 held-out listings:
 
 | Stage | Result |
 |---|---:|
-| Image extraction | 188.46 listings/s |
-| Text extraction | 15,959.47 listings/s |
-| Joint fusion | 83,475.14 listings/s |
-| Pair scoring | 40,063.06 pairs/s |
-| Exact query p50 / p95 | 0.344 / 0.416 ms |
-| End-to-end evaluation wall time | 23.88 s |
+| Image extraction | 19.73 s |
+| Text extraction | 0.30 s |
+| Joint fusion | 0.04 s |
+| Hybrid retrieval | 34.92 s |
+| Pair scoring | 37,000 pairs/s |
+| Dense query p50 / p95 | 0.323 / 0.453 ms |
+| End-to-end evaluation wall time | 62.05 s |
 
 Timings describe this hardware and catalog size; they are not production-scale guarantees.
 
@@ -101,22 +105,22 @@ Timings describe this hardware and catalog size; they are not production-scale g
 - Competition labels contain plausible fragmentation and variant-policy ambiguity.
 - The test split was not used for final policy selection, but earlier component reports already
   disclosed results on the same split; it is not globally unseen to the project owner.
-- Pair probabilities are not perfectly calibrated (`ECE 0.08596`) and should not be interpreted as
+- Pair probabilities are not perfectly calibrated (`ECE 0.06757`) and should not be interpreted as
   universal commercial confidence.
 
 ## Provenance
 
 - Final evaluation config SHA-256:
-  `2f7741c3ec5a5e7032731029c2842f2219aae2a0e6b81d59eb5875fcc5d78d44`.
+  `9f3c88a8e154101882821815681e2ce94cc3f2a3b9e0f5681ce0412022618957`.
 - Entity-resolution config SHA-256:
-  `84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794`.
+  `982d6118bfde3b444d672a0b5717dc4833097bf0e0fd0fd09a3e53158cad083e`.
 - Entity-resolution metrics SHA-256:
-  `1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f`.
-- Phase 6 checkpoint SHA-256:
+  `8833c0f6994b98dd08f10a4aa482d46e9520c25612b6b3e4be9ed6cd11a1472e`.
+- Frozen checkpoint SHA-256:
   `d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e`.
 - Split manifest SHA-256:
   `c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09`.
-- Final test source commit: `f87639b8942020cbd0ba04a2113f3edb15f0d3d3`, clean worktree.
+- Final test source commit: `51d109d626d444ca9b8e4dfd423a9459c08f6346`, clean worktree.
 
 Aggregate final evidence is in [`../reports/final_evaluation.md`](../reports/final_evaluation.md).
 Raw data, checkpoints, embeddings, indexes, pair manifests, and row-level reviews remain local and

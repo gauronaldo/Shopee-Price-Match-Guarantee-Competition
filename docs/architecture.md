@@ -15,10 +15,13 @@ flowchart LR
     A --> I[Train-only hard-negative mining]
     G --> I
     I --> H
-    G --> J[Exact retrieval reference]
-    J --> K[FAISS HNSW comparison]
+    G --> J[Dense cosine retrieval]
+    A --> K[Train-fitted character TF-IDF and pHash]
+    J --> N[Weighted reciprocal-rank fusion]
+    K --> N
+    J --> O[FAISS HNSW comparison]
     H --> L[Validation-frozen graph policy]
-    J --> L
+    N --> L
 ```
 
 The image and text encoders are trained from random initialization. Fusion starts only after both
@@ -33,17 +36,21 @@ flowchart TD
     A[Catalog images and titles] --> B[Validate and preprocess]
     B --> C[Image and title embeddings]
     C --> D[512-dimensional joint embedding]
-    D --> E[Exact or FAISS Top-K retrieval]
-    E --> F[Deduplicate candidate pairs]
-    F --> G[Symmetric pair probabilities]
-    G --> H{Probability and reciprocal-rank gates}
-    H -->|reject| I[No graph edge]
-    H -->|accept| J{Variant and component consistency}
-    J -->|reject| K[Blocked merge or manual review]
-    J -->|accept| L[Union-find component merge]
-    L --> M[Entity ID, confidence, review flag]
-    I --> M
-    K --> M
+    B --> E[Character TF-IDF and pHash evidence]
+    D --> F[Dense Top-50 retrieval]
+    E --> G[Sparse and hash candidates]
+    F --> H[Weighted RRF Top-75]
+    G --> H
+    H --> I[Deduplicate candidate pairs]
+    I --> J[Symmetric pair probabilities]
+    J --> K{Probability and reciprocal-rank gates}
+    K -->|reject| L[No graph edge]
+    K -->|accept| M{Variant and component consistency}
+    M -->|reject| N[Blocked merge or manual review]
+    M -->|accept| O[Union-find component merge]
+    O --> P[Entity ID, confidence, review flag]
+    L --> P
+    N --> P
 ```
 
 Candidate retrieval controls recall: missing candidates cannot be recovered downstream. Pair

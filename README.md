@@ -9,7 +9,6 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.48-FF4B4B?logo=streamlit&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Code style](https://img.shields.io/badge/code%20style-Ruff-D7FF64?logo=ruff&logoColor=261230)
-![Tests](https://img.shields.io/badge/tests-102%20passing-2EA44F)
 
 A multimodal retrieval and entity-resolution system for identifying duplicate product listings in
 an e-commerce catalog. It combines visual and textual representations with candidate retrieval,
@@ -29,7 +28,7 @@ requirements.
   consistency-aware graph clustering.
 - Frozen test evaluation across retrieval, pair classification, clustering, calibration, and
   efficiency metrics.
-- A 102-test quality suite plus FastAPI, Streamlit, and Docker Compose inference paths.
+- Automated quality gates plus FastAPI, Streamlit, and Docker Compose inference paths.
 
 ## Problem context
 
@@ -116,53 +115,24 @@ It is not loaded into the demo inference contract. See
 The held-out system evaluation was run once after checkpoints, thresholds, candidate K, and graph
 rules were frozen on validation.
 
-### Frozen test retrieval
+### Frozen held-out performance
 
-| System or component | mAP@20 | Recall@20 | Additional result |
-|---|---:|---:|---|
-| Supplied pHash image baseline | 0.3073 | 0.3345 | Classical image reference |
-| Custom residual image encoder | 0.5567 | 0.6594 | Random initialization |
-| Custom character TextCNN | 0.7484 | 0.8698 | TF-IDF test mAP@20: 0.8564 |
-| Custom multimodal pair-head rerank | 0.8685 | 0.9324 | Pair F1: 0.6843 |
-| Classical late fusion | **0.8810** | **0.9349** | Pair F1: **0.7220** |
-| Selected final-system retrieval | **0.8924** | **0.9537** | Recall@75: **0.9862** |
+| Stage | Metric | Held-out test |
+|---|---|---:|
+| End-to-end | Mean sample-wise F1 | **0.79591** |
+| Retrieval | mAP@20 | 0.89245 |
+| Retrieval | Recall@20 | 0.95371 |
+| Clustering | Pairwise precision / recall / F1 | 0.87850 / 0.40396 / 0.55344 |
+| Clustering | B-cubed F1 | 0.84711 |
+| Failure analysis | False-split group rate | 0.28350 |
 
-The Phase 5 pair-head row measures reranked retrieval. The final-system row reports the frozen
-dense, character TF-IDF, and pHash candidate fusion before reciprocal-edge and clustering
-decisions; pair and entity quality are reported separately below.
-
-### Validation-only pretrained comparison
-
-| Representation | Modalities | Initialization | mAP@20 | Recall@20 |
-|---|---|---|---:|---:|
-| Custom residual CNN | Image | Random | 0.5391 | 0.6467 |
-| EfficientNet-B1 V2 | Image | ImageNet-1K pretrained, frozen | 0.7375 | 0.8248 |
-| Custom multimodal joint embedding | Image + title | Random | **0.8702** | **0.9378** |
-
-EfficientNet-B1 is evaluated on validation under the same exact-cosine image-retrieval protocol;
-it is not fine-tuned and is not included in the frozen test comparison.
-
-### Entity resolution
-
-| Selected final-system metric | Validation | Test |
-|---|---:|---:|
-| Candidate Recall@75 | 0.9921 | 0.9862 |
-| Pairwise precision | 0.8958 | 0.8785 |
-| Pairwise recall | 0.4557 | 0.4040 |
-| Pairwise F1 | 0.6041 | 0.5534 |
-| B-cubed F1 | 0.8580 | 0.8471 |
-| False-merge pair rate | 0.1042 | 0.1215 |
-| False-split group rate | 0.2636 | 0.2835 |
-
-The selected system combines frozen dense candidates, train-fitted character TF-IDF, and pHash
+Mean sample-wise F1 computes one match-set F1 value per listing, including the listing itself, and
+then averages across the held-out split. The selected system combines frozen dense candidates,
+train-fitted character TF-IDF, and pHash
 with weighted reciprocal-rank fusion. Supported singleton attachment then recovers isolated
 listings only when at least two members of one established component agree. The trained
-multimodal checkpoint and pair head are unchanged; these retrieval and graph experiments determine
-the final inference policy. The final model improves recall and fragmentation while accepting a
-measured increase in false merges.
-
-The repository presents this as one improved final model. Earlier operating points are experiment
-evidence, not separate model releases.
+multimodal checkpoint and pair head remain frozen; the retrieval and graph stages define the final
+inference policy.
 
 The operating point was selected on validation and evaluated without test-time adjustment.
 Because earlier component experiments had already used the same split, this is reported as a
@@ -285,10 +255,10 @@ immutable by design; use a new artifact root for a deliberate rerun instead of o
 | Hybrid entity evaluation | `.venv\Scripts\shopee-entity-resolution evaluate-hybrid-candidates --config configs\experiment\hybrid_entity_resolution.yaml` |
 | Pretrained weight preparation | `.venv\Scripts\shopee-pretrained prepare-weights` |
 | Pretrained comparison | `.venv\Scripts\shopee-pretrained benchmark --config configs\experiment\pretrained_image_benchmark.yaml` |
-| Frozen system preflight | `.venv\Scripts\shopee-final preflight --config configs\experiment\final_system_evaluation.yaml` |
+| Frozen system preflight | `.venv\Scripts\shopee-final preflight-hybrid --config configs\experiment\hybrid_system_evaluation.yaml` |
 
-An access marker protects the single-use final test protocol. Use the preflight command to verify
-the recorded evaluation rather than deleting its outputs and selecting settings from another run.
+An access marker protects the single-use final test protocol. Run preflight before a fresh frozen
+evaluation; after the access marker or outputs exist, it intentionally blocks a second test run.
 
 ## Engineering quality
 
