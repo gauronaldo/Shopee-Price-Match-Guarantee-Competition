@@ -43,6 +43,8 @@ class CatalogProtocolConfig:
     references_per_known_entity: int
     manifest: Path
     summary: Path
+    development_config: Path | None
+    development_metrics: Path | None
     config_path: Path
 
 
@@ -59,7 +61,11 @@ def _verified(raw: dict[str, Any], name: str, *, portable_text: bool = False) ->
 
 def load_catalog_protocol_config(path: Path) -> CatalogProtocolConfig:
     root = _read_yaml(path, "catalog-attachment protocol config")
-    _only_keys(root, {"config_version", "seed", "source", "roles", "artifacts"}, "config")
+    required_root = {"config_version", "seed", "source", "roles", "artifacts"}
+    if missing := required_root - set(root):
+        raise ConfigurationError(f"Missing keys in config: {sorted(missing)}")
+    if unknown := set(root) - required_root - {"confirmation_guard"}:
+        raise ConfigurationError(f"Unknown keys in config: {sorted(unknown)}")
     if root["config_version"] != "catalog_attachment.protocol.v4":
         raise ConfigurationError("Unsupported catalog-attachment protocol version")
 
@@ -80,9 +86,55 @@ def load_catalog_protocol_config(path: Path) -> CatalogProtocolConfig:
     source_manifest = _verified(source, "source_manifest")
     source_split = _typed(source["source_split"], str, "source.source_split")
     partition = _typed(source["partition"], str, "source.partition")
-    if source_split != "validation" or partition != "development":
+    if (source_split, partition) not in {
+        ("validation", "development"),
+        ("test", "confirmation"),
+    }:
+        raise ConfigurationError("Unsupported source-split and protocol-partition pairing")
+
+    development_config = None
+    development_metrics = None
+    if partition == "confirmation":
+        if "confirmation_guard" not in root:
+            raise ConfigurationError("Confirmation role construction requires a frozen guard")
+        guard = _mapping(root["confirmation_guard"], "confirmation_guard")
+        _only_keys(
+            guard,
+            {
+                "selection_frozen",
+                "evaluate_metrics",
+                "development_config",
+                "development_config_sha256",
+                "development_metrics",
+                "development_metrics_sha256",
+            },
+            "confirmation_guard",
+        )
+        if guard["selection_frozen"] is not True or guard["evaluate_metrics"] is not False:
+            raise ConfigurationError("Confirmation roles require frozen selection and no metrics")
+        development_config = _relative_path(
+            guard["development_config"], "confirmation_guard.development_config"
+        )
+        expected_config = _typed(
+            guard["development_config_sha256"],
+            str,
+            "confirmation_guard.development_config_sha256",
+        ).lower()
+        if canonical_text_sha256(development_config) != expected_config:
+            raise ConfigurationError("Frozen development config hash mismatch")
+        development_metrics = _relative_path(
+            guard["development_metrics"], "confirmation_guard.development_metrics"
+        )
+        expected_metrics = _typed(
+            guard["development_metrics_sha256"],
+            str,
+            "confirmation_guard.development_metrics_sha256",
+        ).lower()
+        if sha256_file(development_metrics) != expected_metrics:
+            raise ConfigurationError("Frozen development metrics hash mismatch")
+    elif "confirmation_guard" in root:
         raise ConfigurationError(
-            "Protocol v4 development construction must use only the validation source split"
+            "Development role construction must not contain a confirmation guard"
         )
 
     roles = _mapping(root["roles"], "roles")
@@ -112,6 +164,8 @@ def load_catalog_protocol_config(path: Path) -> CatalogProtocolConfig:
         references_per_known_entity=references,
         manifest=_relative_path(artifacts["manifest"], "artifacts.manifest"),
         summary=_relative_path(artifacts["summary"], "artifacts.summary"),
+        development_config=development_config,
+        development_metrics=development_metrics,
         config_path=path,
     )
 
@@ -215,7 +269,7 @@ def build_catalog_protocol(config_path: Path) -> dict[str, object]:
     _write_atomic(config.manifest, manifest_text)
     summary = {
         "protocol_version": "catalog_attachment.protocol.v4",
-        "status": "development_roles_complete",
+        "status": f"{config.partition}_roles_complete",
         "provenance": {
             "git_commit": commit,
             "git_dirty": False,
@@ -227,7 +281,8 @@ def build_catalog_protocol(config_path: Path) -> dict[str, object]:
         "listings": len(roles),
         "role_counts": dict(sorted(counts.items())),
         "catalog_entities": counts["catalog_reference"],
-        "confirmation_accessed": False,
+        "confirmation_rows_loaded_for_role_assignment": config.partition == "confirmation",
+        "confirmation_metrics_computed": False,
         "labels_persisted_in_role_manifest": False,
     }
     _write_atomic(config.summary, json.dumps(summary, indent=2, sort_keys=True) + "\n")
@@ -236,7 +291,10 @@ def build_catalog_protocol(config_path: Path) -> dict[str, object]:
         "manifest": str(config.manifest),
         "summary": str(config.summary),
         "role_counts": summary["role_counts"],
-        "confirmation_accessed": False,
+        "confirmation_rows_loaded_for_role_assignment": summary[
+            "confirmation_rows_loaded_for_role_assignment"
+        ],
+        "confirmation_metrics_computed": False,
     }
 
 

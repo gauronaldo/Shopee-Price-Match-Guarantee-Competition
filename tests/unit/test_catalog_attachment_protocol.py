@@ -53,3 +53,22 @@ def test_role_manifest_never_contains_label_group() -> None:
         known_entity_fraction=0.5,
     )
     assert all(not hasattr(row, "label_group") for row in roles)
+
+
+def test_confirmation_roles_use_the_same_deterministic_contract() -> None:
+    split = _split()
+    development = assign_catalog_roles(
+        split,
+        seed=2027,
+        partition="development",
+        known_entity_fraction=0.5,
+    )
+    confirmation = assign_catalog_roles(
+        split,
+        seed=2027,
+        partition="confirmation",
+        known_entity_fraction=0.5,
+    )
+    assert [(row.posting_id, row.role) for row in development] == [
+        (row.posting_id, row.role) for row in confirmation
+    ]
