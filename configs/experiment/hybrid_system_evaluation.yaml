@@ -4,7 +4,7 @@ frozen:
   entity_config: configs/experiment/hybrid_entity_resolution.yaml
   entity_config_sha256: 68c283a709a472e2fc81678b184609ffff61fb08a6e15f5f03de567ce8a652d8
   entity_metrics: artifacts/final_system/validation/entity_resolution/metrics.json
-  entity_metrics_sha256: 0bfa195d5bca48d4566008173973848e21f1e26ffbd50b04ca470cfea52756d0
+  entity_metrics_sha256: 1f3fd1a5100c6df8512e5b34afbc056fdbca388317ce514525c32a196567d056
   policy:
     candidate_k: 100
     pair_probability_threshold: 0.12
