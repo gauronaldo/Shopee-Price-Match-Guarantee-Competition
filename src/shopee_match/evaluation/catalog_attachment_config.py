@@ -106,22 +106,21 @@ def _fraction(value: object, location: str) -> float:
 
 def load_catalog_attachment_config(path: Path) -> CatalogAttachmentConfig:
     root = _read_yaml(path, "catalog-attachment evaluation config")
-    _only_keys(
-        root,
-        {
-            "config_version",
-            "seed",
-            "source",
-            "data",
-            "runtime",
-            "retrieval",
-            "decision",
-            "safety",
-            "comparison",
-            "artifacts",
-        },
-        "config",
-    )
+    required_root = {
+        "config_version",
+        "seed",
+        "source",
+        "data",
+        "runtime",
+        "retrieval",
+        "decision",
+        "safety",
+        "artifacts",
+    }
+    if missing := required_root - set(root):
+        raise ConfigurationError(f"Missing keys in config: {sorted(missing)}")
+    if unknown := set(root) - required_root - {"comparison"}:
+        raise ConfigurationError(f"Unknown keys in config: {sorted(unknown)}")
     if root["config_version"] != "catalog_attachment.evaluation.v4":
         raise ConfigurationError("Unsupported catalog-attachment evaluation version")
     source = _mapping(root["source"], "source")
