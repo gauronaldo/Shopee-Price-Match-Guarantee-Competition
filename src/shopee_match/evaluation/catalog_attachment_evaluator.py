@@ -298,6 +298,41 @@ def retrieval_metrics(
     return metrics
 
 
+def validate_ranking_contract(
+    ranking: Ranking,
+    queries: tuple[CorpusItem, ...],
+    references: tuple[CorpusItem, ...],
+    candidate_k: int,
+) -> dict[str, int]:
+    query_ids = {item.posting_id for item in queries}
+    reference_ids = {item.posting_id for item in references}
+    if query_ids & reference_ids:
+        raise DataValidationError("Catalog queries overlap reference listings")
+    if set(ranking) != query_ids:
+        raise DataValidationError("Catalog ranking does not cover exactly the query set")
+    minimum = candidate_k
+    maximum = 0
+    for query_id, candidates in ranking.items():
+        identifiers = [row.posting_id for row in candidates]
+        if (
+            len(identifiers) > candidate_k
+            or len(set(identifiers)) != len(identifiers)
+            or not set(identifiers) <= reference_ids
+            or query_id in identifiers
+        ):
+            raise DataValidationError("Catalog ranking violates candidate isolation or budget")
+        minimum = min(minimum, len(identifiers))
+        maximum = max(maximum, len(identifiers))
+    return {
+        "query_reference_id_overlap": 0,
+        "candidate_outside_reference_count": 0,
+        "self_candidate_count": 0,
+        "duplicate_candidate_count": 0,
+        "minimum_candidates_per_query": minimum,
+        "maximum_candidates_per_query": maximum,
+    }
+
+
 def _score_pairs(
     model: LearnedMultimodalFusion,
     posting_ids: tuple[str, ...],
@@ -556,6 +591,9 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
     ranking, references, queries = _hybrid_ranking(
         config, train, development, posting_ids, embeddings, roles
     )
+    ranking_audit = validate_ranking_contract(
+        ranking, queries, references, config.policy.candidate_k
+    )
     retrieval = retrieval_metrics(
         ranking,
         queries,
@@ -586,13 +624,12 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
         )
         for threshold in config.policy.thresholds
     ]
-    eligible = [
-        trial
-        for trial in trials
-        if passes_safety(trial, config.safety) and passes_comparison(trial, config.comparison)
+    safe_trials = [trial for trial in trials if passes_safety(trial, config.safety)]
+    accepted_trials = [
+        trial for trial in safe_trials if passes_comparison(trial, config.comparison)
     ]
     selected = max(
-        eligible or trials,
+        accepted_trials or safe_trials or trials,
         key=lambda row: (
             row["balanced_score"],
             row["attachment_f1"],
@@ -600,7 +637,12 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
             -row["threshold"],
         ),
     )
-    status = "development_policy_selected" if eligible else "no_development_policy_passed"
+    if accepted_trials:
+        status = "development_policy_selected"
+    elif safe_trials:
+        status = "development_candidate_rejected"
+    else:
+        status = "no_development_policy_passed"
     run: dict[str, Any] = {
         "pipeline_version": "catalog_attachment.evaluation.v4",
         "status": status,
@@ -619,6 +661,9 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
             "confirmation_accessed": False,
             "historical_test_accessed": False,
             "label_group_used_by_retrieval": False,
+            "train_development_label_overlap": len(
+                set(train.label_by_id.values()) & set(development.label_by_id.values())
+            ),
         },
         "evaluation": {
             "candidate_k": config.policy.candidate_k,
@@ -626,9 +671,11 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
             "objective": "maximize_attachment_f1_and_new_entity_detection_subject_to_safety",
         },
         "retrieval": retrieval,
+        "ranking_contract": ranking_audit,
         "safety": asdict(config.safety),
         "selection": {
-            "passes_safety": bool(eligible),
+            "passes_absolute_safety": bool(safe_trials),
+            "passes_comparison_gate": bool(accepted_trials),
             "selected": selected,
             "trials": trials,
             "comparison_delta": comparison_delta(selected, config.comparison),

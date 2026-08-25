@@ -12,6 +12,7 @@ from shopee_match.evaluation.catalog_attachment_evaluator import (
     cross_phash_ranking,
     passes_comparison,
     passes_safety,
+    validate_ranking_contract,
 )
 from shopee_match.evaluation.catalog_attachment_protocol import CatalogRole
 from shopee_match.evaluation.protocol import CorpusItem
@@ -27,6 +28,9 @@ def test_cross_phash_ranking_uses_only_catalog_references() -> None:
     ranking = cross_phash_ranking(queries, references, 2)
     assert [row.posting_id for row in ranking["q1"]] == ["r1", "r2"]
     assert "q1" not in {row.posting_id for row in ranking["q1"]}
+    audit = validate_ranking_contract(ranking, queries, references, 2)
+    assert audit["self_candidate_count"] == 0
+    assert audit["maximum_candidates_per_query"] == 2
 
 
 def test_attachment_metrics_separate_known_and_new_queries() -> None:
