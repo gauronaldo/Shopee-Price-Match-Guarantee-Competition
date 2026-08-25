@@ -124,9 +124,22 @@ def create_pair_recall_protocol(
         by_component[row["super_component_id"]].append(row)
     if not training or len(by_component) < 2:
         raise DataValidationError("Pair-recall protocol requires train and development components")
-    total = len(development)
-    target = total * config.development_fraction
-    development_rows = 0
+    fractions = {
+        "validation": config.development_fraction,
+        "test": 1.0 - config.development_fraction,
+    }
+    total_rows = len(development)
+    total_components = len(by_component)
+    band_by_component: dict[str, str] = {}
+    for component, members in by_component.items():
+        size = len(members)
+        band_by_component[component] = (
+            "2" if size <= 2 else "3_to_5" if size <= 5 else "6_to_9" if size <= 9 else "10_plus"
+        )
+    band_totals = Counter(band_by_component.values())
+    assigned_rows: Counter[str] = Counter()
+    assigned_components: Counter[str] = Counter()
+    assigned_bands: dict[str, Counter[str]] = defaultdict(Counter)
     component_role: dict[str, str] = {}
     ordered = sorted(
         by_component,
@@ -137,12 +150,22 @@ def create_pair_recall_protocol(
     )
     for component in ordered:
         size = len(by_component[component])
-        before = abs(development_rows - target)
-        after = abs(development_rows + size - target)
-        role = "validation" if after <= before else "test"
+        band = band_by_component[component]
+        scored: list[tuple[float, str]] = []
+        for role in ("validation", "test"):
+            row_load = assigned_rows[role] / (total_rows * fractions[role])
+            component_load = assigned_components[role] / (
+                total_components * fractions[role]
+            )
+            band_load = assigned_bands[band][role] / (
+                band_totals[band] * fractions[role]
+            )
+            scored.append((0.6 * row_load + 0.2 * component_load + 0.2 * band_load, role))
+        role = min(scored)[1]
         component_role[component] = role
-        if role == "validation":
-            development_rows += size
+        assigned_rows[role] += size
+        assigned_components[role] += 1
+        assigned_bands[band][role] += 1
     output = [
         {"posting_id": row["posting_id"], "split": "train"} for row in training
     ] + [
