@@ -302,6 +302,32 @@ No additional training is triggered at this stage because the canonical system a
 predeclared attachment, new-entity detection, false-attachment, and review-rate gates. Any later
 training must target catalog attachment explicitly and use only development evidence.
 
+### Frozen catalog-attachment confirmation
+
+The canonical threshold `0.14`, candidate budget `20`, modality weights, ambiguity margins, and
+absolute/stability gates were frozen before constructing confirmation roles. The evaluator wrote a
+single-use access marker before loading the 1,544-listing confirmation partition. No threshold or
+model selection was permitted, and the preserved historical test was not accessed.
+
+| Protocol-v4 metric | Development | Confirmation | Delta |
+|---|---:|---:|---:|
+| Retrieval Recall@1 | 0.78528 | 0.75632 | -0.02895 |
+| Retrieval Recall@20 | 0.99018 | 0.98506 | -0.00513 |
+| Attachment precision | 0.91766 | 0.85563 | -0.06204 |
+| Attachment recall | 0.75215 | 0.74253 | -0.00962 |
+| Attachment F1 | 0.82670 | 0.79508 | -0.03163 |
+| New-entity detection recall | 0.87688 | 0.81071 | -0.06616 |
+| New-entity false-attachment rate | 0.09610 | 0.13929 | +0.04319 |
+| Overall false-attachment rate | 0.04791 | 0.09478 | +0.04687 |
+| Manual-review rate | 0.05052 | 0.05391 | +0.00339 |
+
+Confirmation fails both the absolute and stability gates. Retrieval remains strong, and attachment
+recall transfers with only a small drop; the failure is concentrated in false attachment and
+new-entity rejection. The development threshold is overconfident on catalog-absent queries. The
+confirmation partition is now spent and cannot be reused for recalibration or another acceptance
+attempt. Protocol v4 therefore remains a supplemental real-world diagnostic rather than replacing
+the established frozen batch evaluation in the final showcase.
+
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `
   --config configs\experiment\entity_recall_recovery.yaml
@@ -329,6 +355,10 @@ training must target catalog attachment explicitly and use only development evid
   --config configs\experiment\catalog_attachment_canonical_development.yaml
 .venv\Scripts\python -m shopee_match.evaluation.catalog_attachment_cli evaluate `
   --config configs\experiment\catalog_attachment_full_joint_development.yaml
+.venv\Scripts\python -m shopee_match.evaluation.catalog_attachment_cli preflight-confirmation `
+  --config configs\experiment\catalog_attachment_confirmation.yaml
+.venv\Scripts\python -m shopee_match.evaluation.catalog_attachment_cli confirm `
+  --config configs\experiment\catalog_attachment_confirmation.yaml
 ```
 
 EfficientNet-B1 fine-tuning is deferred because the selected multi-source retrieval policy resolves

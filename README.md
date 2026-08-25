@@ -164,6 +164,23 @@ measured increase in false merges.
 The repository presents this as one improved final model. Earlier operating points are experiment
 evidence, not separate model releases.
 
+### Supplemental catalog-attachment evaluation
+
+A separate query-to-catalog protocol tests whether the system can attach known products while
+rejecting products that do not yet exist in the catalog. The policy was selected on development and
+then applied once to a frozen confirmation partition without threshold adjustment.
+
+| Catalog-attachment metric | Development | Confirmation |
+|---|---:|---:|
+| Retrieval Recall@20 | 0.9902 | 0.9851 |
+| Attachment precision | 0.9177 | 0.8556 |
+| Attachment recall | 0.7521 | 0.7425 |
+| Attachment F1 | 0.8267 | 0.7951 |
+| New-entity false-attachment rate | 0.0961 | 0.1393 |
+
+The confirmation result misses the false-attachment safety gate. It is retained as a realistic
+diagnostic and does not replace the frozen batch entity-resolution result above.
+
 The operating point was selected on validation and evaluated without test-time adjustment.
 Because earlier component experiments had already used the same split, this is reported as a
 confirmatory frozen evaluation rather than as a globally unseen test.
@@ -283,6 +300,9 @@ immutable by design; use a new artifact root for a deliberate rerun instead of o
 | Recall-recovery graph | `.venv\Scripts\shopee-entity-resolution recover-recall --config configs\experiment\entity_recall_recovery.yaml` |
 | Hybrid candidate retrieval | `.venv\Scripts\shopee-retrieval hybrid --config configs\experiment\hybrid_candidate_retrieval.yaml` |
 | Hybrid entity evaluation | `.venv\Scripts\shopee-entity-resolution evaluate-hybrid-candidates --config configs\experiment\hybrid_entity_resolution.yaml` |
+| Catalog attachment development | `.venv\Scripts\shopee-catalog-attachment evaluate --config configs\experiment\catalog_attachment_canonical_development.yaml` |
+| Catalog attachment confirmation preflight | `.venv\Scripts\shopee-catalog-attachment preflight-confirmation --config configs\experiment\catalog_attachment_confirmation.yaml` |
+| Catalog attachment confirmation | `.venv\Scripts\shopee-catalog-attachment confirm --config configs\experiment\catalog_attachment_confirmation.yaml` |
 | Pretrained weight preparation | `.venv\Scripts\shopee-pretrained prepare-weights` |
 | Pretrained comparison | `.venv\Scripts\shopee-pretrained benchmark --config configs\experiment\pretrained_image_benchmark.yaml` |
 | Frozen system preflight | `.venv\Scripts\shopee-final preflight --config configs\experiment\final_system_evaluation.yaml` |
@@ -336,6 +356,8 @@ tests/                       Synthetic fixtures, unit tests, and integration tes
 - The dataset contains noisy labels, multilingual seller text, malformed byte escapes, and
   ambiguous product variants.
 - The strict clustering policy limits false merges but fragments many large product groups.
+- The supplemental catalog-attachment policy does not meet its frozen false-attachment gate for
+  products absent from the reference catalog.
 - Reported latency covers a 3,430-listing validation catalog; production-scale behavior requires
   measurement on a substantially larger index and representative request load.
 - The demo searches a fixed validation catalog and omits persistent ingestion, authentication,

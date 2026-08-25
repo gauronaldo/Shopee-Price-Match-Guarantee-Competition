@@ -75,7 +75,7 @@ UI are portfolio demonstration components, not a claim of production readiness.
 
 ## Catalog-attachment evaluation contract
 
-The primary real-world evaluation track separates the reference catalog from incoming queries.
+The supplemental real-world evaluation track separates the reference catalog from incoming queries.
 Known-entity queries have one exact-product reference in the catalog; new-entity queries have none.
 The model retrieves only reference listings and must attach the query, declare a new entity, or
 defer the decision for manual review.
@@ -96,3 +96,7 @@ flowchart LR
 The development protocol selects the operating threshold under attachment-precision,
 new-entity-detection, false-attachment, and review-rate constraints. Batch pairwise and B-cubed
 metrics remain a secondary clustering diagnostic rather than the primary online decision metric.
+
+The first frozen confirmation showed that retrieval transferred well but new-entity rejection did
+not meet its false-attachment gate. This track is therefore retained as diagnostic evidence; the
+confirmed batch protocol remains the primary final evaluation.
