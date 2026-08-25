@@ -228,6 +228,41 @@ were trained with a different group assignment, they cannot be presented as leak
 models. Any v2 learned representation or verifier must be trained under this new manifest before
 confirmation is accessed.
 
+### Pair-recall refinement experiments
+
+An initial pilot on the preceding development protocol fine-tuned only the fusion module and
+symmetric pair head. Its best checkpoint increased development recall from `0.40898` to `0.44152`,
+but precision fell to `0.80152`, F1
+improved by only `0.00850`, and false merge rose to `0.19848`. It failed the locked graph-level
+safety gates; the checkpoint was rejected and the result is retained only as an ablation.
+
+The full-joint cycle then adopted a narrower protocol without reopening the prior confirmation or
+historical-test partitions. The existing training partition remains unchanged; the prior
+development pool is divided group-disjointly into a 1,542-listing development split and a
+1,544-listing internal-confirmation split. Internal-confirmation labels are not loaded by training
+or development evaluation. This is internal evidence rather than a new external test set.
+
+The full-joint experiment fine-tuned the image encoder, text encoder, fusion module, and pair
+head with tiered learning rates. Batches combined hard positives, hard negatives, random positives,
+and random negatives. Distillation on negative pairs penalized large deviations from the frozen
+pair scorer. Candidate generation returned at most 75 unique candidates per query, and TF-IDF
+was fit on the unchanged training partition only.
+
+| Development-v3 metric | Frozen system | Full joint, epoch 1 | Delta |
+|---|---:|---:|---:|
+| Pairwise precision | **0.91770** | 0.88403 | -0.03366 |
+| Pairwise recall | 0.40800 | **0.42838** | **+0.02039** |
+| Pairwise F1 | 0.56486 | **0.57711** | **+0.01225** |
+| B-cubed F1 | 0.85259 | **0.86477** | **+0.01218** |
+| False-merge pair rate | **0.08230** | 0.11597 | +0.03366 |
+| False-split group rate | 0.27181 | **0.20081** | **-0.07099** |
+
+Epoch 1 is the only checkpoint that passes every locked gate. Later epochs achieve higher recall
+but lose excessive precision: false merge rises to `0.15129` at epoch 2 and `0.18461` at epoch 3.
+Early stopping therefore retains epoch 1. The improvement exceeds the minimum recall gate by only
+`0.00039`, so it is an accepted development candidate, not a replacement for the canonical system.
+Independent confirmation remains required before any canonical change.
+
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `
   --config configs\experiment\entity_recall_recovery.yaml
@@ -247,6 +282,8 @@ confirmation is accessed.
   --config configs\experiment\entity_fragment_recovery_benchmark.yaml
 .venv\Scripts\python -m shopee_match.training.hard_negative_cli train-hard-positive `
   --config configs\experiment\hard_positive_pair_finetuning.yaml
+.venv\Scripts\python -m shopee_match.training.hard_negative_cli train-joint-recall `
+  --config configs\experiment\full_joint_pair_recall_training.yaml
 ```
 
 EfficientNet-B1 fine-tuning is deferred because the selected multi-source retrieval policy resolves
