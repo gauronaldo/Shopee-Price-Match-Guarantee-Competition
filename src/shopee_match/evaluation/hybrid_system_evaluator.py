@@ -205,7 +205,11 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
     phase7 = hybrid_config.source.experiment
     phase6 = phase7.source.experiment
     multimodal = phase6.source.experiment
-    splits = load_splits(multimodal.data.metadata_csv, config.evaluation_manifest_path)
+    splits = load_splits(
+        multimodal.data.metadata_csv,
+        config.evaluation_manifest_path,
+        require_complete_manifest=False,
+    )
     test = splits["test"]
 
     LOGGER.info("Hybrid final stage 1/6: extracting frozen test embeddings")

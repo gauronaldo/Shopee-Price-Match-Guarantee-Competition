@@ -180,6 +180,7 @@ def extract_frozen_multimodal_split(
     splits = load_splits(
         config.data.metadata_csv,
         config.data.split_manifest if split_manifest is None else split_manifest,
+        require_complete_manifest=split_manifest is None,
     )
     split = splits[split_name]
     image_model, text_model, vocabulary, maximum_length = load_frozen_encoders(config, device)

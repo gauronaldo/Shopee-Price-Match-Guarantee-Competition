@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
+from shopee_match.errors import DataValidationError
 from shopee_match.evaluation.protocol import (
     Ranking,
     ScoredCandidate,
     load_named_split,
+    load_splits,
     pair_metrics_at_threshold,
     precision_at_minimum_recall,
     retrieval_metrics,
@@ -111,3 +113,31 @@ def test_load_named_split_does_not_retain_other_split_labels(tmp_path: Path) -> 
     validation = load_named_split(metadata, manifest, "validation")
     assert tuple(item.posting_id for item in validation.items) == ("validation_id",)
     assert validation.label_by_id == {"validation_id": "validation_label"}
+
+
+def test_scoped_manifest_requires_explicit_opt_in(tmp_path: Path) -> None:
+    metadata = tmp_path / "train.csv"
+    metadata.write_text(
+        "posting_id,image,image_phash,title,label_group\n"
+        "train_id,a.jpg,0000,train title,train_label\n"
+        "confirmation_id,b.jpg,1111,confirmation title,confirmation_label\n"
+        "historical_id,c.jpg,2222,historical title,historical_label\n",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "confirmation.jsonl"
+    manifest.write_text(
+        json.dumps({"posting_id": "train_id", "split": "train"})
+        + "\n"
+        + json.dumps({"posting_id": "confirmation_id", "split": "test"})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DataValidationError, match="posting_id sets differ"):
+        load_splits(metadata, manifest)
+
+    splits = load_splits(metadata, manifest, require_complete_manifest=False)
+    assert tuple(item.posting_id for item in splits["test"].items) == ("confirmation_id",)
+    assert "historical_id" not in {
+        item.posting_id for split in splits.values() for item in split.items
+    }

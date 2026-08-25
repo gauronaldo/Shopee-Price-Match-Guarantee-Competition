@@ -39,8 +39,13 @@ class ScoredCandidate:
 Ranking = dict[str, list[ScoredCandidate]]
 
 
-def load_splits(metadata_csv: Path, manifest_path: Path) -> dict[str, EvaluationSplit]:
-    """Load and cross-check metadata against the frozen row-level manifest."""
+def load_splits(
+    metadata_csv: Path,
+    manifest_path: Path,
+    *,
+    require_complete_manifest: bool = True,
+) -> dict[str, EvaluationSplit]:
+    """Load and cross-check metadata against a complete or explicitly scoped manifest."""
     with metadata_csv.open("r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
     by_id = {row["posting_id"]: row for row in rows}
@@ -63,7 +68,9 @@ def load_splits(metadata_csv: Path, manifest_path: Path) -> dict[str, Evaluation
             if split not in {"train", "validation", "test"}:
                 raise DataValidationError(f"Unknown split {split!r}")
             manifest[posting_id] = split
-    if set(manifest) != set(by_id):
+    if not set(manifest).issubset(by_id):
+        raise DataValidationError("Manifest contains posting_id values absent from metadata")
+    if require_complete_manifest and set(manifest) != set(by_id):
         raise DataValidationError("Metadata and manifest posting_id sets differ")
 
     items_by_split: dict[str, list[CorpusItem]] = {
@@ -77,7 +84,7 @@ def load_splits(metadata_csv: Path, manifest_path: Path) -> dict[str, Evaluation
         "test": {},
     }
     label_split: dict[str, str] = {}
-    for posting_id in sorted(by_id):
+    for posting_id in sorted(manifest):
         row = by_id[posting_id]
         split = manifest[posting_id]
         label = row["label_group"]

@@ -40,12 +40,12 @@ evaluation:
   required_precision: 0.9
   failure_example_limit: 30
 artifacts:
-  root: artifacts/final_system/confirmation
-  access_marker: artifacts/final_system/confirmation/access_started.json
-  embeddings: artifacts/final_system/confirmation/embeddings.npz
-  ranking: artifacts/final_system/confirmation/ranking.jsonl
-  scored_pairs: artifacts/final_system/confirmation/scored_pairs.jsonl
-  assignments: artifacts/final_system/confirmation/entity_assignments.csv
-  metrics: artifacts/final_system/confirmation/metrics.json
-  review: artifacts/final_system/confirmation/failure_review.json
-  report: artifacts/final_system/confirmation/report.md
+  root: artifacts/final_system/confirmation_run_02
+  access_marker: artifacts/final_system/confirmation_run_02/access_started.json
+  embeddings: artifacts/final_system/confirmation_run_02/embeddings.npz
+  ranking: artifacts/final_system/confirmation_run_02/ranking.jsonl
+  scored_pairs: artifacts/final_system/confirmation_run_02/scored_pairs.jsonl
+  assignments: artifacts/final_system/confirmation_run_02/entity_assignments.csv
+  metrics: artifacts/final_system/confirmation_run_02/metrics.json
+  review: artifacts/final_system/confirmation_run_02/failure_review.json
+  report: artifacts/final_system/confirmation_run_02/report.md
