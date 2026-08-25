@@ -45,6 +45,7 @@ demo = [
 [project.scripts]
 shopee-data = "shopee_match.data.cli:main"
 shopee-development = "shopee_match.data.development_cli:main"
+shopee-pair-recall-protocol = "shopee_match.data.pair_recall_cli:main"
 shopee-benchmark = "shopee_match.evaluation.cli:main"
 shopee-image = "shopee_match.training.cli:main"
 shopee-hard-negatives = "shopee_match.training.hard_negative_cli:main"

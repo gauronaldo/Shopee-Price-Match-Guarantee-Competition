@@ -1,0 +1,12 @@
+config_version: pair_recall.development_protocol.v1
+source:
+  manifest: data/splits/shopee_development_v2.jsonl
+  manifest_sha256: 726d6f8d347cd5477b163fd5916fb2d08923aa9711a8b67bb24e66e65dacbc5f
+  train_role: train
+  repartition_role: development
+allocation:
+  seed: 2061
+  development_fraction: 0.50
+artifacts:
+  manifest: data/splits/shopee_pair_recall_v3_modeling.jsonl
+  summary: data/splits/shopee_pair_recall_v3.summary.json
