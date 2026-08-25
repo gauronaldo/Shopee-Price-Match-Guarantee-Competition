@@ -19,6 +19,7 @@ from torch import Tensor
 
 from shopee_match.errors import ConfigurationError, DataValidationError, OutputConflictError
 from shopee_match.evaluation.catalog_attachment_config import (
+    CatalogAttachmentComparison,
     CatalogAttachmentConfig,
     CatalogAttachmentSafety,
     load_catalog_attachment_config,
@@ -431,6 +432,49 @@ def passes_safety(metrics: dict[str, float], safety: CatalogAttachmentSafety) ->
     )
 
 
+def passes_comparison(
+    metrics: dict[str, float], comparison: CatalogAttachmentComparison | None
+) -> bool:
+    if comparison is None:
+        return True
+    baseline = comparison.baseline_metrics["selection"]["selected"]
+    return bool(
+        metrics["attachment_recall"] - baseline["attachment_recall"]
+        >= comparison.minimum_attachment_recall_delta
+        and metrics["attachment_f1"] - baseline["attachment_f1"]
+        >= comparison.minimum_attachment_f1_delta
+        and baseline["attachment_precision"] - metrics["attachment_precision"]
+        <= comparison.maximum_attachment_precision_drop
+        and baseline["new_entity_detection_recall"] - metrics["new_entity_detection_recall"]
+        <= comparison.maximum_new_entity_detection_recall_drop
+        and metrics["new_entity_false_attachment_rate"]
+        - baseline["new_entity_false_attachment_rate"]
+        <= comparison.maximum_new_entity_false_attachment_rate_increase
+        and metrics["overall_false_attachment_rate"] - baseline["overall_false_attachment_rate"]
+        <= comparison.maximum_overall_false_attachment_rate_increase
+        and metrics["manual_review_rate"] - baseline["manual_review_rate"]
+        <= comparison.maximum_manual_review_rate_increase
+    )
+
+
+def comparison_delta(
+    selected: dict[str, float], comparison: CatalogAttachmentComparison | None
+) -> dict[str, float] | None:
+    if comparison is None:
+        return None
+    baseline = comparison.baseline_metrics["selection"]["selected"]
+    names = (
+        "attachment_precision",
+        "attachment_recall",
+        "attachment_f1",
+        "new_entity_detection_recall",
+        "new_entity_false_attachment_rate",
+        "overall_false_attachment_rate",
+        "manual_review_rate",
+    )
+    return {name: selected[name] - float(baseline[name]) for name in names}
+
+
 def _report(run: dict[str, Any]) -> str:
     selected = run["selection"]["selected"]
     retrieval = run["retrieval"]
@@ -542,7 +586,11 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
         )
         for threshold in config.policy.thresholds
     ]
-    eligible = [trial for trial in trials if passes_safety(trial, config.safety)]
+    eligible = [
+        trial
+        for trial in trials
+        if passes_safety(trial, config.safety) and passes_comparison(trial, config.comparison)
+    ]
     selected = max(
         eligible or trials,
         key=lambda row: (
@@ -583,6 +631,7 @@ def run_catalog_attachment_evaluation(config_path: Path) -> dict[str, object]:
             "passes_safety": bool(eligible),
             "selected": selected,
             "trials": trials,
+            "comparison_delta": comparison_delta(selected, config.comparison),
         },
         "runtime_seconds": time.perf_counter() - started,
     }

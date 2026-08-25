@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from shopee_match.evaluation.catalog_attachment_config import CatalogAttachmentSafety
+from pathlib import Path
+
+from shopee_match.evaluation.catalog_attachment_config import (
+    CatalogAttachmentComparison,
+    CatalogAttachmentSafety,
+)
 from shopee_match.evaluation.catalog_attachment_evaluator import (
     PairEvidence,
     attachment_metrics,
     cross_phash_ranking,
+    passes_comparison,
     passes_safety,
 )
 from shopee_match.evaluation.catalog_attachment_protocol import CatalogRole
@@ -61,3 +67,34 @@ def test_safety_gate_requires_both_match_and_new_entity_quality() -> None:
     assert passes_safety(metrics, safety)
     metrics["new_entity_false_attachment_rate"] = 0.2
     assert not passes_safety(metrics, safety)
+
+
+def test_candidate_comparison_requires_material_safe_improvement() -> None:
+    baseline = {
+        "selection": {
+            "selected": {
+                "attachment_precision": 0.92,
+                "attachment_recall": 0.75,
+                "attachment_f1": 0.82,
+                "new_entity_detection_recall": 0.88,
+                "new_entity_false_attachment_rate": 0.09,
+                "overall_false_attachment_rate": 0.05,
+                "manual_review_rate": 0.05,
+            }
+        }
+    }
+    comparison = CatalogAttachmentComparison(
+        Path("baseline.json"), baseline, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.05
+    )
+    candidate = {
+        "attachment_precision": 0.915,
+        "attachment_recall": 0.78,
+        "attachment_f1": 0.84,
+        "new_entity_detection_recall": 0.875,
+        "new_entity_false_attachment_rate": 0.095,
+        "overall_false_attachment_rate": 0.055,
+        "manual_review_rate": 0.06,
+    }
+    assert passes_comparison(candidate, comparison)
+    candidate["attachment_precision"] = 0.89
+    assert not passes_comparison(candidate, comparison)

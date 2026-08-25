@@ -1,0 +1,52 @@
+config_version: catalog_attachment.evaluation.v4
+seed: 2027
+source:
+  metadata_csv: data/raw/train.csv
+  metadata_csv_sha256: 82b8ec57e81b603e00c63779b7eeea69a2bd7d9cbb48377657cf547b422f9175
+  source_manifest: data/splits/shopee_pair_recall_v3_modeling.jsonl
+  source_manifest_sha256: cc1bb9848a3b3aaed7cc9b810d4ed7361e1150f5b3c96c3ade5738e6b7c6725d
+  role_manifest: data/splits/catalog_attachment_development_v4.jsonl
+  role_manifest_sha256: 515bbdf75dc431eebec5c6a9027fa1adef974873596b3a301a24c6148f32f9fe
+  hybrid_config: configs/experiment/hybrid_candidate_retrieval.yaml
+  hybrid_config_sha256: e0847ef2d748384f39afa24f3f0262f1b1c6eb43f4531074b819661b6ac7e629
+  model_variant: full_joint_candidate
+  full_joint_config: configs/experiment/full_joint_pair_recall_training.yaml
+  full_joint_config_sha256: 6bb071de97f54360ccd3881187d7c42319f09b3cddf10d71cc2551174d14614f
+  full_joint_checkpoint: artifacts/entity_resolution_v3/full_joint_pair_recall/best.pt
+  full_joint_checkpoint_sha256: d782e29c653b6453d143ddd14222ff1cd4e21716c57a5d253f4e6b4eeaaf2f5d
+data:
+  source_split: validation
+  partition: development
+  evaluate_confirmation: false
+runtime:
+  device: cuda
+  extraction_batch_size: 64
+  pair_batch_size: 8192
+retrieval:
+  candidate_k: 20
+  metric_k_values: [1, 5, 10, 20]
+decision:
+  pair_probability_thresholds: [0.05, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, 0.60, 0.70]
+  manual_review_margin: 0.02
+  target_margin: 0.02
+  variant_conflict_override_probability: 0.15
+safety:
+  minimum_attachment_precision: 0.88
+  minimum_new_entity_detection_recall: 0.80
+  maximum_new_entity_false_attachment_rate: 0.12
+  maximum_overall_false_attachment_rate: 0.12
+  maximum_manual_review_rate: 0.30
+comparison:
+  baseline_metrics: artifacts/catalog_attachment_v4/development/canonical/metrics.json
+  baseline_metrics_sha256: aaf16e2c61821747b93f632c8969864b68ef6a54422e9986d15cd0a9e84ca935
+  minimum_attachment_recall_delta: 0.02
+  minimum_attachment_f1_delta: 0.01
+  maximum_attachment_precision_drop: 0.01
+  maximum_new_entity_detection_recall_drop: 0.01
+  maximum_new_entity_false_attachment_rate_increase: 0.01
+  maximum_overall_false_attachment_rate_increase: 0.01
+  maximum_manual_review_rate_increase: 0.05
+artifacts:
+  root: artifacts/catalog_attachment_v4/development/full_joint_candidate
+  metrics: artifacts/catalog_attachment_v4/development/full_joint_candidate/metrics.json
+  report: artifacts/catalog_attachment_v4/development/full_joint_candidate/report.md

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -47,6 +48,19 @@ class CatalogAttachmentSafety:
 
 
 @dataclass(frozen=True, slots=True)
+class CatalogAttachmentComparison:
+    baseline_metrics_path: Path
+    baseline_metrics: dict[str, Any]
+    minimum_attachment_recall_delta: float
+    minimum_attachment_f1_delta: float
+    maximum_attachment_precision_drop: float
+    maximum_new_entity_detection_recall_drop: float
+    maximum_new_entity_false_attachment_rate_increase: float
+    maximum_overall_false_attachment_rate_increase: float
+    maximum_manual_review_rate_increase: float
+
+
+@dataclass(frozen=True, slots=True)
 class CatalogAttachmentArtifacts:
     root: Path
     metrics: Path
@@ -67,6 +81,7 @@ class CatalogAttachmentConfig:
     runtime: CatalogAttachmentRuntime
     policy: CatalogAttachmentPolicy
     safety: CatalogAttachmentSafety
+    comparison: CatalogAttachmentComparison | None
     artifacts: CatalogAttachmentArtifacts
     config_path: Path
 
@@ -102,6 +117,7 @@ def load_catalog_attachment_config(path: Path) -> CatalogAttachmentConfig:
             "retrieval",
             "decision",
             "safety",
+            "comparison",
             "artifacts",
         },
         "config",
@@ -243,6 +259,77 @@ def load_catalog_attachment_config(path: Path) -> CatalogAttachmentConfig:
         ),
     )
 
+    comparison = None
+    if "comparison" in root:
+        if variant != "full_joint_candidate":
+            raise ConfigurationError("Only a candidate evaluation may compare with a baseline")
+        comparison_raw = _mapping(root["comparison"], "comparison")
+        comparison_names = {
+            "baseline_metrics",
+            "baseline_metrics_sha256",
+            "minimum_attachment_recall_delta",
+            "minimum_attachment_f1_delta",
+            "maximum_attachment_precision_drop",
+            "maximum_new_entity_detection_recall_drop",
+            "maximum_new_entity_false_attachment_rate_increase",
+            "maximum_overall_false_attachment_rate_increase",
+            "maximum_manual_review_rate_increase",
+        }
+        _only_keys(comparison_raw, comparison_names, "comparison")
+        baseline_path = _relative_path(
+            comparison_raw["baseline_metrics"], "comparison.baseline_metrics"
+        )
+        expected = _typed(
+            comparison_raw["baseline_metrics_sha256"],
+            str,
+            "comparison.baseline_metrics_sha256",
+        ).lower()
+        if sha256_file(baseline_path) != expected:
+            raise ConfigurationError("Catalog-attachment baseline metrics hash mismatch")
+        baseline_metrics = cast(
+            dict[str, Any], json.loads(baseline_path.read_text(encoding="utf-8"))
+        )
+        if (
+            baseline_metrics.get("pipeline_version") != "catalog_attachment.evaluation.v4"
+            or baseline_metrics.get("model_variant") != "canonical"
+            or baseline_metrics.get("status") != "development_policy_selected"
+        ):
+            raise ConfigurationError("Candidate comparison requires an accepted canonical baseline")
+        comparison = CatalogAttachmentComparison(
+            baseline_metrics_path=baseline_path,
+            baseline_metrics=baseline_metrics,
+            minimum_attachment_recall_delta=_fraction(
+                comparison_raw["minimum_attachment_recall_delta"],
+                "comparison.minimum_attachment_recall_delta",
+            ),
+            minimum_attachment_f1_delta=_fraction(
+                comparison_raw["minimum_attachment_f1_delta"],
+                "comparison.minimum_attachment_f1_delta",
+            ),
+            maximum_attachment_precision_drop=_fraction(
+                comparison_raw["maximum_attachment_precision_drop"],
+                "comparison.maximum_attachment_precision_drop",
+            ),
+            maximum_new_entity_detection_recall_drop=_fraction(
+                comparison_raw["maximum_new_entity_detection_recall_drop"],
+                "comparison.maximum_new_entity_detection_recall_drop",
+            ),
+            maximum_new_entity_false_attachment_rate_increase=_fraction(
+                comparison_raw["maximum_new_entity_false_attachment_rate_increase"],
+                "comparison.maximum_new_entity_false_attachment_rate_increase",
+            ),
+            maximum_overall_false_attachment_rate_increase=_fraction(
+                comparison_raw["maximum_overall_false_attachment_rate_increase"],
+                "comparison.maximum_overall_false_attachment_rate_increase",
+            ),
+            maximum_manual_review_rate_increase=_fraction(
+                comparison_raw["maximum_manual_review_rate_increase"],
+                "comparison.maximum_manual_review_rate_increase",
+            ),
+        )
+    elif variant == "full_joint_candidate":
+        raise ConfigurationError("Candidate evaluation requires a frozen baseline comparison")
+
     artifacts_raw = _mapping(root["artifacts"], "artifacts")
     _only_keys(artifacts_raw, {"root", "metrics", "report"}, "artifacts")
     artifact_root = _relative_path(artifacts_raw["root"], "artifacts.root")
@@ -263,6 +350,7 @@ def load_catalog_attachment_config(path: Path) -> CatalogAttachmentConfig:
         runtime=runtime,
         policy=policy,
         safety=safety,
+        comparison=comparison,
         artifacts=CatalogAttachmentArtifacts(artifact_root, metrics, report),
         config_path=path,
     )
