@@ -162,6 +162,7 @@ def _load_selection(raw: dict[str, Any], *, candidate_k: int) -> RecoverySelecti
         singleton_attachment_policies=_load_attachment_policies(
             raw["singleton_attachment_policies"], candidate_k=candidate_k
         ),
+        fragment_attachment_policies=(),
         acceptance=acceptance,
         variant_conflict_override_probability=variant_override,
         maximum_cluster_size=_positive_int(

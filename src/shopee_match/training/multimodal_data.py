@@ -172,11 +172,15 @@ def extract_frozen_multimodal_split(
     device: torch.device,
     batch_size: int,
     num_workers: int,
+    split_manifest: Path | None = None,
 ) -> tuple[tuple[str, ...], FloatArray, FloatArray, dict[str, float]]:
     """Extract aligned frozen image/text embeddings without creating a reusable cache."""
     if split_name not in {"train", "validation", "test"}:
         raise ConfigurationError("Unknown multimodal split")
-    splits = load_splits(config.data.metadata_csv, config.data.split_manifest)
+    splits = load_splits(
+        config.data.metadata_csv,
+        config.data.split_manifest if split_manifest is None else split_manifest,
+    )
     split = splits[split_name]
     image_model, text_model, vocabulary, maximum_length = load_frozen_encoders(config, device)
     image_dataset = ProductImageDataset.for_split(

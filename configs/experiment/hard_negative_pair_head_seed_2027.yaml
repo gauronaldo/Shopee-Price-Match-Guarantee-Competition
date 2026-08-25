@@ -2,11 +2,11 @@ config_version: phase6.hard_negative_experiment.v1
 seed: 2027
 source:
   multimodal_config: configs/experiment/multimodal_embedding_training.yaml
-  multimodal_config_sha256: 279c96794c207fb2e62e4638cdae315dc4ffd4a2b85ecf039f41861e7412377c
-  checkpoint: artifacts/multimodal_fusion/training/best.pt
-  checkpoint_sha256: 95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4
-  metrics: artifacts/multimodal_fusion/training/metrics.json
-  metrics_sha256: da4d681cf0fb656905748a85c88f1285016ae4aee690826fdcd809521de4a313
+  multimodal_config_sha256: b9a95666bb264db089f466ec9ad43e366c829a184fd7f995b97fef7f69a1e4ec
+  checkpoint: artifacts/entity_resolution_v2/training/multimodal_fusion/best.pt
+  checkpoint_sha256: dc7e5295947b04fa60bc359086d549648300c802c4eeb1faeba340f8a45c2cf5
+  metrics: artifacts/entity_resolution_v2/training/multimodal_fusion/metrics.json
+  metrics_sha256: b0be8df5d2a547fa87c16c9747a95bd3fe119180dba72f629a7b77c31c5a70fd
 mining:
   split: train
   candidate_k: 100
@@ -46,10 +46,10 @@ evaluation:
   maximum_map_drop: 0.0
   maximum_recall_at_20_drop: 0.002
 artifacts:
-  root: artifacts/hard_negative_mining/pair_head_seed_2027
-  manifest: artifacts/hard_negative_mining/pair_head_seed_2027/mined_pairs.jsonl
-  manifest_metadata: artifacts/hard_negative_mining/pair_head_seed_2027/mined_pairs.metadata.json
-  training_root: artifacts/hard_negative_mining/pair_head_seed_2027/training
-  checkpoint: artifacts/hard_negative_mining/pair_head_seed_2027/training/best.pt
-  metrics: artifacts/hard_negative_mining/pair_head_seed_2027/training/metrics.json
-  report: reports/hard_negative_pair_head_seed_2027.md
+  root: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027
+  manifest: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027/mined_pairs.jsonl
+  manifest_metadata: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027/mined_pairs.metadata.json
+  training_root: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027/training
+  checkpoint: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027/training/best.pt
+  metrics: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027/training/metrics.json
+  report: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2027/report.md

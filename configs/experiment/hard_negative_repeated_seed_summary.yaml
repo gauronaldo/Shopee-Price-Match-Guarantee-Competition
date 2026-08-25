@@ -1,23 +1,23 @@
 config_version: phase6.hard_negative_repeated_seed_summary.v1
 canonical_seed: 2026
 baseline:
-  map_at_20: 0.8790286838488245
-  controlled_precision: 0.7455724943237106
-  recall_at_20: 0.9377984084266889
+  map_at_20: 0.8754584538537931
+  controlled_precision: 0.7781218549198731
+  recall_at_20: 0.9403673224270022
 runs:
   - seed: 2026
-    config: configs/experiment/hard_negative_pair_head_pilot.yaml
-    config_sha256: 12b8b7e97815b8cd710f3a3a6160ca3263d36453face15627b2ecc17ccab94fa
-    checkpoint_sha256: d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e
-    metrics_sha256: 7bff1b804b0a611e1a5380540e54f3b6955da3c4b4ad42ff5d7aff2442e898ee
+    config: configs/experiment/hard_negative_pair_head_refinement.yaml
+    config_sha256: 55eba062d4b95a9847ef6d8d8a071cb38e8951474f7e0cd144a007b7cd483765
+    checkpoint_sha256: 9c6b6d3920bbb28d2d591b05878f377c9058896ed066f510c13e3c9340ca6b3a
+    metrics_sha256: 6a1031bfde2d18e66675e9718969f6ea4ff22a0c0eb56f42f49ac37a4a192aaf
   - seed: 2027
     config: configs/experiment/hard_negative_pair_head_seed_2027.yaml
-    config_sha256: d3805ccde1b23c92c6f24f0c71d8fd6e0827e181f9c0ac35e4e2f1ae6570ad6e
-    checkpoint_sha256: de483b55f666b47ce235bc52806aa131171a7ebdf37a432ab1ccab23639fb3e1
-    metrics_sha256: 71a11b7a3384deb09d850f1bde79d6fa2f0390dd109099a2720af0bae0183b00
+    config_sha256: 255e71dca84ea09908ed70f86e4688e84ee6373efe9c39f1027424eff79ab881
+    checkpoint_sha256: 45170aa19b78866c8405582a8a9ab2b6535319af851c74e93f50802eac715abb
+    metrics_sha256: 1e13cecdd93a5d9722ef65bc90deeaf93875680c5bd97ee59664ab3d77d81bf6
   - seed: 2028
     config: configs/experiment/hard_negative_pair_head_seed_2028.yaml
-    config_sha256: bd01cfc48c55cb51ecdb89dad07ac91c0ca9326eec57ea5b402c1de948b7bbf1
-    checkpoint_sha256: 61fb65fd4103e2947c33bcb2176ee3700fe5fc5f07277a258a4521f49e99af73
-    metrics_sha256: 22fde5d6297163a13ea22ed2dd2f9d8a2421d6721cf0583acc46b216ec9000df
-report: reports/hard_negative_mining_final_comparison.md
+    config_sha256: 4aae730b7cea791fd68dc1a0469703e8c385e26cd3f654a9f9f0d8ff31411c91
+    checkpoint_sha256: 0f378dc1aa4019c616252a20b5cf066f22882efe487ccfc01849feb214aaf8ba
+    metrics_sha256: 00e5fb4c2659fef06903d347f79f991ae7f62cb639a8d6d04559098d6890e37f
+report: artifacts/entity_resolution_v2/hard_negative_mining/repeated_seed_summary.md

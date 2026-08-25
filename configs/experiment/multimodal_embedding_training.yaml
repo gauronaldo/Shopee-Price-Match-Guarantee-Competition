@@ -2,15 +2,15 @@ config_version: phase5.multimodal_experiment.v1
 seed: 2026
 data:
   metadata_csv: data/raw/train.csv
-  split_manifest: data/splits/shopee_group_split_v1.jsonl
+  split_manifest: data/splits/shopee_development_v2_modeling.jsonl
   image_dir: data/raw/train_images
 frozen_encoders:
   image_evaluation_config: configs/experiment/image_embedding_final_evaluation.yaml
-  image_evaluation_config_sha256: fff0f3b410de009968f0eb140fe6e1da06806017a69cc0b423187d02cd1a6ced
+  image_evaluation_config_sha256: 8ba4a88b70aa77c228a98f7d89175327716e7ea91165c43d6423678764e540fd
   text_evaluation_config: configs/experiment/text_embedding_final_evaluation.yaml
-  text_evaluation_config_sha256: 5c2fb9dbcf91d0e12ae32fcab134b81e725316c1a341fc23054eedf909133b07
+  text_evaluation_config_sha256: d6910879843c120bc19a1973c9fd09c9f8dfe814f0beb312ead9c1c4c1c98f34
 cache:
-  root: artifacts/multimodal_fusion/frozen_encoder_cache
+  root: artifacts/entity_resolution_v2/frozen_encoder_cache
   batch_size: 64
   num_workers: 0
 model_config: configs/model/residual_multimodal_fusion.yaml
@@ -46,5 +46,5 @@ evaluation:
   checkpoint_target: pair_head_rerank
   simple_fusion_image_weights: [0.0, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1.0]
 artifacts:
-  root: artifacts/multimodal_fusion/training
-  report: reports/multimodal_fusion_benchmark.md
+  root: artifacts/entity_resolution_v2/training/multimodal_fusion
+  report: artifacts/entity_resolution_v2/training/multimodal_fusion/report.md

@@ -233,7 +233,7 @@ def _write_atomic(path: Path, content: str) -> None:
 
 
 def modeling_manifest(manifest: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Map v2 roles to the legacy trainer contract without exposing confirmation separately."""
+    """Map v2 roles to the legacy trainer contract used by training artifacts."""
     role_mapping = {
         "train": "train",
         "development": "validation",
@@ -249,11 +249,29 @@ def modeling_manifest(manifest: list[dict[str, str]]) -> list[dict[str, str]]:
     ]
 
 
+def confirmation_modeling_manifest(manifest: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Return a legacy-compatible manifest that exposes confirmation but not historical test."""
+    role_mapping = {
+        "train": "train",
+        "development": "validation",
+        "confirmation": "test",
+    }
+    return [
+        {
+            "posting_id": row["posting_id"],
+            "split": role_mapping[row["split"]],
+        }
+        for row in manifest
+        if row["split"] != "historical_test"
+    ]
+
+
 def write_development_protocol(config: DevelopmentProtocolConfig) -> dict[str, object]:
     """Write immutable protocol evidence and return its identifying hashes."""
     outputs = (
         config.artifacts.manifest_path,
         config.artifacts.modeling_manifest_path,
+        config.artifacts.confirmation_manifest_path,
         config.artifacts.summary_path,
     )
     existing = [str(path) for path in outputs if path.exists()]
@@ -267,8 +285,13 @@ def write_development_protocol(config: DevelopmentProtocolConfig) -> dict[str, o
     model_content = "".join(
         json.dumps(row, sort_keys=True) + "\n" for row in modeling_manifest(manifest)
     )
+    confirmation_content = "".join(
+        json.dumps(row, sort_keys=True) + "\n"
+        for row in confirmation_modeling_manifest(manifest)
+    )
     _write_atomic(config.artifacts.manifest_path, content)
     _write_atomic(config.artifacts.modeling_manifest_path, model_content)
+    _write_atomic(config.artifacts.confirmation_manifest_path, confirmation_content)
     summary_content = json.dumps(summary, indent=2, sort_keys=True) + "\n"
     _write_atomic(config.artifacts.summary_path, summary_content)
     return {
@@ -277,6 +300,10 @@ def write_development_protocol(config: DevelopmentProtocolConfig) -> dict[str, o
         "manifest_sha256": sha256_file(config.artifacts.manifest_path),
         "modeling_manifest": str(config.artifacts.modeling_manifest_path),
         "modeling_manifest_sha256": sha256_file(config.artifacts.modeling_manifest_path),
+        "confirmation_manifest": str(config.artifacts.confirmation_manifest_path),
+        "confirmation_manifest_sha256": sha256_file(
+            config.artifacts.confirmation_manifest_path
+        ),
         "summary": str(config.artifacts.summary_path),
         "splits": summary["listings"],
         "historical_test_preserved": True,

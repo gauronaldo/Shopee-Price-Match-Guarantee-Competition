@@ -1,5 +1,5 @@
 config_version: phase6.hard_negative_experiment.v1
-seed: 2028
+seed: 2026
 source:
   multimodal_config: configs/experiment/multimodal_embedding_training.yaml
   multimodal_config_sha256: b9a95666bb264db089f466ec9ad43e366c829a184fd7f995b97fef7f69a1e4ec
@@ -46,10 +46,10 @@ evaluation:
   maximum_map_drop: 0.0
   maximum_recall_at_20_drop: 0.002
 artifacts:
-  root: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028
-  manifest: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028/mined_pairs.jsonl
-  manifest_metadata: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028/mined_pairs.metadata.json
-  training_root: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028/training
-  checkpoint: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028/training/best.pt
-  metrics: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028/training/metrics.json
-  report: artifacts/entity_resolution_v2/hard_negative_mining/pair_head_seed_2028/report.md
+  root: artifacts/entity_resolution_v2/hard_negative_mining/pair_head
+  manifest: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/mined_pairs.jsonl
+  manifest_metadata: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/mined_pairs.metadata.json
+  training_root: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/training
+  checkpoint: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/training/best.pt
+  metrics: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/training/metrics.json
+  report: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/report.md

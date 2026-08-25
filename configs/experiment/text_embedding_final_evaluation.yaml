@@ -3,17 +3,17 @@ seed: 2026
 runtime:
   device: cuda
   num_workers: 0
-  batch_size: 64
+  batch_size: 256
 frozen:
-  checkpoint: artifacts/scratch_text_encoder/training/best.pt
-  checkpoint_sha256: cbb77e4d76c1909c24b0e30654eacde2a0f752bb5d2ba795d45b01ec1189f7c1
+  checkpoint: artifacts/entity_resolution_v2/training/text_encoder/best.pt
+  checkpoint_sha256: 1ae9bed070740856057508460c962d87a2f857604f6043b22f94a1556ce6c375
   training_config: configs/experiment/text_embedding_training.yaml
-  training_config_sha256: 7fac21a3c2a45fdfa358da3353ec053aa96edea1554eea3da80abacba16de844
-  training_metrics: artifacts/scratch_text_encoder/training/metrics.json
-  training_metrics_sha256: e92bd3704d09e6e3ae36e89c2d219c69e7b3d7daa6ad70e856ae0e0e73095030
+  training_config_sha256: 0d47d5dce35c1d49068d781db3b30739423de2b496626a5d1f52e2540e7390cb
+  training_metrics: artifacts/entity_resolution_v2/training/text_encoder/metrics.json
+  training_metrics_sha256: 53f1c2b4fdd7020048a8ee052b2e488d68e4fbd33916dfc0268b14db75755008
   validation_metric: map@20
-  validation_metric_value: 0.7569790659340108
-  validation_pair_threshold: 0.6544222831726074
+  validation_metric_value: 0.7581729179697962
+  validation_pair_threshold: 0.6412169933319092
 evaluation:
   split: test
   candidate_pool: full_split
@@ -22,5 +22,5 @@ evaluation:
   average_precision_at: 20
   candidate_k: 20
 artifacts:
-  root: artifacts/scratch_text_encoder/final_evaluation
-  report: reports/text_encoder_final_evaluation.md
+  root: artifacts/entity_resolution_v2/frozen_evaluation/text_encoder
+  report: artifacts/entity_resolution_v2/frozen_evaluation/text_encoder/report.md

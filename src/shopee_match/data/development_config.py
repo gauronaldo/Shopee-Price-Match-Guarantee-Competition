@@ -37,6 +37,7 @@ class DevelopmentAllocationConfig:
 class DevelopmentArtifactConfig:
     manifest_path: Path
     modeling_manifest_path: Path
+    confirmation_manifest_path: Path
     summary_path: Path
 
 
@@ -113,16 +114,27 @@ def load_development_protocol_config(path: Path) -> DevelopmentProtocolConfig:
     )
 
     artifacts_raw = _mapping(root["artifacts"], "artifacts")
-    _only_keys(artifacts_raw, {"manifest", "modeling_manifest", "summary"}, "artifacts")
+    _only_keys(
+        artifacts_raw,
+        {"manifest", "modeling_manifest", "confirmation_manifest", "summary"},
+        "artifacts",
+    )
     artifacts = DevelopmentArtifactConfig(
         manifest_path=_relative_path(artifacts_raw["manifest"], "artifacts.manifest"),
         modeling_manifest_path=_relative_path(
             artifacts_raw["modeling_manifest"], "artifacts.modeling_manifest"
         ),
+        confirmation_manifest_path=_relative_path(
+            artifacts_raw["confirmation_manifest"], "artifacts.confirmation_manifest"
+        ),
         summary_path=_relative_path(artifacts_raw["summary"], "artifacts.summary"),
     )
-    output_paths = {artifacts.manifest_path, artifacts.modeling_manifest_path}
-    if manifest_path in output_paths or len(output_paths) != 2:
+    output_paths = {
+        artifacts.manifest_path,
+        artifacts.modeling_manifest_path,
+        artifacts.confirmation_manifest_path,
+    }
+    if manifest_path in output_paths or len(output_paths) != 3:
         raise ConfigurationError("Development manifests must be distinct from their source")
     return DevelopmentProtocolConfig(
         source=DevelopmentSourceConfig(manifest_path, manifest_sha, preserved),

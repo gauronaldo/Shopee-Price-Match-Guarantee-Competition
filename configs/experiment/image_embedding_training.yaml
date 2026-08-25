@@ -2,14 +2,14 @@ config_version: phase3.image_embedding_experiment.v1
 seed: 2026
 data:
   metadata_csv: data/raw/train.csv
-  split_manifest: data/splits/shopee_group_split_v1.jsonl
+  split_manifest: data/splits/shopee_development_v2_modeling.jsonl
   image_dir: data/raw/train_images
 model_config: configs/model/custom_residual_image_encoder.yaml
 preprocessing:
   image_size: 224
   normalization: fixed_half_range
 training:
-  device: auto
+  device: cuda
   epochs: 40
   products_per_batch: 16
   samples_per_product: 2
@@ -35,5 +35,5 @@ evaluation:
   candidate_k: 20
   checkpoint_metric: map@20
 artifacts:
-  root: artifacts/scratch_image_encoder/training
-  report: reports/image_encoder_benchmark.md
+  root: artifacts/entity_resolution_v2/training/image_encoder
+  report: artifacts/entity_resolution_v2/training/image_encoder/report.md

@@ -1,19 +1,19 @@
 config_version: phase3.frozen_image_test.v1
 seed: 2026
 runtime:
-  device: auto
-  num_workers: 4
-  batch_size: 32
+  device: cuda
+  num_workers: 0
+  batch_size: 64
 frozen:
-  checkpoint: artifacts/scratch_image_encoder/training/best.pt
-  checkpoint_sha256: 6ea26b493d643b148cbcc48006231637b266491a0a026d7fdbd22284f7100e07
+  checkpoint: artifacts/entity_resolution_v2/training/image_encoder/best.pt
+  checkpoint_sha256: 71eb3264c3477d2903759c3f785cd65b8caf0a2f640c3380cbafeaaecb558244
   training_config: configs/experiment/image_embedding_training.yaml
-  training_config_sha256: 93286c4c66cd68a0d72c2f5894ac6a8347208892267c269ba59bc3f46fee3bd1
-  training_metrics: artifacts/scratch_image_encoder/training/metrics.json
-  training_metrics_sha256: 3b389c5dd6cb58548249931fa77b1aa6b5821d540f07f9d99294e8725cee2a6a
+  training_config_sha256: 24850e527cb90f620c137ae53cbfe0b9f2b34061b9b636c75465396952007b54
+  training_metrics: artifacts/entity_resolution_v2/training/image_encoder/metrics.json
+  training_metrics_sha256: a208d7907ef105df9233f4e510a7fb3c22ace3b7a892487492ad8debdb57447c
   validation_metric: map@20
-  validation_metric_value: 0.539067208316348
-  validation_pair_threshold: 0.8056642413139343
+  validation_metric_value: 0.5346781858517714
+  validation_pair_threshold: 0.7774851322174072
 evaluation:
   split: test
   candidate_pool: full_split
@@ -22,5 +22,5 @@ evaluation:
   average_precision_at: 20
   candidate_k: 20
 artifacts:
-  root: artifacts/scratch_image_encoder/final_evaluation
-  report: reports/image_encoder_final_evaluation.md
+  root: artifacts/entity_resolution_v2/frozen_evaluation/image_encoder
+  report: artifacts/entity_resolution_v2/frozen_evaluation/image_encoder/report.md

@@ -39,7 +39,7 @@ from shopee_match.evaluation.hybrid_system_config import (
 from shopee_match.evaluation.protocol import load_splits, retrieval_metrics
 from shopee_match.features.image import rank_phash
 from shopee_match.features.text import CharTfidfModel
-from shopee_match.hashing import canonical_text_sha256, sha256_file
+from shopee_match.hashing import canonical_text_sha256
 from shopee_match.reproducibility import seed_everything
 from shopee_match.retrieval.benchmark import _profile_index, load_phase6_model
 from shopee_match.retrieval.hybrid import reciprocal_rank_fusion
@@ -162,9 +162,9 @@ supported singleton attachment without changing the frozen encoders or pair head
 
 ## Interpretation
 
-This is a confirmatory test of a new validation-frozen system version. The same test split was
-previously used to report the predecessor system, so this result is not described as globally
-unseen. No threshold, candidate K, fusion weight, or graph rule is selected from this output.
+This is a one-time evaluation on the confirmation split for a development-frozen system version.
+The preserved historical test split is not loaded. No threshold, candidate K, fusion weight, or
+graph rule is selected from this output.
 
 The access marker and immutable output paths block accidental reruns of this version.
 """
@@ -205,7 +205,7 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
     phase7 = hybrid_config.source.experiment
     phase6 = phase7.source.experiment
     multimodal = phase6.source.experiment
-    splits = load_splits(multimodal.data.metadata_csv, multimodal.data.split_manifest)
+    splits = load_splits(multimodal.data.metadata_csv, config.evaluation_manifest_path)
     test = splits["test"]
 
     LOGGER.info("Hybrid final stage 1/6: extracting frozen test embeddings")
@@ -215,6 +215,7 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
         device=device,
         batch_size=config.runtime.embedding_batch_size,
         num_workers=config.runtime.num_workers,
+        split_manifest=config.evaluation_manifest_path,
     )
     if posting_ids != tuple(item.posting_id for item in test.items):
         raise DataValidationError("Hybrid test embeddings do not align with test manifest")
@@ -346,7 +347,7 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
             "hybrid_config_sha256": entity_config.source.hybrid_config_sha256,
             "hybrid_metrics_sha256": entity_config.source.hybrid_metrics_sha256,
             "phase6_checkpoint_sha256": phase7.source.checkpoint_sha256,
-            "split_manifest_sha256": sha256_file(multimodal.data.split_manifest),
+            "split_manifest_sha256": config.evaluation_manifest_sha256,
             "git_commit": commit,
             "git_dirty": False,
             "seed": config.seed,
@@ -356,11 +357,11 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
             "device": str(device),
         },
         "data": {
-            "split": "test",
+            "split": "confirmation",
             "listings": len(posting_ids),
             "test_accessed": True,
             "version_evaluation_count": 1,
-            "predecessor_system_test_results_exist": True,
+            "historical_test_accessed": False,
             "selection_on_test": False,
         },
         "evaluation": {"metric_k_values": list(config.evaluation.metric_k_values)},

@@ -10,6 +10,7 @@ from torch.nn import functional as F
 
 from shopee_match.evaluation.protocol import CorpusItem
 from shopee_match.models import LearnedMultimodalFusion, MultimodalFusionSpec
+from shopee_match.training.hard_negative_analyzer import FrozenRun, _render_report
 from shopee_match.training.hard_negative_data import (
     HardNegativeBatchProvider,
     MiningCandidate,
@@ -174,3 +175,35 @@ def test_mixed_random_and_hard_pair_loss_has_finite_gradients() -> None:
     gradients = [parameter.grad for parameter in model.parameters() if parameter.grad is not None]
     assert gradients
     assert all(torch.isfinite(gradient).all() for gradient in gradients)
+
+
+def test_repeated_seed_report_uses_canonical_run_provenance() -> None:
+    runs = []
+    for seed in (2026, 2027, 2028):
+        frozen = FrozenRun(seed, Path(f"seed-{seed}.yaml"), "a" * 64, "b" * 64, "c" * 64)
+        metrics = {
+            "acceptance": {
+                "map_delta": 0.001,
+                "controlled_precision_delta": 0.002,
+                "recall_at_20_delta": 0.0,
+                "variant_conflict_delta": 0,
+            },
+            "selection": {"best_epoch": 1},
+            "validation": {
+                "selected_checkpoint": {
+                    "pair_head_rerank": {"retrieval": {"map@20": 0.88}}
+                }
+            },
+            "provenance": {"manifest_sha256": "d" * 64},
+            "data": {"mined_pairs": 12345},
+        }
+        runs.append((frozen, metrics))
+
+    report = _render_report(
+        2026,
+        {"map_at_20": 0.87, "controlled_precision": 0.75, "recall_at_20": 0.94},
+        runs,
+    )
+
+    assert "`" + "d" * 64 + "`" in report
+    assert "Mined pairs: `12,345`" in report

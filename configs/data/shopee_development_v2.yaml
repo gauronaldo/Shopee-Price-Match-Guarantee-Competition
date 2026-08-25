@@ -11,4 +11,5 @@ allocation:
 artifacts:
   manifest: data/splits/shopee_development_v2.jsonl
   modeling_manifest: data/splits/shopee_development_v2_modeling.jsonl
+  confirmation_manifest: data/splits/shopee_confirmation_modeling.jsonl
   summary: data/splits/shopee_development_v2.summary.json

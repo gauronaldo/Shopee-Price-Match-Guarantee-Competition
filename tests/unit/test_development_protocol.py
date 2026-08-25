@@ -10,6 +10,7 @@ from shopee_match.data.development_config import (
 )
 from shopee_match.data.development_split import (
     SourceManifestRow,
+    confirmation_modeling_manifest,
     create_development_protocol,
     modeling_manifest,
 )
@@ -24,6 +25,7 @@ def _config(tmp_path: Path) -> DevelopmentProtocolConfig:
         artifacts=DevelopmentArtifactConfig(
             tmp_path / "development.jsonl",
             tmp_path / "development.modeling.jsonl",
+            tmp_path / "development.confirmation.jsonl",
             tmp_path / "development.summary.json",
         ),
         config_path=config_path,
@@ -94,7 +96,7 @@ def test_super_component_is_never_split_between_protocol_roles(tmp_path: Path) -
     assert len(roles) == 1
 
 
-def test_modeling_manifest_exposes_development_as_validation_only(tmp_path: Path) -> None:
+def test_modeling_manifest_preserves_legacy_training_contract(tmp_path: Path) -> None:
     manifest, _summary = create_development_protocol(_rows(), _config(tmp_path))
 
     compatibility = modeling_manifest(manifest)
@@ -109,3 +111,16 @@ def test_modeling_manifest_exposes_development_as_validation_only(tmp_path: Path
             "historical_test": "test",
         }[row["split"]]
         assert role_by_id[row["posting_id"]] == expected
+
+
+def test_confirmation_manifest_excludes_historical_test(tmp_path: Path) -> None:
+    manifest, _summary = create_development_protocol(_rows(), _config(tmp_path))
+
+    compatibility = confirmation_modeling_manifest(manifest)
+    role_by_id = {row["posting_id"]: row["split"] for row in compatibility}
+
+    for row in manifest:
+        if row["split"] == "historical_test":
+            assert row["posting_id"] not in role_by_id
+        else:
+            assert row["posting_id"] in role_by_id

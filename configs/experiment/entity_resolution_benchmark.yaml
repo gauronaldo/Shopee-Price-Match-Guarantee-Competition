@@ -2,11 +2,11 @@ config_version: phase8.entity_resolution.v1
 seed: 2026
 source:
   phase7_config: configs/experiment/candidate_retrieval_benchmark.yaml
-  phase7_config_sha256: 5120674d95a6ed9030c38e7f04feb6236050d777fa63e177f6b2efda86a78303
-  phase7_metrics: artifacts/candidate_retrieval/validation/metrics.json
-  phase7_metrics_sha256: 8f8a0447434f0bc162991604dd37c38e0c8f0599ed89a111d82483d3e5dd68eb
-  embedding_cache: artifacts/candidate_retrieval/validation/embeddings.npz
-  embedding_cache_sha256: bde491d37222e69a8fe549cf4eba83c37ecad97f34272f3016cb6f356eaf34ae
+  phase7_config_sha256: 1df30052e430cbacdc666cc4b7e23ee17b9a0b32f27ee0de4d716603339f4f21
+  phase7_metrics: artifacts/final_system/validation/candidate_retrieval/metrics.json
+  phase7_metrics_sha256: e8d80f6f8b045a0d9b4bfd5962cb7b028a5cd11eda7036cce7965ae40545107b
+  embedding_cache: artifacts/final_system/validation/candidate_retrieval/embeddings.npz
+  embedding_cache_sha256: aba32ac09f976201a399b58de81fd193e884becca6854e1e3c3ceb14ec40154a
 data:
   split: validation
   evaluate_test: false
@@ -23,9 +23,9 @@ selection:
   manual_review_margin: 0.02
   failure_example_limit: 30
 artifacts:
-  root: artifacts/entity_resolution/validation
-  scored_pairs: artifacts/entity_resolution/validation/scored_pairs.jsonl
-  assignments: artifacts/entity_resolution/validation/entity_assignments.csv
-  metrics: artifacts/entity_resolution/validation/metrics.json
-  review: artifacts/entity_resolution/validation/failure_review.json
-  report: reports/entity_resolution.md
+  root: artifacts/final_system/validation/entity_resolution_baseline
+  scored_pairs: artifacts/final_system/validation/entity_resolution_baseline/scored_pairs.jsonl
+  assignments: artifacts/final_system/validation/entity_resolution_baseline/entity_assignments.csv
+  metrics: artifacts/final_system/validation/entity_resolution_baseline/metrics.json
+  review: artifacts/final_system/validation/entity_resolution_baseline/failure_review.json
+  report: artifacts/final_system/validation/entity_resolution_baseline/report.md

@@ -37,6 +37,8 @@ frozen:
       target_margin: 0.02
 data:
   split: test
+  evaluation_manifest: data/splits/shopee_confirmation_modeling.jsonl
+  evaluation_manifest_sha256: {"c" * 64}
   evaluate_once: true
   allow_test_selection: false
 runtime:
@@ -103,6 +105,23 @@ def _patch_sources(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         source=SimpleNamespace(
             hybrid_metrics={"provenance": {"git_dirty": False}},
             recovery=SimpleNamespace(selection=selection),
+            hybrid=SimpleNamespace(
+                source=SimpleNamespace(
+                    experiment=SimpleNamespace(
+                        source=SimpleNamespace(
+                            experiment=SimpleNamespace(
+                                source=SimpleNamespace(
+                                    experiment=SimpleNamespace(
+                                        data=SimpleNamespace(
+                                            split_manifest=tmp_path / "training.jsonl"
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
         ),
     )
 
@@ -114,6 +133,7 @@ def _patch_sources(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(module, "_verified_file", verified)
     monkeypatch.setattr(module, "load_hybrid_entity_config", lambda _path: entity_config)
+    monkeypatch.setattr(module, "sha256_file", lambda _path: "c" * 64)
 
 
 def test_hybrid_final_config_accepts_validation_frozen_policy(

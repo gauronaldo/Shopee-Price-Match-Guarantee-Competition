@@ -2,7 +2,7 @@ config_version: phase4.text_embedding_experiment.v1
 seed: 2026
 data:
   metadata_csv: data/raw/train.csv
-  split_manifest: data/splits/shopee_group_split_v1.jsonl
+  split_manifest: data/splits/shopee_development_v2_modeling.jsonl
 model_config: configs/model/custom_character_text_cnn.yaml
 tokenization:
   level: character
@@ -35,5 +35,5 @@ evaluation:
   candidate_k: 20
   checkpoint_metric: map@20
 artifacts:
-  root: artifacts/scratch_text_encoder/training
-  report: reports/text_encoder_benchmark.md
+  root: artifacts/entity_resolution_v2/training/text_encoder
+  report: artifacts/entity_resolution_v2/training/text_encoder/report.md

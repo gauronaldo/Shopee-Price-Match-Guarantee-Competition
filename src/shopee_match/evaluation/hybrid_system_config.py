@@ -94,6 +94,8 @@ class HybridSystemEvaluationConfig:
     seed: int
     source: HybridSystemSource
     policy: FrozenHybridSystemPolicy
+    evaluation_manifest_path: Path
+    evaluation_manifest_sha256: str
     runtime: HybridSystemRuntime
     evaluation: HybridSystemEvaluationProtocol
     artifacts: HybridSystemArtifacts
@@ -300,13 +302,46 @@ def load_hybrid_system_evaluation_config(path: Path) -> HybridSystemEvaluationCo
     )
 
     data_raw = _mapping(root["data"], "data")
-    _only_keys(data_raw, {"split", "evaluate_once", "allow_test_selection"}, "data")
+    _only_keys(
+        data_raw,
+        {
+            "split",
+            "evaluation_manifest",
+            "evaluation_manifest_sha256",
+            "evaluate_once",
+            "allow_test_selection",
+        },
+        "data",
+    )
     if (
         data_raw["split"] != "test"
         or data_raw["evaluate_once"] is not True
         or data_raw["allow_test_selection"] is not False
     ):
         raise ConfigurationError("Hybrid system evaluation must be one-time test without selection")
+    evaluation_manifest = _relative_path(
+        data_raw["evaluation_manifest"], "data.evaluation_manifest"
+    )
+    evaluation_manifest_sha = _digest(
+        data_raw["evaluation_manifest_sha256"], "data.evaluation_manifest_sha256"
+    )
+    try:
+        actual_manifest_sha = sha256_file(evaluation_manifest)
+    except OSError as exc:
+        raise ConfigurationError(
+            f"Cannot read frozen confirmation manifest: {evaluation_manifest}"
+        ) from exc
+    if actual_manifest_sha != evaluation_manifest_sha:
+        raise ConfigurationError(
+            "Frozen confirmation manifest hash differs from the evaluation contract"
+        )
+    training_manifest = (
+        entity_config.source.hybrid.source.experiment.source.experiment.source.experiment.data.split_manifest
+    )
+    if evaluation_manifest == training_manifest:
+        raise ConfigurationError(
+            "Confirmation evaluation must not reuse the training compatibility manifest"
+        )
 
     runtime_raw = _mapping(root["runtime"], "runtime")
     _only_keys(
@@ -391,4 +426,14 @@ def load_hybrid_system_evaluation_config(path: Path) -> HybridSystemEvaluationCo
         )
     ):
         raise ConfigurationError("Hybrid final outputs must live directly under artifacts.root")
-    return HybridSystemEvaluationConfig(seed, source, policy, runtime, evaluation, artifacts, path)
+    return HybridSystemEvaluationConfig(
+        seed,
+        source,
+        policy,
+        evaluation_manifest,
+        evaluation_manifest_sha,
+        runtime,
+        evaluation,
+        artifacts,
+        path,
+    )

@@ -2,50 +2,31 @@ config_version: entity_resolution.recall_recovery.v1
 seed: 2026
 source:
   entity_config: configs/experiment/entity_resolution_benchmark.yaml
-  entity_config_sha256: 84b68e8478a237553e27cf41296ec9f47a1a146185d5657402e1330608a4c794
-  entity_metrics: artifacts/entity_resolution/validation/metrics.json
-  entity_metrics_sha256: 1d8c65a14d9cb9a4927bd3d0f56f7a7e2f7eab5e85f1a493bb856aa60b34fe1f
-  scored_pairs: artifacts/entity_resolution/validation/scored_pairs.jsonl
-  scored_pairs_sha256: 162fe357837831feecc4d145cbb4851e9cbb006f7450d82fe5f6544211bcb87a
+  entity_config_sha256: 3339a36b87eccff13d9112b4c407f3d75244b97f8cd7f67bcbe6bc51c11d16d5
+  entity_metrics: artifacts/final_system/validation/entity_resolution_baseline/metrics.json
+  entity_metrics_sha256: b7296dfa807f3f35ad50071f1be8a08dd1fc79391a8f4ec127028f3c2a9bc311
+  scored_pairs: artifacts/final_system/validation/entity_resolution_baseline/scored_pairs.jsonl
+  scored_pairs_sha256: c2b3f6d42c065ad8c748c40de0eeab468a75a9c30f89459469b1fd4c0109fb29
 data:
   split: validation
   evaluate_test: false
 selection:
-  pair_probability_thresholds: [0.14, 0.16, 0.18, 0.2]
-  reciprocal_rank_values: [5, 10]
+  pair_probability_thresholds: [0.12, 0.14, 0.16, 0.18, 0.2]
+  reciprocal_rank_values: [5, 10, 20]
   cross_component_coverage_values: [1.0]
   singleton_attachment_policies:
     - {enabled: false}
     - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.1, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.12, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.14, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.16, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 10, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 10, minimum_support: 3, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 20, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 20, minimum_support: 3, target_margin: 0.02}
     - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 50, minimum_support: 2, target_margin: 0.02}
-    - {enabled: true, probability_threshold: 0.18, reciprocal_rank: 50, minimum_support: 3, target_margin: 0.02}
   acceptance:
     minimum_pairwise_precision: 0.88
     minimum_pairwise_recall: 0.4
@@ -58,8 +39,8 @@ selection:
   manual_review_margin: 0.02
   failure_example_limit: 30
 artifacts:
-  root: artifacts/entity_resolution/recall_recovery_validation
-  assignments: artifacts/entity_resolution/recall_recovery_validation/entity_assignments.csv
-  metrics: artifacts/entity_resolution/recall_recovery_validation/metrics.json
-  review: artifacts/entity_resolution/recall_recovery_validation/failure_review.json
-  report: artifacts/entity_resolution/recall_recovery_validation/report.md
+  root: artifacts/final_system/validation/entity_recall_recovery
+  assignments: artifacts/final_system/validation/entity_recall_recovery/entity_assignments.csv
+  metrics: artifacts/final_system/validation/entity_recall_recovery/metrics.json
+  review: artifacts/final_system/validation/entity_recall_recovery/failure_review.json
+  report: artifacts/final_system/validation/entity_recall_recovery/report.md

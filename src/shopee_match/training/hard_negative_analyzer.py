@@ -151,7 +151,9 @@ def _render_report(
             f"{precision_delta:+.5f} | {acceptance['recall_at_20_delta']:+.5f} | "
             f"{variant_delta:+d} | pass |"
         )
-    canonical = next(run for run, _metrics in frozen_runs if run.seed == canonical_seed)
+    canonical, canonical_metrics = next(
+        (run, metrics) for run, metrics in frozen_runs if run.seed == canonical_seed
+    )
     mean_map = statistics.mean(map_values)
     std_map = statistics.pstdev(map_values)
     mean_precision = statistics.mean(precision_deltas)
@@ -202,8 +204,8 @@ not because it produced the largest score.
 - Config SHA-256: `{canonical.config_sha256}`
 - Checkpoint SHA-256: `{canonical.checkpoint_sha256}`
 - Metrics SHA-256: `{canonical.metrics_sha256}`
-- Mined manifest SHA-256: `ad716c1c7a4d5e1aa31cbd668c98b3d1c6f42117d865d2bc2aa5bf995e19d2d2`
-- Mined pairs: `24,332` (`50%` digit/unit variant conflicts)
+- Mined manifest SHA-256: `{canonical_metrics["provenance"]["manifest_sha256"]}`
+- Mined pairs: `{canonical_metrics["data"]["mined_pairs"]:,}`
 
 ## Scope and interpretation
 

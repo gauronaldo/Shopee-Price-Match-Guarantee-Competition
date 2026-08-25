@@ -18,7 +18,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from numpy.typing import NDArray
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score  # type: ignore[import-untyped]
 from torch import Tensor
 from torch.optim import AdamW
 
@@ -507,7 +507,7 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
             loss = F.binary_cross_entropy_with_logits(logits, targets.to(device))
             if not torch.isfinite(loss):
                 raise RuntimeError("Non-finite hard-positive pair loss")
-            loss.backward()
+            loss.backward()  # type: ignore[no-untyped-call]
             torch.nn.utils.clip_grad_norm_(
                 model.pair_head.parameters(), config.training.gradient_clip_norm
             )

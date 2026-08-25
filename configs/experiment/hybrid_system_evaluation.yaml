@@ -2,12 +2,12 @@ config_version: hybrid.system_evaluation.v1
 seed: 2026
 frozen:
   entity_config: configs/experiment/hybrid_entity_resolution.yaml
-  entity_config_sha256: 982d6118bfde3b444d672a0b5717dc4833097bf0e0fd0fd09a3e53158cad083e
-  entity_metrics: artifacts/entity_resolution/hybrid_validation/metrics.json
-  entity_metrics_sha256: 8833c0f6994b98dd08f10a4aa482d46e9520c25612b6b3e4be9ed6cd11a1472e
+  entity_config_sha256: 1a1cdbce421880a44b3e7d2e8f5da55c0d9e8b563168322a873876359d1c5531
+  entity_metrics: artifacts/final_system/validation/entity_resolution/metrics.json
+  entity_metrics_sha256: 0bfa195d5bca48d4566008173973848e21f1e26ffbd50b04ca470cfea52756d0
   policy:
-    candidate_k: 75
-    pair_probability_threshold: 0.14
+    candidate_k: 100
+    pair_probability_threshold: 0.12
     reciprocal_rank: 5
     cross_component_minimum_coverage: 1.0
     variant_conflict_override_probability: 0.15
@@ -21,6 +21,8 @@ frozen:
       target_margin: 0.02
 data:
   split: test
+  evaluation_manifest: data/splits/shopee_confirmation_modeling.jsonl
+  evaluation_manifest_sha256: 050a756c7c94e7179623e1c4d891ce65556184b5fe333f9cdd2961695da2d479
   evaluate_once: true
   allow_test_selection: false
 runtime:
@@ -29,7 +31,7 @@ runtime:
   pair_batch_size: 8192
   num_workers: 0
 evaluation:
-  metric_k_values: [20, 50, 75]
+  metric_k_values: [20, 50, 75, 100]
   exact_block_size: 512
   latency_query_count: 256
   latency_repetitions: 3
@@ -38,12 +40,12 @@ evaluation:
   required_precision: 0.9
   failure_example_limit: 30
 artifacts:
-  root: artifacts/final_evaluation/hybrid_system_test
-  access_marker: artifacts/final_evaluation/hybrid_system_test/test_access_started.json
-  embeddings: artifacts/final_evaluation/hybrid_system_test/embeddings.npz
-  ranking: artifacts/final_evaluation/hybrid_system_test/ranking.jsonl
-  scored_pairs: artifacts/final_evaluation/hybrid_system_test/scored_pairs.jsonl
-  assignments: artifacts/final_evaluation/hybrid_system_test/entity_assignments.csv
-  metrics: artifacts/final_evaluation/hybrid_system_test/metrics.json
-  review: artifacts/final_evaluation/hybrid_system_test/failure_review.json
-  report: artifacts/final_evaluation/hybrid_system_test/report.md
+  root: artifacts/final_system/confirmation
+  access_marker: artifacts/final_system/confirmation/access_started.json
+  embeddings: artifacts/final_system/confirmation/embeddings.npz
+  ranking: artifacts/final_system/confirmation/ranking.jsonl
+  scored_pairs: artifacts/final_system/confirmation/scored_pairs.jsonl
+  assignments: artifacts/final_system/confirmation/entity_assignments.csv
+  metrics: artifacts/final_system/confirmation/metrics.json
+  review: artifacts/final_system/confirmation/failure_review.json
+  report: artifacts/final_system/confirmation/report.md

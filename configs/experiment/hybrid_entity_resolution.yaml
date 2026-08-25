@@ -2,13 +2,13 @@ config_version: hybrid_entity_resolution.v1
 seed: 2026
 source:
   hybrid_config: configs/experiment/hybrid_candidate_retrieval.yaml
-  hybrid_config_sha256: 80e365fc58eeffcc2f5708f0c0bb2ca376b4786516b1d5032058cad54dca8ea9
-  hybrid_metrics: artifacts/candidate_retrieval/hybrid_validation/metrics.json
-  hybrid_metrics_sha256: 2bb5a3ad3c7f55efc7f2b35b60b835136ea967bba66a587bc7f4412a5843feb7
-  hybrid_ranking: artifacts/candidate_retrieval/hybrid_validation/ranking.jsonl
-  hybrid_ranking_sha256: ae0d6917f86537bd1585fa45843382fcd6a002e4d82c448d47eb091f01e909f8
+  hybrid_config_sha256: e0847ef2d748384f39afa24f3f0262f1b1c6eb43f4531074b819661b6ac7e629
+  hybrid_metrics: artifacts/final_system/validation/hybrid_candidate_retrieval/metrics.json
+  hybrid_metrics_sha256: 474e27d405ded22bd18a0820cb860c0e8f900c3d30338979fe487726eeda8b4b
+  hybrid_ranking: artifacts/final_system/validation/hybrid_candidate_retrieval/ranking.jsonl
+  hybrid_ranking_sha256: 78583d86718c76ad1b8ce8cf2faafe6834c8e9e793889613600b6b55ca7f7a61
   recovery_config: configs/experiment/entity_recall_recovery.yaml
-  recovery_config_sha256: 7ba647daab02a04dd9d534cdb4c9eb358dc954e27444afd212562a8d07951a2f
+  recovery_config_sha256: 31bf10527408028baa88091d40412539d5dbc1e9e600ea992a6643ea9a2dd077
 data:
   split: validation
   evaluate_test: false
@@ -17,9 +17,9 @@ pair_scoring:
   device: cuda
   batch_size: 8192
 artifacts:
-  root: artifacts/entity_resolution/hybrid_validation
-  scored_pairs: artifacts/entity_resolution/hybrid_validation/scored_pairs.jsonl
-  assignments: artifacts/entity_resolution/hybrid_validation/entity_assignments.csv
-  metrics: artifacts/entity_resolution/hybrid_validation/metrics.json
-  review: artifacts/entity_resolution/hybrid_validation/failure_review.json
-  report: artifacts/entity_resolution/hybrid_validation/report.md
+  root: artifacts/final_system/validation/entity_resolution
+  scored_pairs: artifacts/final_system/validation/entity_resolution/scored_pairs.jsonl
+  assignments: artifacts/final_system/validation/entity_resolution/entity_assignments.csv
+  metrics: artifacts/final_system/validation/entity_resolution/metrics.json
+  review: artifacts/final_system/validation/entity_resolution/failure_review.json
+  report: artifacts/final_system/validation/entity_resolution/report.md
