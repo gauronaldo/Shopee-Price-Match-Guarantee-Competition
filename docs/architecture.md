@@ -72,3 +72,27 @@ flowchart LR
 The service loads all models and the index once at startup. Its showcase catalog is the validation
 split, not the held-out test split. Ground-truth labels remain outside the request path. The API and
 UI are portfolio demonstration components, not a claim of production readiness.
+
+## Catalog-attachment evaluation contract
+
+The primary real-world evaluation track separates the reference catalog from incoming queries.
+Known-entity queries have one exact-product reference in the catalog; new-entity queries have none.
+The model retrieves only reference listings and must attach the query, declare a new entity, or
+defer the decision for manual review.
+
+```mermaid
+flowchart LR
+    A[Reference catalog] --> B[Train-fitted text and image indexes]
+    C[Known or new-entity query] --> D[Multimodal embedding]
+    D --> E[Top-20 reference retrieval]
+    B --> E
+    E --> F[Symmetric pair probabilities]
+    F --> G{Threshold, margin, and variant gates}
+    G -->|confident match| H[Attach existing entity]
+    G -->|confident non-match| I[Create new entity]
+    G -->|ambiguous| J[Manual review]
+```
+
+The development protocol selects the operating threshold under attachment-precision,
+new-entity-detection, false-attachment, and review-rate constraints. Batch pairwise and B-cubed
+metrics remain a secondary clustering diagnostic rather than the primary online decision metric.

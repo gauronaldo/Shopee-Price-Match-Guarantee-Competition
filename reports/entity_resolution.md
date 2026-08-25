@@ -232,8 +232,8 @@ confirmation is accessed.
 
 An initial pilot on the preceding development protocol fine-tuned only the fusion module and
 symmetric pair head. Its best checkpoint increased development recall from `0.40898` to `0.44152`,
-but precision fell to `0.80152`, F1
-improved by only `0.00850`, and false merge rose to `0.19848`. It failed the locked graph-level
+but precision fell to `0.80152`, F1 improved by only `0.00850`, and false merge rose to `0.19848`.
+It failed the locked graph-level
 safety gates; the checkpoint was rejected and the result is retained only as an ablation.
 
 The full-joint cycle then adopted a narrower protocol without reopening the prior confirmation or
@@ -268,6 +268,40 @@ full-joint checkpoint is not promoted, the canonical system remains unchanged, a
 internal-confirmation partition has not been evaluated. Subsequent work uses the catalog-attachment
 protocol as a separate evaluation track.
 
+## Catalog-attachment protocol v4
+
+Protocol v4 models a static catalog lookup rather than assuming every evaluation listing is both a
+query and a candidate. The 1,542-listing development partition is assigned deterministically to
+394 catalog references, 815 queries whose entity exists in the catalog, and 333 queries whose
+entity is absent. The role manifest contains IDs and roles but no labels. TF-IDF remains train-fit,
+and `label_group` enters only the protocol-construction and metric functions.
+
+Every query retrieves exactly 20 unique reference candidates. The contract audit finds zero
+query/reference ID overlap, self-candidates, duplicate candidates, candidates outside the reference
+catalog, and train/development label overlap. Confirmation and historical test remain unaccessed.
+
+| Development-v4 metric | Canonical | Full-joint candidate | Delta |
+|---|---:|---:|---:|
+| Retrieval Recall@1 | **0.78528** | 0.77669 | -0.00859 |
+| Retrieval Recall@20 | 0.99018 | **0.99264** | +0.00245 |
+| Attachment precision | 0.91766 | **0.93271** | +0.01504 |
+| Attachment recall | **0.75215** | 0.73129 | -0.02086 |
+| Attachment F1 | **0.82670** | 0.81981 | -0.00690 |
+| New-entity detection recall | **0.87688** | 0.87087 | -0.00601 |
+| New-entity false-attachment rate | 0.09610 | **0.06607** | -0.03003 |
+| Overall false-attachment rate | 0.04791 | **0.03746** | -0.01045 |
+| Manual-review rate | **0.05052** | 0.08188 | +0.03136 |
+
+The canonical policy selects threshold `0.14`. The full-joint candidate selects `0.20` and passes
+the absolute safety limits, but it fails the baseline-relative improvement gate: it becomes more
+conservative instead of increasing safe attachment recall. The candidate is rejected for protocol
+v4 and is not sent to confirmation. The canonical policy is the development winner; it is not yet
+the final reported protocol until its policy and confirmation manifest are frozen.
+
+No additional training is triggered at this stage because the canonical system already meets the
+predeclared attachment, new-entity detection, false-attachment, and review-rate gates. Any later
+training must target catalog attachment explicitly and use only development evidence.
+
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `
   --config configs\experiment\entity_recall_recovery.yaml
@@ -289,6 +323,12 @@ protocol as a separate evaluation track.
   --config configs\experiment\hard_positive_pair_finetuning.yaml
 .venv\Scripts\python -m shopee_match.training.hard_negative_cli train-joint-recall `
   --config configs\experiment\full_joint_pair_recall_training.yaml
+.venv\Scripts\python -m shopee_match.evaluation.catalog_attachment_cli build-protocol `
+  --config configs\data\catalog_attachment_development_v4.yaml
+.venv\Scripts\python -m shopee_match.evaluation.catalog_attachment_cli evaluate `
+  --config configs\experiment\catalog_attachment_canonical_development.yaml
+.venv\Scripts\python -m shopee_match.evaluation.catalog_attachment_cli evaluate `
+  --config configs\experiment\catalog_attachment_full_joint_development.yaml
 ```
 
 EfficientNet-B1 fine-tuning is deferred because the selected multi-source retrieval policy resolves
