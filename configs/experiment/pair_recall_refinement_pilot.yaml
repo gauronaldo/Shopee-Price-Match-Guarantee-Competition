@@ -1,0 +1,50 @@
+config_version: multimodal.pair_recall_refinement.v1
+seed: 2026
+source:
+  candidate_config: configs/experiment/candidate_retrieval_benchmark.yaml
+  candidate_config_sha256: 1df30052e430cbacdc666cc4b7e23ee17b9a0b32f27ee0de4d716603339f4f21
+  hybrid_entity_config: configs/experiment/hybrid_entity_resolution.yaml
+  hybrid_entity_config_sha256: 68c283a709a472e2fc81678b184609ffff61fb08a6e15f5f03de567ce8a652d8
+  recovery_config: configs/experiment/entity_recall_recovery.yaml
+  recovery_config_sha256: 31bf10527408028baa88091d40412539d5dbc1e9e600ea992a6643ea9a2dd077
+  entity_metrics: artifacts/final_system/validation/entity_resolution/metrics.json
+  entity_metrics_sha256: 1f3fd1a5100c6df8512e5b34afbc056fdbca388317ce514525c32a196567d056
+data:
+  source_split: train
+  holdout_fraction: 0.15
+  split_seed: 2051
+  evaluate_test: false
+mining:
+  hard_positive_limit: 20000
+  hard_negative_limit: 20000
+  require_different_phash: true
+  scoring_batch_size: 8192
+training:
+  device: cuda
+  trainable_components: fusion_and_pair_head
+  positive_class_weight: 1.25
+  epochs: 10
+  batches_per_epoch: 120
+  batch_size: 256
+  learning_rate: 0.00001
+  weight_decay: 0.0001
+  gradient_clip_norm: 5.0
+  early_stopping_patience: 3
+  hard_positive_fraction: 0.35
+  hard_negative_fraction: 0.25
+  random_positive_fraction: 0.25
+  random_negative_fraction: 0.15
+evaluation:
+  holdout_candidate_k: 100
+  minimum_holdout_precision: 0.88
+  minimum_validation_precision: 0.88
+  maximum_validation_false_merge_rate: 0.12
+  minimum_validation_f1_delta: 0.01
+  minimum_validation_recall_delta: 0.02
+  maximum_validation_precision_drop: 0.012
+  maximum_validation_false_split_rate: 0.28
+artifacts:
+  root: artifacts/entity_resolution_v3/pair_recall_refinement_pilot
+  checkpoint: artifacts/entity_resolution_v3/pair_recall_refinement_pilot/best.pt
+  metrics: artifacts/entity_resolution_v3/pair_recall_refinement_pilot/metrics.json
+  report: artifacts/entity_resolution_v3/pair_recall_refinement_pilot/report.md

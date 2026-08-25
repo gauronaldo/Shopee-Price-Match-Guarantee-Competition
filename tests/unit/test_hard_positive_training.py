@@ -3,6 +3,10 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from shopee_match.models.multimodal_fusion import (
+    LearnedMultimodalFusion,
+    MultimodalFusionSpec,
+)
 from shopee_match.training.hard_positive_config import HardPositiveTrainingConfig
 from shopee_match.training.hard_positive_trainer import (
     MixedPairBatchProvider,
@@ -25,6 +29,8 @@ def _training_config() -> HardPositiveTrainingConfig:
         hard_negative_fraction=0.25,
         random_positive_fraction=0.25,
         random_negative_fraction=0.25,
+        trainable_components="pair_head",
+        positive_class_weight=1.0,
     )
 
 
@@ -76,3 +82,29 @@ def test_mixed_pair_batch_is_deterministic_and_balanced() -> None:
         labels[left[index]] != labels[right[index]]
         for index in torch.nonzero(targets == 0, as_tuple=False).flatten().tolist()
     )
+
+
+def test_recall_refinement_can_update_fusion_and_pair_head() -> None:
+    model = LearnedMultimodalFusion(
+        MultimodalFusionSpec(
+            image_embedding_dim=4,
+            text_embedding_dim=4,
+            fusion_hidden_dim=8,
+            joint_embedding_dim=4,
+            pair_hidden_dim=4,
+            dropout=0.0,
+        )
+    )
+    image = torch.randn(4, 4)
+    text = torch.randn(4, 4)
+    joint = model(image, text)
+    logits = model.pair_logits(joint[:2], joint[2:])
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(
+        logits,
+        torch.ones(2),
+        pos_weight=torch.tensor(1.25),
+    )
+    loss.backward()
+
+    assert any(parameter.grad is not None for parameter in model.fusion.parameters())
+    assert any(parameter.grad is not None for parameter in model.pair_head.parameters())

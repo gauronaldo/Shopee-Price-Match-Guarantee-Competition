@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from shopee_match.clustering.hybrid_entity_config import (
     HybridEntityConfig,
@@ -15,7 +16,7 @@ from shopee_match.clustering.recovery_config import (
     load_entity_recall_recovery_config,
 )
 from shopee_match.errors import ConfigurationError
-from shopee_match.hashing import canonical_text_sha256
+from shopee_match.hashing import canonical_text_sha256, sha256_file
 from shopee_match.retrieval.config import CandidateRetrievalConfig, load_candidate_retrieval_config
 from shopee_match.training.text_config import (
     _mapping,
@@ -34,9 +35,11 @@ class HardPositiveSourceConfig:
     candidate_config_path: Path
     hybrid_entity_config_path: Path
     recovery_config_path: Path
+    entity_metrics_path: Path | None
     candidate: CandidateRetrievalConfig
     hybrid_entity: HybridEntityConfig
     recovery: EntityRecallRecoveryConfig
+    entity_metrics: dict[str, Any] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +70,8 @@ class HardPositiveTrainingConfig:
     hard_negative_fraction: float
     random_positive_fraction: float
     random_negative_fraction: float
+    trainable_components: str = "pair_head"
+    positive_class_weight: float = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +81,9 @@ class HardPositiveEvaluationConfig:
     minimum_validation_precision: float
     maximum_validation_false_merge_rate: float
     minimum_validation_f1_delta: float
+    minimum_validation_recall_delta: float = 0.0
+    maximum_validation_precision_drop: float = 1.0
+    maximum_validation_false_split_rate: float = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,12 +146,18 @@ def load_hard_positive_experiment_config(path: Path) -> HardPositiveExperimentCo
         },
         "config",
     )
-    if root["config_version"] != "pair_head.hard_positive_finetuning.v1":
+    version = root["config_version"]
+    if version not in {
+        "pair_head.hard_positive_finetuning.v1",
+        "multimodal.pair_recall_refinement.v1",
+    }:
         raise ConfigurationError("Unsupported hard-positive config_version")
     seed = _nonnegative_int(root["seed"], "seed")
 
     source_raw = _mapping(root["source"], "source")
     source_names = {"candidate_config", "hybrid_entity_config", "recovery_config"}
+    if version == "multimodal.pair_recall_refinement.v1":
+        source_names.add("entity_metrics")
     _only_keys(source_raw, source_names | {f"{name}_sha256" for name in source_names}, "source")
     candidate_path = _verified_config(source_raw, "candidate_config")
     hybrid_path = _verified_config(source_raw, "hybrid_entity_config")
@@ -151,20 +165,48 @@ def load_hard_positive_experiment_config(path: Path) -> HardPositiveExperimentCo
     candidate = load_candidate_retrieval_config(candidate_path)
     hybrid_entity = load_hybrid_entity_config(hybrid_path)
     recovery = load_entity_recall_recovery_config(recovery_path)
+    entity_metrics_path: Path | None = None
+    entity_metrics: dict[str, Any] | None = None
+    if version == "multimodal.pair_recall_refinement.v1":
+        entity_metrics_path = _relative_path(
+            source_raw["entity_metrics"], "source.entity_metrics"
+        )
+        expected_metrics_sha = _typed(
+            source_raw["entity_metrics_sha256"], str, "source.entity_metrics_sha256"
+        ).lower()
+        try:
+            actual_metrics_sha = sha256_file(entity_metrics_path)
+            entity_metrics = cast(
+                dict[str, Any], json.loads(entity_metrics_path.read_text(encoding="utf-8"))
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ConfigurationError("Cannot load frozen entity metrics") from exc
+        if actual_metrics_sha != expected_metrics_sha:
+            raise ConfigurationError("Frozen entity metrics SHA-256 differs from config")
+        if (
+            entity_metrics_path != hybrid_entity.artifacts.metrics
+            or entity_metrics.get("status") != "hybrid_entity_target_reached_validation_only"
+            or entity_metrics.get("data", {}).get("test_accessed") is not False
+            or entity_metrics.get("provenance", {}).get("git_dirty") is not False
+        ):
+            raise ConfigurationError("Pair-recall refinement requires clean validation evidence")
     if (
         seed != candidate.seed
         or seed != hybrid_entity.seed
         or seed != recovery.seed
         or hybrid_entity.source.hybrid.source.phase7_config_path != candidate_path
+        or hybrid_entity.source.recovery_config_path != recovery_path
     ):
         raise ConfigurationError("Hard-positive source experiments are not aligned")
     source = HardPositiveSourceConfig(
         candidate_path,
         hybrid_path,
         recovery_path,
+        entity_metrics_path,
         candidate,
         hybrid_entity,
         recovery,
+        entity_metrics,
     )
 
     data_raw = _mapping(root["data"], "data")
@@ -227,6 +269,8 @@ def load_hard_positive_experiment_config(path: Path) -> HardPositiveExperimentCo
         "random_positive_fraction",
         "random_negative_fraction",
     }
+    if version == "multimodal.pair_recall_refinement.v1":
+        training_keys |= {"trainable_components", "positive_class_weight"}
     _only_keys(training_raw, training_keys, "training")
     device = _typed(training_raw["device"], str, "training.device")
     if device not in {"auto", "cpu", "cuda"}:
@@ -263,7 +307,25 @@ def load_hard_positive_experiment_config(path: Path) -> HardPositiveExperimentCo
         hard_negative_fraction=fractions[1],
         random_positive_fraction=fractions[2],
         random_negative_fraction=fractions[3],
+        trainable_components=(
+            _typed(
+                training_raw["trainable_components"],
+                str,
+                "training.trainable_components",
+            )
+            if version == "multimodal.pair_recall_refinement.v1"
+            else "pair_head"
+        ),
+        positive_class_weight=(
+            _number(training_raw["positive_class_weight"], "training.positive_class_weight")
+            if version == "multimodal.pair_recall_refinement.v1"
+            else 1.0
+        ),
     )
+    if training.trainable_components not in {"pair_head", "fusion_and_pair_head"}:
+        raise ConfigurationError(
+            "training.trainable_components must be pair_head or fusion_and_pair_head"
+        )
 
     evaluation_raw = _mapping(root["evaluation"], "evaluation")
     evaluation_keys = {
@@ -273,6 +335,12 @@ def load_hard_positive_experiment_config(path: Path) -> HardPositiveExperimentCo
         "maximum_validation_false_merge_rate",
         "minimum_validation_f1_delta",
     }
+    if version == "multimodal.pair_recall_refinement.v1":
+        evaluation_keys |= {
+            "minimum_validation_recall_delta",
+            "maximum_validation_precision_drop",
+            "maximum_validation_false_split_rate",
+        }
     _only_keys(evaluation_raw, evaluation_keys, "evaluation")
     evaluation = HardPositiveEvaluationConfig(
         holdout_candidate_k=_positive_int(
@@ -294,6 +362,31 @@ def load_hard_positive_experiment_config(path: Path) -> HardPositiveExperimentCo
             evaluation_raw["minimum_validation_f1_delta"],
             "evaluation.minimum_validation_f1_delta",
             allow_zero=True,
+        ),
+        minimum_validation_recall_delta=(
+            _number(
+                evaluation_raw["minimum_validation_recall_delta"],
+                "evaluation.minimum_validation_recall_delta",
+                allow_zero=True,
+            )
+            if version == "multimodal.pair_recall_refinement.v1"
+            else 0.0
+        ),
+        maximum_validation_precision_drop=(
+            _fraction(
+                evaluation_raw["maximum_validation_precision_drop"],
+                "evaluation.maximum_validation_precision_drop",
+            )
+            if version == "multimodal.pair_recall_refinement.v1"
+            else 1.0
+        ),
+        maximum_validation_false_split_rate=(
+            _fraction(
+                evaluation_raw["maximum_validation_false_split_rate"],
+                "evaluation.maximum_validation_false_split_rate",
+            )
+            if version == "multimodal.pair_recall_refinement.v1"
+            else 1.0
         ),
     )
 

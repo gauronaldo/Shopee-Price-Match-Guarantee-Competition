@@ -22,8 +22,9 @@ from sklearn.metrics import average_precision_score  # type: ignore[import-untyp
 from torch import Tensor
 from torch.optim import AdamW
 
-from shopee_match.clustering.graph import score_candidate_pairs
+from shopee_match.clustering.graph import build_conservative_clusters, score_candidate_pairs
 from shopee_match.clustering.hybrid_entity import _load_ranking
+from shopee_match.clustering.metrics import clustering_metrics
 from shopee_match.clustering.recall_recovery import sweep_recovery_policies
 from shopee_match.errors import DataValidationError, OutputConflictError
 from shopee_match.evaluation.protocol import load_splits
@@ -298,12 +299,24 @@ def _validation_graph(
     phase6 = phase7.source.experiment
     phase5 = phase6.source.experiment
     split = load_splits(phase5.data.metadata_csv, phase5.data.split_manifest)["validation"]
-    posting_ids, embeddings = _load_embeddings(hybrid.source.embedding_cache_path)
+    posting_ids, frozen_embeddings = _load_embeddings(hybrid.source.embedding_cache_path)
     ranking = _load_ranking(
         config.source.hybrid_entity.source.hybrid_ranking_path,
         posting_ids,
         expected_k=int(config.source.hybrid_entity.source.hybrid_metrics["selection"]["candidate_k"]),
     )
+    if config.source.entity_metrics is None:
+        embeddings = frozen_embeddings
+    else:
+        validation_dataset = load_cached_multimodal_split(phase5, "validation")
+        if posting_ids != validation_dataset.posting_ids:
+            raise DataValidationError("Validation cache and frozen ranking IDs differ")
+        embeddings = _extract_joint_embeddings(
+            model,
+            validation_dataset,
+            device,
+            batch_size=config.mining.scoring_batch_size,
+        ).numpy()
     pairs = score_candidate_pairs(
         model,
         posting_ids,
@@ -313,13 +326,46 @@ def _validation_graph(
         device,
         batch_size=config.mining.scoring_batch_size,
     )
-    trials, selected, _assignments = sweep_recovery_policies(
-        config.source.recovery,
+    if config.source.entity_metrics is None:
+        trials, selected, _assignments = sweep_recovery_policies(
+            config.source.recovery,
+            posting_ids,
+            pairs,
+            split.label_by_id,
+        )
+        return {"scored_pairs": len(pairs), "selected": selected, "trials": len(trials)}
+    policy = config.source.entity_metrics["selection"]["selected"]
+    attachment = policy["singleton_attachment"]
+    recovery = config.source.recovery.selection
+    assignments, diagnostics = build_conservative_clusters(
         posting_ids,
         pairs,
-        split.label_by_id,
+        pair_probability_threshold=float(policy["pair_probability_threshold"]),
+        reciprocal_rank=int(policy["reciprocal_rank"]),
+        cross_component_minimum_coverage=float(
+            policy["cross_component_minimum_coverage"]
+        ),
+        variant_conflict_override_probability=(
+            recovery.variant_conflict_override_probability
+        ),
+        maximum_cluster_size=recovery.maximum_cluster_size,
+        manual_review_margin=recovery.manual_review_margin,
+        singleton_attachment=bool(attachment["enabled"]),
+        singleton_probability_threshold=float(attachment["probability_threshold"]),
+        singleton_reciprocal_rank=int(attachment["reciprocal_rank"]),
+        singleton_minimum_support=int(attachment["minimum_support"]),
+        singleton_target_margin=float(attachment["target_margin"]),
     )
-    return {"scored_pairs": len(pairs), "selected": selected, "trials": len(trials)}
+    return {
+        "scored_pairs": len(pairs),
+        "selected": {
+            "pair_probability_threshold": policy["pair_probability_threshold"],
+            "reciprocal_rank": policy["reciprocal_rank"],
+            "clustering": clustering_metrics(assignments, split.label_by_id),
+            "graph": asdict(diagnostics),
+        },
+        "trials": 1,
+    }
 
 
 def _write_text_atomic(path: Path, content: str) -> None:
@@ -355,17 +401,27 @@ def _render_report(run: dict[str, Any]) -> str:
             f"{final['false_split_group_rate']:.5f} |",
         )
     )
-    return f"""# Hard-positive Pair-Head Fine-Tuning
+    training = run["training"]
+    scope = (
+        "multimodal fusion and symmetric pair head"
+        if training["trainable_components"] == "fusion_and_pair_head"
+        else "symmetric pair head"
+    )
+    return f"""# Pair Verification Recall Refinement
 
-This train-only experiment fine-tunes the symmetric pair head while keeping both encoders and the
-multimodal fusion module frozen. Checkpoint selection uses a new group-disjoint holdout carved from
-the original train partition. Test data is not accessed.
+This pilot fine-tunes the {scope} while keeping both source encoders frozen. Checkpoint selection
+uses a group-disjoint holdout carved from the training partition. The frozen v2 development split
+is used only for the predeclared graph-level adoption gates; no threshold is selected from it. The
+confirmation and historical-test roles are not accessed. Hard positives and a positive-class
+weight directly target false negatives, while the adoption gates protect pairwise precision and
+false-merge rate.
 
 | Validation graph metric | Before | After |
 |---|---:|---:|
 {rows}
 
-Status: **{run['status']}**. The original frozen test policy is unchanged.
+Status: **{run['status']}**. The confirmed system remains unchanged unless every gate passes in a
+subsequent clean evaluation protocol.
 """
 
 
@@ -476,10 +532,14 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
     LOGGER.info("Hard-positive stage 3/5: evaluating frozen validation graph")
     baseline_validation = _validation_graph(model, config, device)
 
-    model.fusion.requires_grad_(False)
-    model.fusion.eval()
+    train_fusion = config.training.trainable_components == "fusion_and_pair_head"
+    model.fusion.requires_grad_(train_fusion)
+    model.fusion.train(train_fusion)
+    trainable_parameters = list(model.pair_head.parameters())
+    if train_fusion:
+        trainable_parameters += list(model.fusion.parameters())
     optimizer = AdamW(
-        model.pair_head.parameters(),
+        trainable_parameters,
         lr=config.training.learning_rate,
         weight_decay=config.training.weight_decay,
     )
@@ -494,6 +554,7 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
     )
     for epoch in range(config.training.epochs):
         model.pair_head.train()
+        model.fusion.train(train_fusion)
         total_loss = 0.0
         for batch_index in range(config.training.batches_per_epoch):
             left, right, targets = provider.sample(
@@ -503,19 +564,45 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
                 config=config.training,
             )
             optimizer.zero_grad(set_to_none=True)
-            logits = model.pair_logits(joint[left].to(device), joint[right].to(device))
-            loss = F.binary_cross_entropy_with_logits(logits, targets.to(device))
+            if train_fusion:
+                left_joint = model(
+                    dataset.image_embeddings[left].to(device),
+                    dataset.text_embeddings[left].to(device),
+                )
+                right_joint = model(
+                    dataset.image_embeddings[right].to(device),
+                    dataset.text_embeddings[right].to(device),
+                )
+            else:
+                left_joint = joint[left].to(device)
+                right_joint = joint[right].to(device)
+            logits = model.pair_logits(left_joint, right_joint)
+            loss = F.binary_cross_entropy_with_logits(
+                logits,
+                targets.to(device),
+                pos_weight=torch.tensor(config.training.positive_class_weight, device=device),
+            )
             if not torch.isfinite(loss):
                 raise RuntimeError("Non-finite hard-positive pair loss")
             loss.backward()  # type: ignore[no-untyped-call]
             torch.nn.utils.clip_grad_norm_(
-                model.pair_head.parameters(), config.training.gradient_clip_norm
+                trainable_parameters, config.training.gradient_clip_norm
             )
             optimizer.step()
             total_loss += float(loss.detach().cpu())
+        evaluation_joint = (
+            _extract_joint_embeddings(
+                model,
+                dataset,
+                device,
+                batch_size=config.mining.scoring_batch_size,
+            )
+            if train_fusion
+            else joint
+        )
         holdout_probabilities = _score_index_pairs(
             model,
-            joint,
+            evaluation_joint,
             holdout_pairs,
             batch_size=config.mining.scoring_batch_size,
             device=device,
@@ -560,6 +647,13 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
     f1_delta = (
         selected_cluster["pairwise"]["f1"] - baseline_cluster["pairwise"]["f1"]
     )
+    recall_delta = (
+        selected_cluster["pairwise"]["recall"] - baseline_cluster["pairwise"]["recall"]
+    )
+    precision_drop = (
+        baseline_cluster["pairwise"]["precision"]
+        - selected_cluster["pairwise"]["precision"]
+    )
     checks = {
         "holdout_checkpoint_improved": best_epoch >= 0,
         "validation_precision": (
@@ -571,6 +665,16 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
             <= config.evaluation.maximum_validation_false_merge_rate
         ),
         "validation_f1_delta": f1_delta >= config.evaluation.minimum_validation_f1_delta,
+        "validation_recall_delta": (
+            recall_delta >= config.evaluation.minimum_validation_recall_delta
+        ),
+        "validation_precision_drop": (
+            precision_drop <= config.evaluation.maximum_validation_precision_drop
+        ),
+        "validation_false_split": (
+            selected_cluster["false_split_group_rate"]
+            <= config.evaluation.maximum_validation_false_split_rate
+        ),
     }
     status = "accepted_validation_only" if all(checks.values()) else "not_accepted_validation_only"
     commit, dirty = _git_state()
@@ -612,9 +716,11 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
             },
         },
         "training": {
-            "pair_head_only": True,
+            "pair_head_only": not train_fusion,
+            "trainable_components": config.training.trainable_components,
+            "positive_class_weight": config.training.positive_class_weight,
             "encoders_frozen": True,
-            "fusion_frozen": True,
+            "fusion_frozen": not train_fusion,
             "best_epoch": best_epoch,
             "history": history,
         },
@@ -623,6 +729,8 @@ def run_hard_positive_experiment(config_path: Path) -> dict[str, object]:
             "baseline": baseline_validation["selected"],
             "selected_checkpoint": selected_validation["selected"],
             "pairwise_f1_delta": f1_delta,
+            "pairwise_recall_delta": recall_delta,
+            "pairwise_precision_drop": precision_drop,
         },
         "acceptance": checks,
         "test": {"status": "disabled"},
