@@ -1,0 +1,15 @@
+config_version: catalog_attachment.protocol.v4
+seed: 2027
+source:
+  metadata_csv: data/raw/train.csv
+  metadata_csv_sha256: 82b8ec57e81b603e00c63779b7eeea69a2bd7d9cbb48377657cf547b422f9175
+  source_manifest: data/splits/shopee_pair_recall_v3_modeling.jsonl
+  source_manifest_sha256: cc1bb9848a3b3aaed7cc9b810d4ed7361e1150f5b3c96c3ade5738e6b7c6725d
+  source_split: validation
+  partition: development
+roles:
+  known_entity_fraction: 0.80
+  references_per_known_entity: 1
+artifacts:
+  manifest: data/splits/catalog_attachment_development_v4.jsonl
+  summary: artifacts/catalog_attachment_v4/protocol/development_summary.json
