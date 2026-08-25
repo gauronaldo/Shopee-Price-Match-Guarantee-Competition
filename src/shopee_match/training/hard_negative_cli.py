@@ -14,6 +14,7 @@ from shopee_match.training.hard_negative_analyzer import summarize_hard_negative
 from shopee_match.training.hard_negative_miner import mine_hard_negatives
 from shopee_match.training.hard_negative_trainer import run_hard_negative_experiment
 from shopee_match.training.hard_positive_trainer import run_hard_positive_experiment
+from shopee_match.training.joint_recall_trainer import run_joint_recall_training
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="shopee-hard-negatives")
     parser.add_argument(
         "command",
-        choices=("mine", "train", "all", "summarize", "train-hard-positive"),
+        choices=("mine", "train", "all", "summarize", "train-hard-positive", "train-joint-recall"),
     )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
@@ -61,8 +62,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = {"status": training["status"], "mining": mining, "training": training}
         elif args.command == "summarize":
             result = summarize_hard_negative_runs(args.config)
-        else:
+        elif args.command == "train-hard-positive":
             result = run_hard_positive_experiment(args.config)
+        else:
+            result = run_joint_recall_training(
+                args.config,
+                progress_updates_per_epoch=args.progress_updates_per_epoch,
+            )
     except (ShopeeMatchError, OSError, ValueError, RuntimeError) as exc:
         LOGGER.error("%s", exc)
         return 2

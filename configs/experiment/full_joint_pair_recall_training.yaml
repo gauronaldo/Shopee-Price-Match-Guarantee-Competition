@@ -1,0 +1,55 @@
+config_version: multimodal.full_joint_pair_recall.v1
+seed: 2026
+source:
+  phase6_config: configs/experiment/hard_negative_pair_head_refinement.yaml
+  phase6_config_sha256: 55eba062d4b95a9847ef6d8d8a071cb38e8951474f7e0cd144a007b7cd483765
+  checkpoint: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/training/best.pt
+  checkpoint_sha256: 9c6b6d3920bbb28d2d591b05878f377c9058896ed066f510c13e3c9340ca6b3a
+  hard_negative_manifest: artifacts/entity_resolution_v2/hard_negative_mining/pair_head/mined_pairs.jsonl
+  hard_negative_manifest_sha256: 45b293ade4089cfaef8b4fe2044bd3f313280880fd29d42f8acfc032ad6b1e40
+  hybrid_config: configs/experiment/hybrid_candidate_retrieval.yaml
+  hybrid_config_sha256: e0847ef2d748384f39afa24f3f0262f1b1c6eb43f4531074b819661b6ac7e629
+  entity_config: configs/experiment/hybrid_entity_resolution.yaml
+  entity_config_sha256: 68c283a709a472e2fc81678b184609ffff61fb08a6e15f5f03de567ce8a652d8
+  protocol_manifest: data/splits/shopee_pair_recall_v3_modeling.jsonl
+  protocol_manifest_sha256: cc1bb9848a3b3aaed7cc9b810d4ed7361e1150f5b3c96c3ade5738e6b7c6725d
+data:
+  train_split: train
+  development_split: validation
+  evaluate_internal_confirmation: false
+mining:
+  hard_positive_limit: 20000
+  hard_negative_limit: 20000
+  require_different_phash: true
+training:
+  device: cuda
+  epochs: 8
+  batches_per_epoch: 100
+  pair_batch_size: 32
+  num_workers: 4
+  image_encoder_learning_rate: 0.000002
+  text_encoder_learning_rate: 0.000004
+  fusion_learning_rate: 0.000008
+  pair_head_learning_rate: 0.00001
+  weight_decay: 0.0001
+  gradient_clip_norm: 5.0
+  early_stopping_patience: 3
+  hard_positive_fraction: 0.30
+  hard_negative_fraction: 0.30
+  random_positive_fraction: 0.20
+  random_negative_fraction: 0.20
+  negative_distillation_weight: 0.20
+selection:
+  candidate_k: 75
+  pair_probability_thresholds: [0.10, 0.12, 0.14, 0.16, 0.18, 0.20, 0.22, 0.24, 0.28, 0.32, 0.36, 0.40]
+  reciprocal_rank: 5
+  minimum_pairwise_precision: 0.88
+  minimum_pairwise_recall_delta: 0.02
+  minimum_pairwise_f1_delta: 0.01
+  maximum_false_merge_pair_rate: 0.12
+  maximum_false_split_group_rate: 0.28
+artifacts:
+  root: artifacts/entity_resolution_v3/full_joint_pair_recall
+  checkpoint: artifacts/entity_resolution_v3/full_joint_pair_recall/best.pt
+  metrics: artifacts/entity_resolution_v3/full_joint_pair_recall/metrics.json
+  report: artifacts/entity_resolution_v3/full_joint_pair_recall/report.md
