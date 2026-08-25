@@ -263,6 +263,11 @@ Early stopping therefore retains epoch 1. The improvement exceeds the minimum re
 `0.00039`, so it is an accepted development candidate, not a replacement for the canonical system.
 Independent confirmation remains required before any canonical change.
 
+**Experiment closure:** this refinement cycle is closed as development-only evidence. The
+full-joint checkpoint is not promoted, the canonical system remains unchanged, and the reserved
+internal-confirmation partition has not been evaluated. Subsequent work uses the catalog-attachment
+protocol as a separate evaluation track.
+
 ```powershell
 .venv\Scripts\shopee-entity-resolution recover-recall `
   --config configs\experiment\entity_recall_recovery.yaml
