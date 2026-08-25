@@ -96,6 +96,8 @@ class HybridSystemEvaluationConfig:
     policy: FrozenHybridSystemPolicy
     evaluation_manifest_path: Path
     evaluation_manifest_sha256: str
+    attempt_number: int
+    prior_failed_attempts: int
     runtime: HybridSystemRuntime
     evaluation: HybridSystemEvaluationProtocol
     artifacts: HybridSystemArtifacts
@@ -310,6 +312,8 @@ def load_hybrid_system_evaluation_config(path: Path) -> HybridSystemEvaluationCo
             "evaluation_manifest_sha256",
             "evaluate_once",
             "allow_test_selection",
+            "attempt_number",
+            "prior_failed_attempts",
         },
         "data",
     )
@@ -341,6 +345,14 @@ def load_hybrid_system_evaluation_config(path: Path) -> HybridSystemEvaluationCo
     if evaluation_manifest == training_manifest:
         raise ConfigurationError(
             "Confirmation evaluation must not reuse the training compatibility manifest"
+        )
+    attempt_number = _positive_int(data_raw["attempt_number"], "data.attempt_number")
+    prior_failed_attempts = _nonnegative_int(
+        data_raw["prior_failed_attempts"], "data.prior_failed_attempts"
+    )
+    if attempt_number != prior_failed_attempts + 1:
+        raise ConfigurationError(
+            "Confirmation attempt number must follow the disclosed failed-attempt count"
         )
 
     runtime_raw = _mapping(root["runtime"], "runtime")
@@ -382,6 +394,15 @@ def load_hybrid_system_evaluation_config(path: Path) -> HybridSystemEvaluationCo
         or max(k_values) > policy.candidate_k
     ):
         raise ConfigurationError("Metric K values must be sorted, unique, and within candidate K")
+    validation_curve = entity_config.source.hybrid_metrics.get("hybrid", {}).get(
+        "retrieval_curve", {}
+    )
+    missing_validation_k = [k for k in k_values if str(k) not in validation_curve]
+    if missing_validation_k:
+        raise ConfigurationError(
+            "Metric K values must exist in the frozen validation retrieval curve; "
+            f"missing: {missing_validation_k}"
+        )
     evaluation = HybridSystemEvaluationProtocol(
         k_values,
         _positive_int(evaluation_raw["exact_block_size"], "evaluation.exact_block_size"),
@@ -432,6 +453,8 @@ def load_hybrid_system_evaluation_config(path: Path) -> HybridSystemEvaluationCo
         policy,
         evaluation_manifest,
         evaluation_manifest_sha,
+        attempt_number,
+        prior_failed_attempts,
         runtime,
         evaluation,
         artifacts,

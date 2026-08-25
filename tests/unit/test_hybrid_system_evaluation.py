@@ -41,6 +41,8 @@ data:
   evaluation_manifest_sha256: {"c" * 64}
   evaluate_once: true
   allow_test_selection: false
+  attempt_number: 3
+  prior_failed_attempts: 2
 runtime:
   device: cpu
   embedding_batch_size: 8
@@ -103,7 +105,12 @@ def _patch_sources(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         seed=2026,
         artifacts=SimpleNamespace(metrics=metrics_path),
         source=SimpleNamespace(
-            hybrid_metrics={"provenance": {"git_dirty": False}},
+            hybrid_metrics={
+                "provenance": {"git_dirty": False},
+                "hybrid": {
+                    "retrieval_curve": {"20": {}, "50": {}, "75": {}}
+                },
+            },
             recovery=SimpleNamespace(selection=selection),
             hybrid=SimpleNamespace(
                 source=SimpleNamespace(
@@ -145,6 +152,8 @@ def test_hybrid_final_config_accepts_validation_frozen_policy(
     config = module.load_hybrid_system_evaluation_config(config_path)
     assert config.policy.candidate_k == 75
     assert config.policy.singleton_attachment.minimum_support == 2
+    assert config.attempt_number == 3
+    assert config.prior_failed_attempts == 2
 
 
 def test_hybrid_final_config_rejects_threshold_drift(
@@ -154,6 +163,19 @@ def test_hybrid_final_config_rejects_threshold_drift(
     config_path = tmp_path / "hybrid_final.yaml"
     config_path.write_text(_config_text(0.15), encoding="utf-8")
     with pytest.raises(ConfigurationError, match="differs from validation-selected"):
+        module.load_hybrid_system_evaluation_config(config_path)
+
+
+def test_hybrid_final_config_rejects_k_missing_from_validation_curve(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_sources(monkeypatch, tmp_path)
+    original_loader = module.load_hybrid_entity_config
+    entity_config = original_loader(Path("unused"))
+    entity_config.source.hybrid_metrics["hybrid"]["retrieval_curve"].pop("20")
+    config_path = tmp_path / "hybrid_final.yaml"
+    config_path.write_text(_config_text(0.14), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="frozen validation retrieval curve"):
         module.load_hybrid_system_evaluation_config(config_path)
 
 

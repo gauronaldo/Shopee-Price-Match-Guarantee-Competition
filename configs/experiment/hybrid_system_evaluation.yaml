@@ -25,13 +25,15 @@ data:
   evaluation_manifest_sha256: 050a756c7c94e7179623e1c4d891ce65556184b5fe333f9cdd2961695da2d479
   evaluate_once: true
   allow_test_selection: false
+  attempt_number: 3
+  prior_failed_attempts: 2
 runtime:
   device: cuda
   embedding_batch_size: 64
   pair_batch_size: 8192
   num_workers: 0
 evaluation:
-  metric_k_values: [20, 50, 75, 100]
+  metric_k_values: [50, 75, 100]
   exact_block_size: 512
   latency_query_count: 256
   latency_repetitions: 3
@@ -40,12 +42,12 @@ evaluation:
   required_precision: 0.9
   failure_example_limit: 30
 artifacts:
-  root: artifacts/final_system/confirmation_run_02
-  access_marker: artifacts/final_system/confirmation_run_02/access_started.json
-  embeddings: artifacts/final_system/confirmation_run_02/embeddings.npz
-  ranking: artifacts/final_system/confirmation_run_02/ranking.jsonl
-  scored_pairs: artifacts/final_system/confirmation_run_02/scored_pairs.jsonl
-  assignments: artifacts/final_system/confirmation_run_02/entity_assignments.csv
-  metrics: artifacts/final_system/confirmation_run_02/metrics.json
-  review: artifacts/final_system/confirmation_run_02/failure_review.json
-  report: artifacts/final_system/confirmation_run_02/report.md
+  root: artifacts/final_system/confirmation_run_03
+  access_marker: artifacts/final_system/confirmation_run_03/access_started.json
+  embeddings: artifacts/final_system/confirmation_run_03/embeddings.npz
+  ranking: artifacts/final_system/confirmation_run_03/ranking.jsonl
+  scored_pairs: artifacts/final_system/confirmation_run_03/scored_pairs.jsonl
+  assignments: artifacts/final_system/confirmation_run_03/entity_assignments.csv
+  metrics: artifacts/final_system/confirmation_run_03/metrics.json
+  review: artifacts/final_system/confirmation_run_03/failure_review.json
+  report: artifacts/final_system/confirmation_run_03/report.md

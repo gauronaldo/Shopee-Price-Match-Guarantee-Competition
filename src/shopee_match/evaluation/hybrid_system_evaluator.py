@@ -86,6 +86,8 @@ def preflight_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
         "device": str(device),
         "existing_outputs": outputs,
         "candidate_k": config.policy.candidate_k,
+        "attempt_number": config.attempt_number,
+        "prior_failed_attempts": config.prior_failed_attempts,
         "entity_config_sha256": config.source.entity_config_sha256,
         "entity_metrics_sha256": config.source.entity_metrics_sha256,
     }
@@ -139,15 +141,15 @@ supported singleton attachment without changing the frozen encoders or pair head
 - Singleton attachment threshold / rank / support: `{attachment["probability_threshold"]:.2f}` /
   `{attachment["reciprocal_rank"]}` / `{attachment["minimum_support"]}`
 
-## Retrieval: validation to test
+## Retrieval: validation to confirmation
 
-| Metric | Validation | Test |
+| Metric | Validation | Confirmation |
 |---|---:|---:|
 {retrieval_rows}
 
 ## Pair and entity results
 
-| Pair metric | Test |
+| Pair metric | Confirmation |
 |---|---:|
 | Candidate-conditioned precision | {pair["precision"]:.5f} |
 | Candidate-conditioned recall | {pair["recall_within_candidates"]:.5f} |
@@ -156,15 +158,17 @@ supported singleton attachment without changing the frozen encoders or pair head
 | Accepted-edge precision | {edge["precision"]:.5f} |
 | Accepted-edge global recall | {edge["recall"]:.5f} |
 
-| Entity metric | Validation | Test |
+| Entity metric | Validation | Confirmation |
 |---|---:|---:|
 {clustering_rows}
 
 ## Interpretation
 
-This is a one-time evaluation on the confirmation split for a development-frozen system version.
-The preserved historical test split is not loaded. No threshold, candidate K, fusion weight, or
-graph rule is selected from this output.
+This is attempt {run["data"]["attempt_number"]} to produce the frozen-policy confirmation
+evidence. The {run["data"]["prior_failed_attempts"]} prior operational failures are preserved;
+neither produced persisted metrics or informed parameter selection. The preserved historical test
+split is not loaded. No threshold, candidate K, fusion weight, or graph rule is selected from this
+output.
 
 The access marker and immutable output paths block accidental reruns of this version.
 """
@@ -190,6 +194,8 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
                 "config_sha256": config_sha,
                 "git_commit": commit,
                 "git_dirty": False,
+                "attempt_number": config.attempt_number,
+                "prior_failed_attempts": config.prior_failed_attempts,
             },
             indent=2,
             sort_keys=True,
@@ -364,7 +370,9 @@ def run_hybrid_system_evaluation(config_path: Path) -> dict[str, object]:
             "split": "confirmation",
             "listings": len(posting_ids),
             "test_accessed": True,
-            "version_evaluation_count": 1,
+            "attempt_number": config.attempt_number,
+            "prior_failed_attempts": config.prior_failed_attempts,
+            "metrics_producing_attempt": 1,
             "historical_test_accessed": False,
             "selection_on_test": False,
         },
