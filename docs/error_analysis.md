@@ -18,16 +18,16 @@ Manual inspection of five top-ranked failures per baseline found:
   even when the purchasable product differs.
 - **Probable label fragmentation:** several highly similar cross-label titles appear plausibly to
   describe the same exact item. They remain errors against competition ground truth and support
-  the Phase 1 warning that measured precision may understate commercial matching quality.
+  the data-audit warning that measured precision may understate commercial matching quality.
 - **Modality disagreement:** the selected fusion assigns 75% weight to text. Image evidence helps
   aggregate retrieval, but weak pHash evidence can still perturb otherwise strong title rankings.
 
-These findings motivate a scratch image encoder that learns product-level evidence rather than
-depending on pHash or local keypoints. Later phases will retain the taxonomy for retrieval misses,
-pair-score errors, transitive false merges, and false splits. No private or restricted image is
-copied into Git.
+These findings motivated a custom image encoder, trained from random initialization, that learns
+product-level evidence rather than depending on pHash or local keypoints. The same taxonomy is
+used for retrieval misses, pair-score errors, transitive false merges, and false splits. No private
+or restricted image is copied into Git.
 
-## Scratch image encoder pilot
+## Custom image encoder development
 
 The selected bounded pilot used `P=16, K=2` product-aware batches and reached validation mAP@20
 `0.34738`. Its exact-positive-pHash and no-exact-positive-pHash strata reached `0.72553` and
@@ -42,13 +42,13 @@ unrelated product categories. Two cases were coarse-category hard negatives: dif
 different instant-noodle products. These examples show that the model captures category and
 composition before it consistently captures exact-product identity.
 
-The next approved experiment is the already configured 224-pixel full run. Higher resolution can
-preserve packaging text, logos, and fine product details that are suppressed at 128 pixels. This
-is a targeted response to the measured layout-shortcut failure; no larger backbone or additional
-loss is introduced before that hypothesis is evaluated. Quantitative details are recorded in
+The subsequent 224-pixel run tested whether higher resolution could preserve packaging text,
+logos, and fine product details suppressed at 128 pixels. This was a targeted response to the
+measured layout-shortcut failure without simultaneously introducing a larger backbone or another
+loss. Quantitative details are recorded in
 [`../reports/image_encoder.md`](../reports/image_encoder.md).
 
-## Final scratch image review
+## Final custom image review
 
 The full 224-pixel checkpoint reached validation/test mAP@20 `0.53907 / 0.55674`. A deterministic
 manual review categorized 20 top-1 false matches and 20 Top-20 retrieval misses. Shared layout,
@@ -56,10 +56,10 @@ background, color blocks, and coarse silhouette account for 70% of reviewed fals
 of reviewed retrieval misses. Coarse-category or brand-family negatives account for most remaining
 cases; two false matches are probable label fragmentation.
 
-Full counts, examples, sampling limitations, and the resulting Phase 4 motivation are recorded in
-[`../reports/image_encoder.md`](../reports/image_encoder.md).
+Full counts, examples, sampling limitations, and the motivation for the text encoder are recorded
+in [`../reports/image_encoder.md`](../reports/image_encoder.md).
 
-## Entity-resolution graph
+## Initial entity-resolution graph
 
 The selected validation-only graph reaches pairwise precision `0.90165` and B-cubed F1 `0.82794`
 under the configured false-merge safety gate. The bounded review artifact contains 91 impure
@@ -88,7 +88,7 @@ graph operating points did not improve entity clustering and the head was reject
 The successful intervention was candidate generation. Weighted reciprocal-rank fusion combines
 frozen dense neighbours with train-fitted character TF-IDF and pHash neighbours. Validation
 candidate Recall increased from `0.97438` at dense Top-50 to `0.99209` at hybrid Top-75. With the
-same frozen Phase 6 pair scorer and supported singleton policy, validation pairwise
+same frozen pair scorer and supported singleton policy, validation pairwise
 precision/recall/F1 reached `0.89582 / 0.45573 / 0.60413`; B-cubed F1 reached `0.85797`, and the
 false-split rate decreased to `0.26364` while false-merge rate remained `0.10418`.
 

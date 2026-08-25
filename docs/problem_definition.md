@@ -39,7 +39,7 @@ confidence or request manual review. Visual resemblance alone is insufficient.
 - `image_phash` is useful evidence, not a ground-truth match rule.
 - Titles are noisy and multilingual; digits and units are identity-critical.
 - A listing has one referenced image in the competition data.
-- Data audit may invalidate any assumption above; Phase 1 records measured facts separately.
+- Data audit may invalidate any assumption above; the data card records measured facts separately.
 
 ## Online contract
 
@@ -84,4 +84,3 @@ The final project reports retrieval, pair-classification, clustering, efficiency
 metrics. Results are stratified by group size and relevant difficulty buckets. Every claim names
 the split manifest, configuration, seed, environment, and saved run. False merges receive special
 attention because one bad graph edge can combine large unrelated groups.
-

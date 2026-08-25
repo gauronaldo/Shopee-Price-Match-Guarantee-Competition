@@ -14,7 +14,7 @@ original download timestamp is not encoded in the files and is therefore unknown
   `b881ec236653583e9105fc3a7bec191ac0604852279f42596c12e90c61af1dd6`.
 - `sample_submission.csv` is present with SHA-256
   `164bce85bd72fccdac54b3a8842474a90ed5d0b712d36140b437a9c24fa205e2`.
-- Phase 1 config: `phase1.data.v1`.
+- Data-preparation config version: `phase1.data.v1`.
 - Pipeline: `phase1.pipeline.v1` using OpenCV `4.12.0`.
 
 ## Observed release

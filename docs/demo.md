@@ -4,7 +4,7 @@
 
 The demo turns the frozen research pipeline into an inspectable application without retraining,
 retuning thresholds, or reopening the held-out test evaluation. It uses the 3,430-listing
-validation catalog because Phase 11 is presentation work, not another model-selection step.
+validation catalog because the demo is presentation work, not another model-selection step.
 
 The user provides an image, a title, or both. Image-only and text-only requests return Top-K
 similarity candidates. A request containing both modalities additionally returns pair
@@ -118,9 +118,9 @@ serializes requests for deterministic, memory-bounded showcase behavior.
 ## Limitations
 
 - The demo searches a fixed validation catalog; it is not a catalog-ingestion service.
-- A newly uploaded listing can join an existing entity, but Phase 11 does not persist mutations.
-- Approximate retrieval can omit a candidate, though Phase 7 measured a negligible validation
-  recall difference at the selected HNSW setting.
+- A newly uploaded listing can join an existing entity, but the demo does not persist mutations.
+- Approximate retrieval can omit a candidate, though the candidate benchmark measured a negligible
+  validation recall difference at the selected HNSW setting.
 - Calibration error and remaining false merges/splits mean review flags are operationally
   important.
 - Authentication, rate limiting, monitoring, artifact distribution, and marketplace policy are

@@ -28,7 +28,8 @@ requirements.
   consistency-aware graph clustering.
 - Frozen test evaluation across retrieval, pair classification, clustering, calibration, and
   efficiency metrics.
-- Automated quality gates plus FastAPI, Streamlit, and Docker Compose inference paths.
+- A comprehensive automated test suite, plus FastAPI, Streamlit, and Docker Compose inference
+  paths.
 
 ## Problem context
 
@@ -233,6 +234,14 @@ rules are selected without test leakage.
 
 The source CSV checksum and schema are verified before processing. Raw data, generated manifests,
 checkpoints, indexes, caches, and detailed review artifacts are ignored by Git.
+
+### Model artifacts
+
+The canonical pair-head checkpoint is not stored in Git. Restore it from the project artifact
+archive to `artifacts/hard_negative_mining/pair_head_pilot/training/best.pt`, or regenerate it with
+the hard-negative training command below. Before evaluation or serving, its SHA-256 must equal
+`d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e`; dataset-derived embeddings,
+indexes, and entity assignments are generated locally as well.
 
 ## Reproducing the pipeline
 
