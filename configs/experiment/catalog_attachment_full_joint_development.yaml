@@ -38,7 +38,7 @@ safety:
   maximum_manual_review_rate: 0.30
 comparison:
   baseline_metrics: artifacts/catalog_attachment_v4/development/canonical/metrics.json
-  baseline_metrics_sha256: aaf16e2c61821747b93f632c8969864b68ef6a54422e9986d15cd0a9e84ca935
+  baseline_metrics_sha256: 812e47d6fa99f0d9351dde4e43e0b63fe0e5bee99a9fbdb73369944477512f99
   minimum_attachment_recall_delta: 0.02
   minimum_attachment_f1_delta: 0.01
   maximum_attachment_precision_drop: 0.01
