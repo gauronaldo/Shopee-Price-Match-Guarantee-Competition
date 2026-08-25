@@ -1,0 +1,38 @@
+config_version: catalog_attachment.evaluation.v4
+seed: 2027
+source:
+  metadata_csv: data/raw/train.csv
+  metadata_csv_sha256: 82b8ec57e81b603e00c63779b7eeea69a2bd7d9cbb48377657cf547b422f9175
+  source_manifest: data/splits/shopee_pair_recall_v3_modeling.jsonl
+  source_manifest_sha256: cc1bb9848a3b3aaed7cc9b810d4ed7361e1150f5b3c96c3ade5738e6b7c6725d
+  role_manifest: data/splits/catalog_attachment_development_v4.jsonl
+  role_manifest_sha256: 515bbdf75dc431eebec5c6a9027fa1adef974873596b3a301a24c6148f32f9fe
+  hybrid_config: configs/experiment/hybrid_candidate_retrieval.yaml
+  hybrid_config_sha256: e0847ef2d748384f39afa24f3f0262f1b1c6eb43f4531074b819661b6ac7e629
+  model_variant: canonical
+data:
+  source_split: validation
+  partition: development
+  evaluate_confirmation: false
+runtime:
+  device: cuda
+  extraction_batch_size: 64
+  pair_batch_size: 8192
+retrieval:
+  candidate_k: 20
+  metric_k_values: [1, 5, 10, 20]
+decision:
+  pair_probability_thresholds: [0.05, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, 0.60, 0.70]
+  manual_review_margin: 0.02
+  target_margin: 0.02
+  variant_conflict_override_probability: 0.15
+safety:
+  minimum_attachment_precision: 0.88
+  minimum_new_entity_detection_recall: 0.80
+  maximum_new_entity_false_attachment_rate: 0.12
+  maximum_overall_false_attachment_rate: 0.12
+  maximum_manual_review_rate: 0.30
+artifacts:
+  root: artifacts/catalog_attachment_v4/development/canonical
+  metrics: artifacts/catalog_attachment_v4/development/canonical/metrics.json
+  report: artifacts/catalog_attachment_v4/development/canonical/report.md
