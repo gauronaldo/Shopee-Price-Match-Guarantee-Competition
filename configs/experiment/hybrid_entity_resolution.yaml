@@ -4,7 +4,7 @@ source:
   hybrid_config: configs/experiment/hybrid_candidate_retrieval.yaml
   hybrid_config_sha256: e0847ef2d748384f39afa24f3f0262f1b1c6eb43f4531074b819661b6ac7e629
   hybrid_metrics: artifacts/final_system/validation/hybrid_candidate_retrieval/metrics.json
-  hybrid_metrics_sha256: 474e27d405ded22bd18a0820cb860c0e8f900c3d30338979fe487726eeda8b4b
+  hybrid_metrics_sha256: b305052d854079eb5c21ac7d43398b1abeb70b08d93cdb5f630c3ecbc2201cd0
   hybrid_ranking: artifacts/final_system/validation/hybrid_candidate_retrieval/ranking.jsonl
   hybrid_ranking_sha256: 78583d86718c76ad1b8ce8cf2faafe6834c8e9e793889613600b6b55ca7f7a61
   recovery_config: configs/experiment/entity_recall_recovery.yaml
