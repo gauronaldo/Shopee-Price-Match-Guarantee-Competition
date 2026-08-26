@@ -143,67 +143,6 @@ Full metrics, efficiency measurements, ablations, repeated seeds, and failure an
 in [`reports/README.md`](reports/README.md). The final frozen result is in
 [`reports/final_evaluation.md`](reports/final_evaluation.md).
 
-## Demo
-
-The demo supports:
-
-- image-only candidate retrieval;
-- title-only candidate retrieval;
-- multimodal retrieval, pair scoring, and entity assignment;
-- guided scenarios with three distinct curated products per scenario;
-- open-ended image/title uploads;
-- query-versus-candidate visual comparison and modality evidence;
-- self-match exclusion for catalog-backed guided queries;
-- “no confident match” and manual-review states.
-
-Literal UTF-8 byte escapes found in some source titles, for example `\xe2\x9c\x85`, are decoded
-only for presentation. The frozen text encoder still receives the original title representation
-used during training.
-
-### Local launcher
-
-Complete [Installation and data](#installation-and-data), then restore the frozen checkpoints,
-embedding caches, and entity assignments referenced by `configs/serving/demo.yaml`. Verify the
-runtime contract before opening the UI:
-
-```powershell
-.venv\Scripts\python -m shopee_match.serving.cli preflight `
-  --config configs\serving\demo.yaml
-.venv\Scripts\python -m shopee_match.serving.cli launch
-```
-
-Open:
-
-- Streamlit UI: `http://127.0.0.1:8501`
-- FastAPI/OpenAPI: `http://127.0.0.1:8000/docs`
-- Health endpoint: `http://127.0.0.1:8000/health`
-
-Press `Ctrl+C` once in the launcher terminal to stop both services.
-
-### Docker Compose
-
-The API and UI are packaged with Docker Compose. The image contains the application and Python
-dependencies; local `data/` and `artifacts/` are mounted read-only and are never copied into the
-image.
-
-Start Docker Desktop with the Linux container engine, then run:
-
-```powershell
-docker compose config
-docker compose up --build
-```
-
-After both services become healthy, open `http://localhost:8501`. API documentation remains at
-`http://localhost:8000/docs`.
-
-```powershell
-docker compose down
-```
-
-The Compose profile defaults to CPU inference. GPU containers require NVIDIA Container Toolkit
-and an explicit device configuration. Runtime behavior and API contracts are documented in
-[`docs/demo.md`](docs/demo.md).
-
 ## Installation and data
 
 ```powershell
@@ -211,6 +150,20 @@ python -m venv .venv
 .venv\Scripts\python -m pip install --upgrade pip
 .venv\Scripts\python -m pip install -e ".[dev,eda,retrieval,pretrained,demo]"
 ```
+
+### Quick repository verification
+
+A reviewer can validate the installation without Kaggle access or trained artifacts. The smoke
+command uses the committed synthetic fixture rather than competition records:
+
+```powershell
+.venv\Scripts\python -m pytest
+.venv\Scripts\shopee-smoke --config configs\smoke.yaml
+```
+
+The demo does not require model training. Frozen inference checkpoints are distributed separately
+from Git, while each user supplies the competition data under Kaggle's access terms. A bootstrap
+command then recreates the catalog embeddings, retrieval index, and entity assignments locally.
 
 Expected local-only Kaggle layout:
 
@@ -235,13 +188,34 @@ rules are selected without test leakage.
 The source CSV checksum and schema are verified before processing. Raw data, generated manifests,
 checkpoints, indexes, caches, and detailed review artifacts are ignored by Git.
 
-### Model artifacts
+### Full-demo artifacts
 
-The canonical pair-head checkpoint is not stored in Git. Restore it from the project artifact
-archive to `artifacts/hard_negative_mining/pair_head_pilot/training/best.pt`, or regenerate it with
-the hard-negative training command below. Before evaluation or serving, its SHA-256 must equal
-`d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e`; dataset-derived embeddings,
-indexes, and entity assignments are generated locally as well.
+The `v1.0.0` model release is designed as a separate GitHub Release asset named
+`shopee_demo_models_v1.0.0.zip` (SHA-256
+`48ce1deb2aac264fa1586ce6093b41713830f30ea3c20349c7122a037de41cce`). The archive contains the
+four frozen inference checkpoints and the lightweight records required to verify them. It contains
+no Shopee images, titles, labels, catalog embeddings, or entity assignments.
+
+The complete file-level contract is versioned in
+[`configs/serving/model_release.yaml`](configs/serving/model_release.yaml). The installer verifies
+the archive and every extracted file before making them available to the application. If the
+Release asset has not yet been published, the project owner can build the identical ZIP with
+`shopee-demo package-models`; publishing remains a separate version-control/release action.
+
+After accepting the competition rules, download and extract the Kaggle files into `data/raw/`, then
+run:
+
+```powershell
+.venv\Scripts\shopee-demo download-models
+.venv\Scripts\shopee-demo bootstrap --device auto
+.venv\Scripts\shopee-demo preflight
+.venv\Scripts\shopee-demo launch
+```
+
+`download-models` restores the released weights. `bootstrap` validates the dataset, reproduces the
+frozen group-disjoint validation catalog, extracts embeddings, builds candidate retrieval, and
+creates entity assignments. It performs inference only: it does not execute a training loop or
+access the held-out project test split.
 
 ## Reproducing the pipeline
 
@@ -255,6 +229,7 @@ immutable by design; use a new artifact root for a deliberate rerun instead of o
 | Classical baselines | `.venv\Scripts\shopee-benchmark run --config configs\experiment\classical_retrieval_benchmark.yaml` |
 | Custom image training | `.venv\Scripts\shopee-image train --config configs\experiment\image_embedding_training.yaml` |
 | Custom text training | `.venv\Scripts\shopee-text train --config configs\experiment\text_embedding_training.yaml` |
+| Multimodal cache preparation | `.venv\Scripts\shopee-multimodal prepare --config configs\experiment\multimodal_embedding_training.yaml` |
 | Multimodal training | `.venv\Scripts\shopee-multimodal train --config configs\experiment\multimodal_embedding_training.yaml` |
 | Hard-negative training | `.venv\Scripts\shopee-hard-negatives all --config configs\experiment\hard_negative_pair_head_pilot.yaml` |
 | Candidate retrieval | `.venv\Scripts\shopee-retrieval benchmark --config configs\experiment\candidate_retrieval_benchmark.yaml` |
@@ -268,6 +243,63 @@ immutable by design; use a new artifact root for a deliberate rerun instead of o
 
 An access marker protects the single-use final test protocol. Run preflight before a fresh frozen
 evaluation; after the access marker or outputs exist, it intentionally blocks a second test run.
+
+The sequence from data preparation through entity resolution produces the components needed for an
+independently rebuilt demo. The hybrid retrieval and final-system rows reproduce the selected batch
+evaluation but are not required by the validation-catalog UI. The committed
+`configs/serving/demo.yaml` remains the immutable contract for the original frozen artifacts.
+
+## Demo
+
+The demo supports image-only, title-only, and multimodal queries; guided scenarios; open-ended
+uploads; query-versus-candidate comparison; modality evidence; self-match exclusion; and explicit
+no-match or manual-review states. It searches the frozen validation catalog rather than the
+held-out test split.
+
+Literal UTF-8 byte escapes found in some source titles, for example `\xe2\x9c\x85`, are decoded
+only for presentation. The frozen text encoder still receives the original title representation
+used during training.
+
+### Local launcher
+
+After `download-models` and `bootstrap` complete, verify the generated serving contract and start
+both services:
+
+```powershell
+.venv\Scripts\python -m shopee_match.serving.cli preflight
+.venv\Scripts\python -m shopee_match.serving.cli launch
+```
+
+Open:
+
+- Streamlit UI: `http://127.0.0.1:8501`
+- FastAPI/OpenAPI: `http://127.0.0.1:8000/docs`
+- Health endpoint: `http://127.0.0.1:8000/health`
+
+Press `Ctrl+C` once in the launcher terminal to stop both services.
+
+### Docker Compose
+
+Docker packages the application environment but does not redistribute the licensed dataset.
+Run `download-models` and `bootstrap` on the host first; Compose then mounts the resulting `data/`
+and `artifacts/` directories read-only.
+
+Start Docker Desktop with the Linux container engine, then run:
+
+```powershell
+docker compose config
+docker compose up --build
+```
+
+After both services become healthy, open `http://localhost:8501`. Stop them with:
+
+```powershell
+docker compose down
+```
+
+The Compose profile defaults to CPU inference. GPU containers require NVIDIA Container Toolkit
+and an explicit device configuration. Runtime behavior and API contracts are documented in
+[`docs/demo.md`](docs/demo.md).
 
 ## Engineering quality
 

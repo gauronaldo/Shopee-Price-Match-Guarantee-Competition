@@ -5,7 +5,7 @@ services:
       - shopee-demo
       - api
       - --config
-      - configs/serving/demo.yaml
+      - ${SHOPEE_DEMO_CONFIG:-artifacts/demo/runtime/demo.yaml}
       - --host
       - 0.0.0.0
       - --port

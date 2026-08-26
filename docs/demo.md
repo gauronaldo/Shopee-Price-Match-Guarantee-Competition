@@ -12,6 +12,11 @@ probabilities, image/title/joint similarities, a predicted catalog entity or no-
 manual-review flag. A label-blind catalog adapter retains only `posting_id`, `image`,
 `image_phash`, and `title`; `label_group` is not retained by the serving runtime.
 
+The frozen checkpoints are delivered separately as a hash-locked GitHub Release asset. Competition
+data is not redistributed: each user accepts Kaggle's rules and places the files under `data/raw`.
+The bootstrap command then recreates the validation catalog artifacts locally through inference;
+it does not retrain the model or access the held-out project test split.
+
 ## Runtime stages
 
 1. Available inputs are encoded by the custom residual CNN, character TextCNN, or both.
@@ -53,6 +58,17 @@ Install the optional runtime dependencies:
 .venv\Scripts\python -m pip install -e ".[dev,retrieval,demo]"
 ```
 
+Install the released checkpoints and build the local catalog once:
+
+```powershell
+.venv\Scripts\shopee-demo download-models
+.venv\Scripts\shopee-demo bootstrap --device auto
+```
+
+`download-models` validates the release ZIP and every extracted file against
+`configs/serving/model_release.yaml`. `bootstrap` creates only the validation embedding cache,
+candidate index, pair scores, and entity assignments. Subsequent demo runs reuse those artifacts.
+
 Start both local services with one managed command:
 
 ```powershell
@@ -65,15 +81,14 @@ children. Use the separate commands below only when debugging one service.
 Verify every source hash, load all models, and build the in-memory FAISS index:
 
 ```powershell
-.venv\Scripts\python -m shopee_match.serving.cli preflight `
-  --config configs\serving\demo.yaml
+.venv\Scripts\python -m shopee_match.serving.cli preflight
 ```
 
 Start the API:
 
 ```powershell
 .venv\Scripts\python -m shopee_match.serving.cli api `
-  --config configs\serving\demo.yaml `
+  --config artifacts\demo\runtime\demo.yaml `
   --host 127.0.0.1 `
   --port 8000
 ```
@@ -98,8 +113,9 @@ docker compose config
 docker compose up --build
 ```
 
-Both containers use the same image. Compose mounts `data/` and `artifacts/` read-only because raw
-competition files and checkpoints must never be baked into or committed with the application.
+Both containers use the same image. Run model download and bootstrap on the host first. Compose
+mounts `data/` and `artifacts/` read-only because raw competition files and checkpoints must never
+be baked into or committed with the application.
 Docker Desktop must be running with its Linux container engine. Stop both services with
 `docker compose down`.
 
@@ -123,5 +139,5 @@ serializes requests for deterministic, memory-bounded showcase behavior.
   validation recall difference at the selected HNSW setting.
 - Calibration error and remaining false merges/splits mean review flags are operationally
   important.
-- Authentication, rate limiting, monitoring, artifact distribution, and marketplace policy are
-  outside this local portfolio demo.
+- Authentication, rate limiting, monitoring, and marketplace policy are outside this local
+  portfolio demo.

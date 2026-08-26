@@ -15,24 +15,66 @@ from pathlib import Path
 
 import uvicorn
 
+from shopee_match.errors import ShopeeMatchError
 from shopee_match.logging import configure_logging
+from shopee_match.serving.bootstrap import (
+    DEFAULT_DEMO_CONFIG,
+    DEFAULT_RELEASE_MANIFEST,
+    bootstrap_demo,
+)
+from shopee_match.serving.release_artifacts import (
+    build_release_archive,
+    install_model_release,
+    model_release_status,
+)
 from shopee_match.serving.runtime import DemoRuntime
+
+
+def _default_demo_config() -> Path:
+    return (
+        DEFAULT_DEMO_CONFIG if DEFAULT_DEMO_CONFIG.is_file() else Path("configs/serving/demo.yaml")
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the frozen product-matching demo")
     subcommands = parser.add_subparsers(dest="command", required=True)
     preflight = subcommands.add_parser("preflight", help="Load all artifacts and print readiness")
-    preflight.add_argument("--config", type=Path, default=Path("configs/serving/demo.yaml"))
+    preflight.add_argument("--config", type=Path, default=_default_demo_config())
     api = subcommands.add_parser("api", help="Start the FastAPI inference service")
-    api.add_argument("--config", type=Path, default=Path("configs/serving/demo.yaml"))
+    api.add_argument("--config", type=Path, default=_default_demo_config())
     api.add_argument("--host", default="127.0.0.1")
     api.add_argument("--port", type=int, default=8000)
     launch = subcommands.add_parser("launch", help="Start the API and Streamlit UI together")
-    launch.add_argument("--config", type=Path, default=Path("configs/serving/demo.yaml"))
+    launch.add_argument("--config", type=Path, default=_default_demo_config())
     launch.add_argument("--host", default="127.0.0.1")
     launch.add_argument("--api-port", type=int, default=8000)
     launch.add_argument("--ui-port", type=int, default=8501)
+    status = subcommands.add_parser(
+        "models-status", help="Verify locally installed release checkpoints"
+    )
+    status.add_argument("--manifest", type=Path, default=DEFAULT_RELEASE_MANIFEST)
+    download = subcommands.add_parser(
+        "download-models", help="Download and verify the inference checkpoint release"
+    )
+    download.add_argument("--manifest", type=Path, default=DEFAULT_RELEASE_MANIFEST)
+    download.add_argument("--url", help="Override the release asset URL")
+    download.add_argument("--force", action="store_true", help="Replace hash-mismatched files")
+    package = subcommands.add_parser(
+        "package-models", help="Build the deterministic release ZIP from owner artifacts"
+    )
+    package.add_argument("--manifest", type=Path, default=DEFAULT_RELEASE_MANIFEST)
+    package.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/release/v1.0.0/shopee_demo_models_v1.0.0.zip"),
+    )
+    bootstrap = subcommands.add_parser(
+        "bootstrap", help="Build the local validation demo by inference without training"
+    )
+    bootstrap.add_argument("--manifest", type=Path, default=DEFAULT_RELEASE_MANIFEST)
+    bootstrap.add_argument("--runtime-root", type=Path, default=DEFAULT_DEMO_CONFIG.parent)
+    bootstrap.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     return parser
 
 
@@ -130,20 +172,59 @@ def _launch(arguments: argparse.Namespace) -> None:
 def main() -> None:
     configure_logging()
     arguments = _parser().parse_args()
-    if arguments.command == "preflight":
-        runtime = DemoRuntime.load(arguments.config)
-        print(json.dumps(runtime.health(), indent=2, sort_keys=True))
-        return
-    if arguments.command == "launch":
-        _launch(arguments)
-        return
-    os.environ["SHOPEE_DEMO_CONFIG"] = str(arguments.config)
-    uvicorn.run(
-        "shopee_match.serving.api:create_app",
-        host=arguments.host,
-        port=arguments.port,
-        factory=True,
-    )
+    try:
+        if arguments.command == "models-status":
+            print(json.dumps(model_release_status(arguments.manifest), indent=2, sort_keys=True))
+            return
+        if arguments.command == "download-models":
+            print(
+                json.dumps(
+                    install_model_release(
+                        arguments.manifest, url=arguments.url, force=arguments.force
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return
+        if arguments.command == "package-models":
+            print(
+                json.dumps(
+                    build_release_archive(arguments.manifest, arguments.output),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return
+        if arguments.command == "bootstrap":
+            print(
+                json.dumps(
+                    bootstrap_demo(
+                        release_manifest=arguments.manifest,
+                        runtime_root=arguments.runtime_root,
+                        device=arguments.device,
+                    ),
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return
+        if arguments.command == "preflight":
+            runtime = DemoRuntime.load(arguments.config)
+            print(json.dumps(runtime.health(), indent=2, sort_keys=True))
+            return
+        if arguments.command == "launch":
+            _launch(arguments)
+            return
+        os.environ["SHOPEE_DEMO_CONFIG"] = str(arguments.config)
+        uvicorn.run(
+            "shopee_match.serving.api:create_app",
+            host=arguments.host,
+            port=arguments.port,
+            factory=True,
+        )
+    except (ShopeeMatchError, OSError, ValueError, RuntimeError) as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 if __name__ == "__main__":

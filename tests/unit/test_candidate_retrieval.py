@@ -142,7 +142,7 @@ source:
   metrics: artifacts/metrics.json
   metrics_sha256: 0000000000000000000000000000000000000000000000000000000000000000
   mined_manifest: artifacts/pairs.jsonl
-  mined_manifest_sha256: 0000000000000000000000000000000000000000000000000000000000000000
+  mined_manifest_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
 data:
   split: validation
   evaluate_test: false
@@ -175,10 +175,17 @@ artifacts:
 """,
         encoding="utf-8",
     )
+    canonical = config_path.read_text(encoding="utf-8")
     assert load_candidate_retrieval_config(config_path).selection.k_values == (1, 2)
-    invalid = config_path.read_text(encoding="utf-8").replace(
-        "evaluate_test: false", "evaluate_test: true"
-    )
+    demo = canonical.replace(
+        "phase7.candidate_retrieval.v1", "demo.candidate_retrieval.v1"
+    ).replace("  mined_manifest: artifacts/pairs.jsonl\n", "")
+    config_path.write_text(demo, encoding="utf-8")
+    loaded_demo = load_candidate_retrieval_config(config_path)
+    assert loaded_demo.source.mined_manifest_path == paths["mined_manifest"]
+    assert loaded_demo.source.mined_manifest_sha256 == "0" * 64
+
+    invalid = canonical.replace("evaluate_test: false", "evaluate_test: true")
     config_path.write_text(invalid, encoding="utf-8")
     with pytest.raises(ConfigurationError, match="validation only"):
         load_candidate_retrieval_config(config_path)

@@ -146,30 +146,36 @@ def load_candidate_retrieval_config(path: Path) -> CandidateRetrievalConfig:
         },
         "config",
     )
-    if root["config_version"] != "phase7.candidate_retrieval.v1":
+    config_version = root["config_version"]
+    if config_version not in {
+        "phase7.candidate_retrieval.v1",
+        "demo.candidate_retrieval.v1",
+    }:
         raise ConfigurationError("Unsupported candidate retrieval config_version")
     seed = _nonnegative_int(root["seed"], "seed")
 
     source_raw = _mapping(root["source"], "source")
-    _only_keys(
-        source_raw,
-        {
-            "phase6_config",
-            "phase6_config_sha256",
-            "checkpoint",
-            "checkpoint_sha256",
-            "metrics",
-            "metrics_sha256",
-            "mined_manifest",
-            "mined_manifest_sha256",
-        },
-        "source",
-    )
+    source_names = {
+        "phase6_config",
+        "phase6_config_sha256",
+        "checkpoint",
+        "checkpoint_sha256",
+        "metrics",
+        "metrics_sha256",
+        "mined_manifest_sha256",
+    }
+    if config_version == "phase7.candidate_retrieval.v1":
+        source_names.add("mined_manifest")
+    _only_keys(source_raw, source_names, "source")
     phase6_path, phase6_sha = _verified_file(source_raw, "phase6_config", portable_text=True)
     checkpoint_path, checkpoint_sha = _verified_file(source_raw, "checkpoint")
     metrics_path, metrics_sha = _verified_file(source_raw, "metrics")
-    manifest_path, manifest_sha = _verified_file(source_raw, "mined_manifest")
     experiment = load_hard_negative_experiment_config(phase6_path)
+    if config_version == "phase7.candidate_retrieval.v1":
+        manifest_path, manifest_sha = _verified_file(source_raw, "mined_manifest")
+    else:
+        manifest_path = experiment.artifacts.manifest
+        manifest_sha = _digest(source_raw["mined_manifest_sha256"], "source.mined_manifest_sha256")
     try:
         metrics = cast(dict[str, Any], json.loads(metrics_path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:

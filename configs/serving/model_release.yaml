@@ -1,0 +1,32 @@
+manifest_version: demo.model_release.v1
+release:
+  repository: gauronaldo/Shopee-Price-Match-Guarantee-Competition
+  tag: v1.0.0
+  asset: shopee_demo_models_v1.0.0.zip
+  asset_sha256: 48ce1deb2aac264fa1586ce6093b41713830f30ea3c20349c7122a037de41cce
+split_manifest_sha256: c9cef390b5fbde6c833fddb15a0a8df2c7fbecacd8d50fb83aadba6056bf8e09
+files:
+  - path: artifacts/scratch_image_encoder/training/best.pt
+    size_bytes: 36876216
+    sha256: 6ea26b493d643b148cbcc48006231637b266491a0a026d7fdbd22284f7100e07
+  - path: artifacts/scratch_image_encoder/training/metrics.json
+    size_bytes: 71504
+    sha256: 3b389c5dd6cb58548249931fa77b1aa6b5821d540f07f9d99294e8725cee2a6a
+  - path: artifacts/scratch_text_encoder/training/best.pt
+    size_bytes: 5498205
+    sha256: cbb77e4d76c1909c24b0e30654eacde2a0f752bb5d2ba795d45b01ec1189f7c1
+  - path: artifacts/scratch_text_encoder/training/metrics.json
+    size_bytes: 53289
+    sha256: e92bd3704d09e6e3ae36e89c2d219c69e7b3d7daa6ad70e856ae0e0e73095030
+  - path: artifacts/multimodal_fusion/training/best.pt
+    size_bytes: 12629805
+    sha256: 95289d84fbb85f99764f42b05ded92ec2c535b2b421b3fa1422cfb987b2800f4
+  - path: artifacts/multimodal_fusion/training/metrics.json
+    size_bytes: 41318
+    sha256: da4d681cf0fb656905748a85c88f1285016ae4aee690826fdcd809521de4a313
+  - path: artifacts/hard_negative_mining/pair_head_pilot/training/best.pt
+    size_bytes: 6317065
+    sha256: d763834919c9bea2378b112e870d15b82817023692940c20f112f98d49370c3e
+  - path: artifacts/hard_negative_mining/pair_head_pilot/training/metrics.json
+    size_bytes: 26789
+    sha256: 7bff1b804b0a611e1a5380540e54f3b6955da3c4b4ad42ff5d7aff2442e898ee

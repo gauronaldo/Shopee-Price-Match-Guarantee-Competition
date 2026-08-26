@@ -52,16 +52,9 @@ reports/tables/local/
 
 # Competition data and derived datasets
 data/raw/**
-data/interim/**
-data/processed/**
-data/downloads/**
 data/splits/*.csv
 data/splits/*.json
 data/splits/*.jsonl
-!data/downloads/
-!data/downloads/.gitkeep
-!data/interim/.gitkeep
-!data/processed/.gitkeep
 !data/splits/.gitkeep
 *.zip
 *.7z

@@ -296,6 +296,94 @@ def _validate_cache(
     return metadata
 
 
+def prepare_frozen_multimodal_split_cache(
+    config_path: Path,
+    split_name: str,
+    *,
+    requested_device: str = "auto",
+) -> dict[str, object]:
+    """Create one inference cache without preparing the train split or training a model."""
+    if split_name not in {"train", "validation"}:
+        raise ConfigurationError("Frozen multimodal caches expose only train and validation")
+    config = load_multimodal_experiment_config(config_path)
+    device = _resolve_device(requested_device)
+    split = load_splits(config.data.metadata_csv, config.data.split_manifest)[split_name]
+    cache_path = config.cache.root / f"{split_name}.npz"
+    metadata_path = config.cache.root / f"{split_name}.json"
+    contract = _cache_contract(config, split_name)
+    if cache_path.exists() or metadata_path.exists():
+        if not cache_path.exists() or not metadata_path.exists():
+            raise DataValidationError(f"Incomplete multimodal cache for {split_name}")
+        metadata = _validate_cache(cache_path, metadata_path, contract)
+        return {
+            "status": "reused",
+            "device": str(device),
+            "test_accessed": False,
+            "split": split_name,
+            **metadata,
+        }
+
+    image_model, text_model, vocabulary, maximum_length = load_frozen_encoders(config, device)
+    image_dataset = ProductImageDataset.for_split(
+        split,
+        config.data.image_dir,
+        ImagePreprocessor(
+            config.frozen.image_config.training_experiment.image_size,
+            training=False,
+            seed=config.seed,
+        ),
+    )
+    text_dataset = ProductTextDataset(split, vocabulary, maximum_length)
+    image_loader = DataLoader(
+        image_dataset,
+        batch_size=config.cache.batch_size,
+        shuffle=False,
+        num_workers=config.cache.num_workers,
+        pin_memory=device.type == "cuda",
+    )
+    text_loader = DataLoader(
+        text_dataset,
+        batch_size=config.cache.batch_size,
+        shuffle=False,
+        num_workers=config.cache.num_workers,
+        pin_memory=device.type == "cuda",
+    )
+    LOGGER.info("%s demo cache: extracting %d listings on %s", split_name, len(split.items), device)
+    image_ids, image_embeddings, image_seconds = _extract_image_embeddings(
+        image_model, image_loader, device, split_name
+    )
+    text_ids, text_embeddings, text_seconds = _extract_text_embeddings(
+        text_model, text_loader, device, split_name
+    )
+    expected_ids = tuple(item.posting_id for item in split.items)
+    if image_ids != text_ids or image_ids != expected_ids:
+        raise DataValidationError("Image/text cache extraction order differs from the split")
+    _write_cache_atomic(
+        cache_path,
+        posting_ids=image_ids,
+        labels=tuple(split.label_by_id[posting_id] for posting_id in image_ids),
+        image_embeddings=image_embeddings,
+        text_embeddings=text_embeddings,
+    )
+    metadata = {
+        "contract": contract,
+        "listings": len(image_ids),
+        "image_embedding_dim": image_embeddings.shape[1],
+        "text_embedding_dim": text_embeddings.shape[1],
+        "image_extraction_seconds": image_seconds,
+        "text_extraction_seconds": text_seconds,
+        "cache_bytes": cache_path.stat().st_size,
+    }
+    _write_json_atomic(metadata_path, metadata)
+    return {
+        "status": "created",
+        "device": str(device),
+        "test_accessed": False,
+        "split": split_name,
+        **metadata,
+    }
+
+
 def prepare_frozen_multimodal_cache(config_path: Path) -> dict[str, object]:
     """Extract train/validation embeddings once; never access the held-out test split."""
     config = load_multimodal_experiment_config(config_path)
